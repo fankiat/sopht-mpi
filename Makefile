@@ -30,28 +30,28 @@ pre-commit-install:
 .PHONY: black
 black:
 	poetry run black --version
-	poetry run black --config pyproject.toml sopht_mpi
+	poetry run black --config pyproject.toml sopht_mpi tests
 
 .PHONY: black-check
 black-check:
 	poetry run black --version
-	poetry run black --diff --check --config pyproject.toml sopht_mpi
+	poetry run black --diff --check --config pyproject.toml sopht_mpi tests
 
 .PHONY: flake8
 flake8:
 	poetry run flake8 --version
-	poetry run flake8 sopht_mpi
+	poetry run flake8 sopht_mpi tests
 
 .PHONY: autoflake8-check
 autoflake8-check:
 	poetry run autoflake8 --version
-	poetry run autoflake8 $(AUTOFLAKE8_ARGS) sopht_mpi
-	poetry run autoflake8 --check $(AUTOFLAKE8_ARGS) sopht_mpi
+	poetry run autoflake8 $(AUTOFLAKE8_ARGS) sopht_mpi tests
+	poetry run autoflake8 --check $(AUTOFLAKE8_ARGS) sopht_mpi tests
 
 .PHONY: autoflake8-format
 autoflake8-format:
 	poetry run autoflake8 --version
-	poetry run autoflake8 --in-place $(AUTOFLAKE8_ARGS) sopht_mpi
+	poetry run autoflake8 --in-place $(AUTOFLAKE8_ARGS) sopht_mpi tests
 
 .PHONY: format-codestyle
 format-codestyle: black flake8
@@ -61,6 +61,10 @@ check-codestyle: black-check flake8 autoflake8-check
 
 .PHONY: formatting
 formatting: format-codestyle
+
+.PHONY: test
+test:
+	poetry run mpiexec -n 4 pytest --with-mpi
 
 .PHONY: update-dev-deps
 update-dev-deps:
