@@ -14,17 +14,20 @@ jobs:
       matrix:
         python-version: ["3.9", "3.10"]
         os: [ubuntu-latest, macos-latest]
+        mpi: ['openmpi']
         include:
           - os: ubuntu-latest
             path: ~/.cache/pip
-            install-mpi: sudo apt install -y openmpi-bin libopenmpi-dev
           - os: macos-latest
             path: ~/Library/Caches/pip
-            install-mpi: brew install openmpi
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
+      - name: Setup MPI
+        uses: mpi4py/setup-mpi@v1
+        with:
+          mpi: ${{ matrix.mpi }}
       # Ref: https://docs.github.com/en/free-pro-team@latest/actions/guides/building-and-testing-python
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2.2.2
