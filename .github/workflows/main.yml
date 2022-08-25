@@ -13,10 +13,14 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.9", "3.10"]
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest]
         include:
           - os: ubuntu-latest
             path: ~/.cache/pip
+            install-mpi: sudo apt install -y openmpi-bin libopenmpi-dev
+          - os: macos-latest
+            path: ~/Library/Caches/pip
+            install-mpi: brew install openmpi
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -42,7 +46,7 @@ jobs:
       - name: Install dependencies
         run: |
           poetry config virtualenvs.in-project true
-          poetry install
+          make install
       # Runs a single command using the runners shell
       - name: Welcome message
         run: echo Hello, world! Welcome to sopht-mpi Build, lets start testing!
@@ -50,3 +54,7 @@ jobs:
       - name: Run style checks
         run: |
           make check-codestyle
+      # Run mpi4py installation check
+      - name: Run mpi4py check
+        run: |
+          poetry run mpiexec -n 4 python -m mpi4py.bench helloworld

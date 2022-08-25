@@ -20,7 +20,8 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.8,<3.11"
 sopht_backend = {git = "https://github.com/bhosale2/sopht-backend.git", rev = "main"}
-# add mpi4py and mpi-fft here later if pip works out...
+mpi4py = "^3.1"
+# add mpi-fft here later if pip works out...
 
 [tool.poetry.dev-dependencies]
 black = "^22.3.0"
