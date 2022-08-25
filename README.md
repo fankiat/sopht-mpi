@@ -2,7 +2,7 @@
 
 Scalable One-stop Platform for Hydroelastic Things (SOPHT) MPI solver.
 
-Python implementation of an elastohydrodynamic MPI solver, for resolving 
+Python implementation of an elastohydrodynamic MPI solver, for resolving
 flow-structure interaction of 3D mixed soft/rigid bodies in viscous flows.
 
 ## Installation
@@ -24,7 +24,16 @@ conda activate sopht-mpi-env
 conda install python==3.10
 ```
 
-3. Setup [`poetry`](https://python-poetry.org) and `dependencies`!
+3. Install MPI. For `Ubuntu` you can use:
+```bash
+sudo apt install -y -q openmpi-bin libopenmpi-dev
+```
+And for Mac-OS one can use
+```bash
+brew install openmpi
+```
+
+4. Setup [`poetry`](https://python-poetry.org) and `dependencies`!
 
 ```bash
 make poetry-download
