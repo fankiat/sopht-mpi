@@ -61,3 +61,7 @@ jobs:
       - name: Run mpi4py check
         run: |
           poetry run mpiexec -n 4 python -m mpi4py.bench helloworld
+      # Test sopht-mpi using pytest
+      - name: Run tests
+        run: |
+          make test
