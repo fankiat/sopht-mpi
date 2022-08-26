@@ -17,7 +17,7 @@ from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_2d import (
 
 @pytest.mark.mpi(group="MPI_stencil_ops_2d")
 @pytest.mark.parametrize("precision", ["single", "double"])
-@pytest.mark.parametrize("n_values", [8])
+@pytest.mark.parametrize("n_values", [16])
 @pytest.mark.parametrize("comm_type", ["blocking", "non_blocking"])
 def test_mpi_diffusion_flux_2d(n_values, precision, comm_type):
     real_t = get_real_t(precision)
