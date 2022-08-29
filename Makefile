@@ -17,7 +17,7 @@ poetry-remove:
 install:
 	poetry install
 	# uninstall serial h5py coming from sopht-backend
-	poetry run pip uninstall h5py
+	poetry run pip uninstall -y h5py
 	# install parallel h5py
 	HDF5_MPI="ON" CC=mpicc poetry run pip install --no-binary=h5py h5py
 	# install mpi4py-fft
