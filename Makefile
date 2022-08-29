@@ -17,11 +17,11 @@ poetry-remove:
 install:
 	poetry install
 	# uninstall serial h5py coming from sopht-backend
-	pip uninstall h5py
+	poetry run pip uninstall h5py
 	# install parallel h5py
-	HDF5_MPI="ON" CC=mpicc pip install --no-binary=h5py h5py
+	HDF5_MPI="ON" CC=mpicc poetry run pip install --no-binary=h5py h5py
 	# install mpi4py-fft
-	pip install mpi4py-fft
+	poetry run pip install mpi4py-fft
 
 .PHONY: install_with_new_dependency
 install_with_new_dependency:
