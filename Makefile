@@ -23,6 +23,18 @@ install:
 	# install mpi4py-fft
 	pip install mpi4py-fft
 
+.PHONY: install_non_python_modules_on_ubuntu
+install_non_python_modules_on_ubuntu:
+	sudo apt install -y -q openmpi-bin libopenmpi-dev
+	sudo apt install libhdf5-mpi-dev
+	conda install -c conda-forge fftw
+
+.PHONY: install_non_python_modules_on_macos
+install_non_python_modules_on_macos:
+	brew install openmpi
+	brew install hdf5-mpi
+	conda install -c conda-forge fftw
+
 .PHONY: install_with_new_dependency
 install_with_new_dependency:
 	poetry lock

@@ -14,7 +14,7 @@ the project, although most of the important commands will be provided in `Makefi
 
 First **create the fork repository and clone** to your local machine.
 
-2. Virtual python workspace: `conda`, `pyenv`, or `venv`.
+2. Virtual python workspace: `conda`.
 
 We recommend using python version above 3.8.0.
 
@@ -24,14 +24,18 @@ conda activate sopht-mpi-env
 conda install python==3.10
 ```
 
-3. Install MPI. For `Ubuntu` you can use:
+3. Install non-python dependencies, that include `MPI`, `hdf5-mpi`
+and `fftw`. For `Ubuntu` you can use:
 ```bash
-sudo apt install -y -q openmpi-bin libopenmpi-dev
+make install_non_python_modules_on_ubuntu
 ```
 And for Mac-OS one can use
 ```bash
-brew install openmpi
+make install_non_python_modules_on_macos
 ```
+**NOTE**: For cluster, optimised versions of the above modules are already
+installed, and as such this step can be skipped, and the internal modules
+should be loaded directly.
 
 4. Setup [`poetry`](https://python-poetry.org) and `dependencies`!
 
