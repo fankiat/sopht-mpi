@@ -46,15 +46,17 @@ jobs:
           key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}-${{ hashFiles('poetry.lock') }}
           restore-keys: |
             ${{ runner.os }}-pip-
-      - name: Install hdf5-mpi on ubuntu
+      - name: Install hdf5-mpi and fftw on ubuntu
         if: startsWith(matrix.os, 'ubuntu')
         run: |
           sudo apt update
           sudo apt install libhdf5-mpi-dev
-      - name: Install hdf5-mpi on macos
+          sudo apt install fftw-dev
+      - name: Install hdf5-mpi and fftw on macos
         if: startsWith(matrix.os, 'macos')
         run: |
           brew install hdf5-mpi
+          brew install fftw
       - name: Install dependencies
         run: |
           poetry config virtualenvs.in-project true
