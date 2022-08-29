@@ -38,12 +38,13 @@ jobs:
         run: |
           brew install hdf5-mpi
       # setup conda and install related dependencies
-      - name: setup-conda and install fftw
+      - name: setup-conda
         uses: s-weigand/setup-conda@v1
         with:
           update-conda: false
           python-version: ${{ matrix.python-version }}
           conda-channels: anaconda, conda-forge
+      - name: Install fftw
         run: |
           conda --version
           which python
