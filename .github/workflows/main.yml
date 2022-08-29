@@ -28,14 +28,27 @@ jobs:
         uses: mpi4py/setup-mpi@v1
         with:
           mpi: ${{ matrix.mpi }}
-      # Ref: https://docs.github.com/en/free-pro-team@latest/actions/guides/building-and-testing-python
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2.2.2
+      - name: Install hdf5-mpi on ubuntu
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt update
+          sudo apt install libhdf5-mpi-dev
+      - name: Install hdf5-mpi on macos
+        if: startsWith(matrix.os, 'macos')
+        run: |
+          brew install hdf5-mpi
+      # setup conda and install related dependencies
+      - name: setup-conda and install fftw
+        uses: s-weigand/setup-conda@v1
         with:
+          update-conda: false
           python-version: ${{ matrix.python-version }}
-      # You can test your matrix by printing the current Python version
-      - name: Display Python version
-        run: python -c "import sys; print(sys.version)"
+          conda-channels: anaconda, conda-forge
+      - run: conda --version
+      - run: which python
+      - run: |
+          conda config --set always_yes yes
+          conda install -c conda-forge fftw
       # Install Poetry and dependencies
       - name: Install Poetry
         uses: snok/install-poetry@v1
@@ -46,17 +59,6 @@ jobs:
           key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}-${{ hashFiles('poetry.lock') }}
           restore-keys: |
             ${{ runner.os }}-pip-
-      - name: Install hdf5-mpi and fftw on ubuntu
-        if: startsWith(matrix.os, 'ubuntu')
-        run: |
-          sudo apt update
-          sudo apt install libhdf5-mpi-dev
-          sudo apt install fftw-dev
-      - name: Install hdf5-mpi and fftw on macos
-        if: startsWith(matrix.os, 'macos')
-        run: |
-          brew install hdf5-mpi
-          brew install fftw
       - name: Install dependencies
         run: |
           poetry config virtualenvs.in-project true
