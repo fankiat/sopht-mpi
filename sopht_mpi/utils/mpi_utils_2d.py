@@ -31,9 +31,11 @@ class MPIConstruct2D:
             ] = 1  # to align at least one dimension for fft operations
         else:
             self.rank_distribution = rank_distribution
-        assert (
-            1 in self.rank_distribution
-        ), f"Rank distribution {self.rank_distribution} needs to be aligned in at least one direction for fft"
+        if 1 not in self.rank_distribution:
+            raise ValueError(
+                f"Rank distribution {self.rank_distribution} needs to be"
+                "aligned in at least one direction for fft"
+            )
         self.grid_topology = MPI.Compute_dims(
             self.world.Get_size(), dims=self.rank_distribution
         )
