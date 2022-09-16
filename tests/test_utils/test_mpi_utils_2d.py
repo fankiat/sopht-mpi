@@ -56,19 +56,15 @@ def test_mpi_ghost_blocking_communication(n_values, precision):
     )
     # extra width needed for kernel computation
     ghost_size = 1
-    # extra width involved in the field storage (>= ghost_size)
-    field_offset = 2 * ghost_size
     # variables to improve code readability
-    field_offset_minus_ghost_size = field_offset - ghost_size
-    field_offset_plus_ghost_size = field_offset + ghost_size
     mpi_ghost_exchange_communicator = MPIGhostCommunicator2D(
-        ghost_size=ghost_size, field_offset=field_offset, mpi_construct=mpi_construct
+        ghost_size=ghost_size, mpi_construct=mpi_construct
     )
     # Set internal field to manufactured values
     np.random.seed(0)
     local_field = np.random.rand(
-        mpi_construct.local_grid_size[0] + 2 * field_offset,
-        mpi_construct.local_grid_size[1] + 2 * field_offset,
+        mpi_construct.local_grid_size[0] + 2 * ghost_size,
+        mpi_construct.local_grid_size[1] + 2 * ghost_size,
     ).astype(real_t)
 
     # ghost comm.
@@ -76,38 +72,20 @@ def test_mpi_ghost_blocking_communication(n_values, precision):
 
     # check if comm. done rightly!
     np.testing.assert_allclose(
-        local_field[
-            field_offset:field_offset_plus_ghost_size, field_offset:-field_offset
-        ],
-        local_field[
-            -field_offset : local_field.shape[0] - field_offset_minus_ghost_size,
-            field_offset:-field_offset,
-        ],
+        local_field[ghost_size : 2 * ghost_size, ghost_size:-ghost_size],
+        local_field[-ghost_size : local_field.shape[0], ghost_size:-ghost_size],
     )
     np.testing.assert_allclose(
-        local_field[
-            -field_offset_plus_ghost_size:-field_offset, field_offset:-field_offset
-        ],
-        local_field[
-            field_offset_minus_ghost_size:field_offset, field_offset:-field_offset
-        ],
+        local_field[-2 * ghost_size : -ghost_size, ghost_size:-ghost_size],
+        local_field[0:ghost_size, ghost_size:-ghost_size],
     )
     np.testing.assert_allclose(
-        local_field[
-            field_offset:-field_offset, field_offset:field_offset_plus_ghost_size
-        ],
-        local_field[
-            field_offset:-field_offset,
-            -field_offset : local_field.shape[1] - field_offset_minus_ghost_size,
-        ],
+        local_field[ghost_size:-ghost_size, ghost_size : 2 * ghost_size],
+        local_field[ghost_size:-ghost_size, -ghost_size : local_field.shape[1]],
     )
     np.testing.assert_allclose(
-        local_field[
-            field_offset:-field_offset, -field_offset_plus_ghost_size:-field_offset
-        ],
-        local_field[
-            field_offset:-field_offset, field_offset_minus_ghost_size:field_offset
-        ],
+        local_field[ghost_size:-ghost_size, -2 * ghost_size : -ghost_size],
+        local_field[ghost_size:-ghost_size, 0:ghost_size],
     )
 
 
@@ -121,19 +99,14 @@ def test_mpi_ghost_non_blocking_communication(n_values, precision):
     )
     # extra width needed for kernel computation
     ghost_size = 1
-    # extra width involved in the field storage (>= ghost_size)
-    field_offset = 2 * ghost_size
-    # variables to improve code readability
-    field_offset_minus_ghost_size = field_offset - ghost_size
-    field_offset_plus_ghost_size = field_offset + ghost_size
     mpi_ghost_exchange_communicator = MPIGhostCommunicator2D(
-        ghost_size=ghost_size, field_offset=field_offset, mpi_construct=mpi_construct
+        ghost_size=ghost_size, mpi_construct=mpi_construct
     )
     # Set internal field to manufactured values
     np.random.seed(0)
     local_field = np.random.rand(
-        mpi_construct.local_grid_size[0] + 2 * field_offset,
-        mpi_construct.local_grid_size[1] + 2 * field_offset,
+        mpi_construct.local_grid_size[0] + 2 * ghost_size,
+        mpi_construct.local_grid_size[1] + 2 * ghost_size,
     ).astype(real_t)
 
     # ghost comm.
@@ -144,36 +117,18 @@ def test_mpi_ghost_non_blocking_communication(n_values, precision):
 
     # check if comm. done rightly!
     np.testing.assert_allclose(
-        local_field[
-            field_offset:field_offset_plus_ghost_size, field_offset:-field_offset
-        ],
-        local_field[
-            -field_offset : local_field.shape[0] - field_offset_minus_ghost_size,
-            field_offset:-field_offset,
-        ],
+        local_field[ghost_size : 2 * ghost_size, ghost_size:-ghost_size],
+        local_field[-ghost_size : local_field.shape[0], ghost_size:-ghost_size],
     )
     np.testing.assert_allclose(
-        local_field[
-            -field_offset_plus_ghost_size:-field_offset, field_offset:-field_offset
-        ],
-        local_field[
-            field_offset_minus_ghost_size:field_offset, field_offset:-field_offset
-        ],
+        local_field[-2 * ghost_size : -ghost_size, ghost_size:-ghost_size],
+        local_field[0:ghost_size, ghost_size:-ghost_size],
     )
     np.testing.assert_allclose(
-        local_field[
-            field_offset:-field_offset, field_offset:field_offset_plus_ghost_size
-        ],
-        local_field[
-            field_offset:-field_offset,
-            -field_offset : local_field.shape[1] - field_offset_minus_ghost_size,
-        ],
+        local_field[ghost_size:-ghost_size, ghost_size : 2 * ghost_size],
+        local_field[ghost_size:-ghost_size, -ghost_size : local_field.shape[1]],
     )
     np.testing.assert_allclose(
-        local_field[
-            field_offset:-field_offset, -field_offset_plus_ghost_size:-field_offset
-        ],
-        local_field[
-            field_offset:-field_offset, field_offset_minus_ghost_size:field_offset
-        ],
+        local_field[ghost_size:-ghost_size, -2 * ghost_size : -ghost_size],
+        local_field[ghost_size:-ghost_size, 0:ghost_size],
     )
