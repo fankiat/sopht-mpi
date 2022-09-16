@@ -33,7 +33,7 @@ def test_mpi_diffusion_flux_2d(n_values, precision, comm_type):
     # extra width involved in the field storage (>= ghost_size)
     field_offset = 1 * ghost_size
     mpi_ghost_exchange_communicator = MPIGhostCommunicator2D(
-        ghost_size=ghost_size, field_offset=field_offset, mpi_construct=mpi_construct
+        ghost_size=ghost_size, mpi_construct=mpi_construct
     )
     mpi_field_io_comm_with_offset_size_1 = MPIFieldIOCommunicator2D(
         field_offset=field_offset, mpi_construct=mpi_construct
@@ -44,8 +44,8 @@ def test_mpi_diffusion_flux_2d(n_values, precision, comm_type):
     # Allocate local field
     local_field = np.zeros(
         (
-            mpi_construct.local_grid_size[0] + 2 * field_offset,
-            mpi_construct.local_grid_size[1] + 2 * field_offset,
+            mpi_construct.local_grid_size[0] + 2 * ghost_size,
+            mpi_construct.local_grid_size[1] + 2 * ghost_size,
         )
     ).astype(real_t)
     local_diffusion_flux = np.zeros_like(local_field)

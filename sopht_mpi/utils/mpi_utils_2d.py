@@ -283,7 +283,7 @@ class MPIFieldIOCommunicator2D:
     """
     Class exclusive for field communication across ranks, initialises data types
     that will be used for scattering global fields and aggregating local fields.
-    Builds dtypes based on ghost_size (determined from local memory offset of field)
+    Builds dtypes based on field_offset (determined from local memory offset of field)
     This class wont be seen by the user, rather based on field metadata we determine
     the properties here.
     """
