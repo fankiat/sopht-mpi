@@ -76,30 +76,24 @@ class MPIGhostCommunicator2D:
     the properties here.
     """
 
-    def __init__(self, ghost_size, field_offset, mpi_construct):
+    def __init__(self, ghost_size, mpi_construct):
         # extra width needed for kernel computation
+        assert ghost_size > 0, "ghost_size has to be > 0 for calling ghost comm."
         self.ghost_size = ghost_size
-        # extra width involved in the field storage
-        assert field_offset > 0, "field offset has to be > 0 for calling ghost comm."
-        self.field_offset = field_offset
-        # variables to improve code readability
-        self.field_offset_minus_ghost_size = field_offset - ghost_size
-        self.field_offset_plus_ghost_size = field_offset + ghost_size
-        assert (
-            self.field_offset_minus_ghost_size >= 0
-        ), "Field offset cannot be smaller than kernel ghost size!"
+        # define field_size variable for local field size (which includes ghost)
+        self.field_size = mpi_construct.local_grid_size + 2 * self.ghost_size
+
         # Set datatypes for ghost communication
         # For row we use contiguous type
         self.row_type = mpi_construct.dtype_generator.Create_contiguous(
-            count=self.ghost_size
-            * (mpi_construct.local_grid_size[1] + 2 * self.field_offset)
+            count=self.ghost_size * self.field_size[1]
         )
         self.row_type.Commit()
         # For column we use strided vector
         self.column_type = mpi_construct.dtype_generator.Create_vector(
-            count=mpi_construct.local_grid_size[0] + 2 * self.field_offset,
+            count=self.field_size[0],
             blocklength=self.ghost_size,
-            stride=mpi_construct.local_grid_size[1] + 2 * self.field_offset,
+            stride=self.field_size[1],
         )
         self.column_type.Commit()
 
@@ -122,7 +116,7 @@ class MPIGhostCommunicator2D:
         # Along Y: send to previous block, receive from next block
         mpi_construct.grid.Send(
             (
-                local_field[self.field_offset : self.field_offset_plus_ghost_size, :],
+                local_field[self.ghost_size : 2 * self.ghost_size, :],
                 1,
                 self.row_type,
             ),
@@ -130,11 +124,7 @@ class MPIGhostCommunicator2D:
         )
         mpi_construct.grid.Recv(
             (
-                local_field[
-                    -self.field_offset : local_field.shape[0]
-                    - self.field_offset_minus_ghost_size,
-                    :,
-                ],
+                local_field[-self.ghost_size : local_field.shape[0], :],
                 1,
                 self.row_type,
             ),
@@ -144,7 +134,7 @@ class MPIGhostCommunicator2D:
         # Along Y: send to next block, receive from previous block
         mpi_construct.grid.Send(
             (
-                local_field[-self.field_offset_plus_ghost_size : -self.ghost_size, :],
+                local_field[-2 * self.ghost_size : -self.ghost_size, :],
                 1,
                 self.row_type,
             ),
@@ -152,7 +142,7 @@ class MPIGhostCommunicator2D:
         )
         mpi_construct.grid.Recv(
             (
-                local_field[self.field_offset_minus_ghost_size : self.field_offset, :],
+                local_field[0 : self.ghost_size, :],
                 1,
                 self.row_type,
             ),
@@ -162,7 +152,7 @@ class MPIGhostCommunicator2D:
         # Along X: send to previous block, receive from next block
         mpi_construct.grid.Send(
             (
-                local_field.ravel()[self.field_offset :],
+                local_field.ravel()[self.ghost_size :],
                 1,
                 self.column_type,
             ),
@@ -170,7 +160,7 @@ class MPIGhostCommunicator2D:
         )
         mpi_construct.grid.Recv(
             (
-                local_field.ravel()[local_field.shape[1] - self.field_offset :],
+                local_field.ravel()[local_field.shape[1] - self.ghost_size :],
                 1,
                 self.column_type,
             ),
@@ -180,9 +170,7 @@ class MPIGhostCommunicator2D:
         # Along X: send to next block, receive from previous block
         mpi_construct.grid.Send(
             (
-                local_field.ravel()[
-                    local_field.shape[1] - self.field_offset_plus_ghost_size :
-                ],
+                local_field.ravel()[local_field.shape[1] - 2 * self.ghost_size :],
                 1,
                 self.column_type,
             ),
@@ -190,7 +178,7 @@ class MPIGhostCommunicator2D:
         )
         mpi_construct.grid.Recv(
             (
-                local_field.ravel()[self.field_offset_minus_ghost_size :],
+                local_field.ravel()[0:],
                 1,
                 self.column_type,
             ),
@@ -207,7 +195,7 @@ class MPIGhostCommunicator2D:
         # Along Y: send to previous block, receive from next block
         self.comm_requests[0] = mpi_construct.grid.Isend(
             (
-                local_field[self.field_offset : self.field_offset_plus_ghost_size, :],
+                local_field[self.ghost_size : 2 * self.ghost_size, :],
                 1,
                 self.row_type,
             ),
@@ -215,11 +203,7 @@ class MPIGhostCommunicator2D:
         )
         self.comm_requests[1] = mpi_construct.grid.Irecv(
             (
-                local_field[
-                    -self.field_offset : local_field.shape[0]
-                    - self.field_offset_minus_ghost_size,
-                    :,
-                ],
+                local_field[-self.ghost_size : local_field.shape[0], :],
                 1,
                 self.row_type,
             ),
@@ -229,7 +213,7 @@ class MPIGhostCommunicator2D:
         # Along Y: send to next block, receive from previous block
         self.comm_requests[2] = mpi_construct.grid.Isend(
             (
-                local_field[-self.field_offset_plus_ghost_size : -self.ghost_size, :],
+                local_field[-2 * self.ghost_size : -self.ghost_size, :],
                 1,
                 self.row_type,
             ),
@@ -237,7 +221,7 @@ class MPIGhostCommunicator2D:
         )
         self.comm_requests[3] = mpi_construct.grid.Irecv(
             (
-                local_field[self.field_offset_minus_ghost_size : self.field_offset, :],
+                local_field[0 : self.ghost_size, :],
                 1,
                 self.row_type,
             ),
@@ -247,7 +231,7 @@ class MPIGhostCommunicator2D:
         # Along X: send to previous block, receive from next block
         self.comm_requests[4] = mpi_construct.grid.Isend(
             (
-                local_field.ravel()[self.field_offset :],
+                local_field.ravel()[self.ghost_size :],
                 1,
                 self.column_type,
             ),
@@ -255,7 +239,7 @@ class MPIGhostCommunicator2D:
         )
         self.comm_requests[5] = mpi_construct.grid.Irecv(
             (
-                local_field.ravel()[local_field.shape[1] - self.field_offset :],
+                local_field.ravel()[local_field.shape[1] - self.ghost_size :],
                 1,
                 self.column_type,
             ),
@@ -265,9 +249,7 @@ class MPIGhostCommunicator2D:
         # Along X: send to next block, receive from previous block
         self.comm_requests[6] = mpi_construct.grid.Isend(
             (
-                local_field.ravel()[
-                    local_field.shape[1] - self.field_offset_plus_ghost_size :
-                ],
+                local_field.ravel()[local_field.shape[1] - 2 * self.ghost_size :],
                 1,
                 self.column_type,
             ),
@@ -275,7 +257,7 @@ class MPIGhostCommunicator2D:
         )
         self.comm_requests[7] = mpi_construct.grid.Irecv(
             (
-                local_field.ravel()[self.field_offset_minus_ghost_size :],
+                local_field.ravel()[0:],
                 1,
                 self.column_type,
             ),
@@ -293,7 +275,7 @@ class MPIFieldIOCommunicator2D:
     """
     Class exclusive for field communication across ranks, initialises data types
     that will be used for scattering global fields and aggregating local fields.
-    Builds dtypes based on field_offset (determined from local memory offset of field)
+    Builds dtypes based on ghost_size (determined from local memory offset of field)
     This class wont be seen by the user, rather based on field metadata we determine
     the properties here.
     """
