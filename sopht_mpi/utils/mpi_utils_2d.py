@@ -4,7 +4,7 @@ import numpy as np
 
 class MPIConstruct2D:
     """
-    Sets up MPI main construct which stores the grid topology and domain decomp
+    Sets up MPI main construct which stores the 2D grid topology and domain decomp
     information, has exclusive MPI info, and will be the one whose interface would
     be provided to the user.
     """
@@ -15,10 +15,7 @@ class MPIConstruct2D:
         grid_size_x,
         periodic_flag=False,
         real_t=np.float64,
-        # we can put a number of checks of rank_distribution,
-        # but I realised MPI itself raises decent error messages,
-        # so we can skip those here for now.
-        rank_distribution=(0, 0),
+        rank_distribution=None,
     ):
         # grid/problem dimensions
         self.grid_dim = 2
@@ -27,14 +24,25 @@ class MPIConstruct2D:
         # Setup MPI environment
         self.world = MPI.COMM_WORLD
         # Automatically create topologies
-        self.rank_distribution = rank_distribution
+        if rank_distribution is None:
+            self.rank_distribution = [0] * self.grid_dim
+            self.rank_distribution[
+                -1
+            ] = 1  # to align at least one dimension for fft operations
+        else:
+            self.rank_distribution = rank_distribution
+        if 1 not in self.rank_distribution:
+            raise ValueError(
+                f"Rank distribution {self.rank_distribution} needs to be"
+                "aligned in at least one direction for fft"
+            )
         self.grid_topology = MPI.Compute_dims(
             self.world.Get_size(), dims=self.rank_distribution
         )
         # Check for proper domain distribution and assign local domain size
         self.global_grid_size = np.array((grid_size_y, grid_size_x))
         if np.any(self.global_grid_size % self.grid_topology):
-            print("Cannot divide grid evenly to processors in x and y directions!")
+            print("Cannot divide grid evenly to processors in x and/or y directions!")
             print(
                 f"{self.global_grid_size / self.grid_topology} x {self.grid_topology} "
                 f"!= {self.global_grid_size}"
