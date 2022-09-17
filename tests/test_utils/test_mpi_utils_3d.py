@@ -1,10 +1,7 @@
 import numpy as np
 import pytest
-from sopht.utils.precision import get_real_t, get_test_tol
-from sopht_mpi.utils import (
-    MPIConstruct3D,
-    MPIGhostCommunicator3D,
-)
+from sopht.utils.precision import get_real_t
+from sopht_mpi.utils import MPIConstruct3D, MPIGhostCommunicator3D
 
 
 @pytest.mark.mpi(group="MPI_utils", min_size=2)
