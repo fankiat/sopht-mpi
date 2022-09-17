@@ -71,18 +71,22 @@ def test_mpi_ghost_blocking_communication(n_values, precision):
     mpi_ghost_exchange_communicator.blocking_exchange(local_field, mpi_construct)
 
     # check if comm. done rightly!
+    # Along X: comm with previous block
     np.testing.assert_allclose(
         local_field[ghost_size : 2 * ghost_size, ghost_size:-ghost_size],
         local_field[-ghost_size : local_field.shape[0], ghost_size:-ghost_size],
     )
+    # Along X: comm with next block
     np.testing.assert_allclose(
         local_field[-2 * ghost_size : -ghost_size, ghost_size:-ghost_size],
         local_field[0:ghost_size, ghost_size:-ghost_size],
     )
+    # Along Y: comm with previous block
     np.testing.assert_allclose(
         local_field[ghost_size:-ghost_size, ghost_size : 2 * ghost_size],
         local_field[ghost_size:-ghost_size, -ghost_size : local_field.shape[1]],
     )
+    # Along Y: comm with next block
     np.testing.assert_allclose(
         local_field[ghost_size:-ghost_size, -2 * ghost_size : -ghost_size],
         local_field[ghost_size:-ghost_size, 0:ghost_size],
