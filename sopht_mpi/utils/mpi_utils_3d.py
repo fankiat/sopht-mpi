@@ -200,7 +200,7 @@ class MPIGhostCommunicator3D:
         y_axis = 1
         x_axis = 2
 
-        # # Along X: send to previous block, receive from next block
+        # Along X: send to previous block, receive from next block
         mpi_construct.grid.Send(
             (local_field, self.send_previous_along_x_type),
             dest=mpi_construct.previous_grid_along[x_axis],
@@ -256,3 +256,74 @@ class MPIGhostCommunicator3D:
             (local_field, self.recv_previous_along_z_type),
             source=mpi_construct.previous_grid_along[z_axis],
         )
+
+    def non_blocking_exchange_init(self, local_field, mpi_construct):
+        """
+        Non-blocking exchange ghost data between neighbors.
+        """
+        # Lines below to make code more literal
+        z_axis = 0
+        y_axis = 1
+        x_axis = 2
+        # Along X: send to previous block, receive from next block
+        self.comm_requests[0] = mpi_construct.grid.Isend(
+            (local_field, self.send_previous_along_x_type),
+            dest=mpi_construct.previous_grid_along[x_axis],
+        )
+        self.comm_requests[1] = mpi_construct.grid.Irecv(
+            (local_field, self.recv_next_along_x_type),
+            source=mpi_construct.next_grid_along[x_axis],
+        )
+        # Along X: send to next block, receive from previous block
+        self.comm_requests[2] = mpi_construct.grid.Isend(
+            (local_field, self.send_next_along_x_type),
+            dest=mpi_construct.next_grid_along[x_axis],
+        )
+        self.comm_requests[3] = mpi_construct.grid.Irecv(
+            (local_field, self.recv_previous_along_x_type),
+            source=mpi_construct.previous_grid_along[x_axis],
+        )
+
+        # Along Y: send to previous block, receive from next block
+        self.comm_requests[4] = mpi_construct.grid.Isend(
+            (local_field, self.send_previous_along_y_type),
+            dest=mpi_construct.previous_grid_along[y_axis],
+        )
+        self.comm_requests[5] = mpi_construct.grid.Irecv(
+            (local_field, self.recv_next_along_y_type),
+            source=mpi_construct.next_grid_along[y_axis],
+        )
+        # Along Y: send to next block, receive from previous block
+        self.comm_requests[6] = mpi_construct.grid.Isend(
+            (local_field, self.send_next_along_y_type),
+            dest=mpi_construct.next_grid_along[y_axis],
+        )
+        self.comm_requests[7] = mpi_construct.grid.Irecv(
+            (local_field, self.recv_previous_along_y_type),
+            source=mpi_construct.previous_grid_along[y_axis],
+        )
+
+        # Along Z: send to previous block, receive from next block
+        self.comm_requests[8] = mpi_construct.grid.Isend(
+            (local_field, self.send_previous_along_z_type),
+            dest=mpi_construct.previous_grid_along[z_axis],
+        )
+        self.comm_requests[9] = mpi_construct.grid.Irecv(
+            (local_field, self.recv_next_along_z_type),
+            source=mpi_construct.next_grid_along[z_axis],
+        )
+        # Along Z: send to next block, receive from previous block
+        self.comm_requests[10] = mpi_construct.grid.Isend(
+            (local_field, self.send_next_along_z_type),
+            dest=mpi_construct.next_grid_along[z_axis],
+        )
+        self.comm_requests[11] = mpi_construct.grid.Irecv(
+            (local_field, self.recv_previous_along_z_type),
+            source=mpi_construct.previous_grid_along[z_axis],
+        )
+
+    def non_blocking_exchange_finalise(self):
+        """
+        Finalizing non-blocking exchange ghost data between neighbors.
+        """
+        MPI.Request.Waitall(self.comm_requests)
