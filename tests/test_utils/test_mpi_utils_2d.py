@@ -46,13 +46,18 @@ def test_mpi_field_io_gather_scatter(n_values, precision):
         )
 
 
-@pytest.mark.mpi(group="MPI_utils")
+@pytest.mark.mpi(group="MPI_utils", min_size=2)
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("n_values", [16])
-def test_mpi_ghost_blocking_communication(n_values, precision):
+@pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
+def test_mpi_ghost_blocking_communication(n_values, precision, rank_distribution):
     real_t = get_real_t(precision)
     mpi_construct = MPIConstruct2D(
-        grid_size_y=n_values, grid_size_x=n_values, periodic_flag=True, real_t=real_t
+        grid_size_y=n_values,
+        grid_size_x=n_values,
+        periodic_flag=True,
+        real_t=real_t,
+        rank_distribution=rank_distribution,
     )
     # extra width needed for kernel computation
     ghost_size = 1
