@@ -7,10 +7,14 @@ from sopht_mpi.utils import (
 )
 
 
-@pytest.mark.mpi(group="MPI_utils")
+@pytest.mark.mpi(group="MPI_utils", min_size=2)
 @pytest.mark.parametrize("precision", ["single", "double"])
-@pytest.mark.parametrize("n_values", [4])
-def test_mpi_ghost_blocking_communication(n_values, precision):
+@pytest.mark.parametrize("n_values", [8])
+@pytest.mark.parametrize(
+    "rank_distribution",
+    [(0, 1, 1), (1, 0, 1), (1, 1, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)],
+)
+def test_mpi_ghost_blocking_communication(n_values, precision, rank_distribution):
     real_t = get_real_t(precision)
     mpi_construct = MPIConstruct3D(
         grid_size_z=n_values,
@@ -18,7 +22,7 @@ def test_mpi_ghost_blocking_communication(n_values, precision):
         grid_size_x=2 * n_values,
         periodic_flag=True,
         real_t=real_t,
-        rank_distribution=(1, 1, 0),
+        rank_distribution=rank_distribution,
     )
     # extra width needed for kernel computation
     ghost_size = 1
