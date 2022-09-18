@@ -191,7 +191,7 @@ class MPIGhostCommunicator3D:
             0,
         ] * self.num_requests
 
-    def exchange(self, local_field, mpi_construct):
+    def exchange_init(self, local_field, mpi_construct):
         """
         Exchange ghost data between neighbors.
         """
@@ -256,5 +256,8 @@ class MPIGhostCommunicator3D:
             source=mpi_construct.previous_grid_along[z_axis],
         )
 
-        # Finalize exchange send/recv requests
+    def exchange_finalise(self):
+        """
+        Finalizing non-blocking exchange ghost data between neighbors.
+        """
         MPI.Request.Waitall(self.comm_requests)
