@@ -109,12 +109,12 @@ class MPIGhostCommunicator2D:
         self.num_requests = (
             mpi_construct.grid_dim * 2 * 2
         )  # dimension * 2 request for send/recv * 2 directions along each axis
-        # initialize the requests array
+        # Initialize the requests array?
         self.comm_requests = [
             0,
         ] * self.num_requests
 
-    def exchange(self, local_field, mpi_construct):
+    def exchange_init(self, local_field, mpi_construct):
         """
         Exchange ghost data between neighbors.
         """
@@ -193,7 +193,10 @@ class MPIGhostCommunicator2D:
             source=mpi_construct.previous_grid_along[x_axis],
         )
 
-        # Finalize exchange send/recv requests
+    def exchange_finalise(self):
+        """
+        Finalizing non-blocking exchange ghost data between neighbors.
+        """
         MPI.Request.Waitall(self.comm_requests)
 
 

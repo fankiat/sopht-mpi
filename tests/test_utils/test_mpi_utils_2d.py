@@ -76,7 +76,8 @@ def test_mpi_ghost_communication(
     ).astype(real_t)
 
     # ghost comm.
-    mpi_ghost_exchange_communicator.exchange(local_field, mpi_construct)
+    mpi_ghost_exchange_communicator.exchange_init(local_field, mpi_construct)
+    mpi_ghost_exchange_communicator.exchange_finalise()
 
     # check if comm. done rightly!
     np.testing.assert_allclose(
