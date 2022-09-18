@@ -11,13 +11,19 @@ from sopht_mpi.utils import MPIConstruct3D, MPIGhostCommunicator3D
     "rank_distribution",
     [(0, 1, 1), (1, 0, 1), (1, 1, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)],
 )
-def test_mpi_ghost_communication(ghost_size, precision, rank_distribution):
-    n_values = 8
+@pytest.mark.parametrize(
+    "aspect_ratio",
+    [(1, 1, 1), (1, 1, 2), (1, 2, 1), (2, 1, 1), (1, 2, 2), (2, 1, 2), (2, 2, 1)],
+)
+def test_mpi_ghost_communication(
+    ghost_size, precision, rank_distribution, aspect_ratio
+):
+    n_values = 64
     real_t = get_real_t(precision)
     mpi_construct = MPIConstruct3D(
-        grid_size_z=n_values,
-        grid_size_y=n_values,
-        grid_size_x=2 * n_values,
+        grid_size_z=n_values * aspect_ratio[2],
+        grid_size_y=n_values * aspect_ratio[1],
+        grid_size_x=n_values * aspect_ratio[0],
         periodic_flag=True,
         real_t=real_t,
         rank_distribution=rank_distribution,
