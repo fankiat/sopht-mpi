@@ -3,45 +3,21 @@ from sopht.numeric.eulerian_grid_ops.stencil_ops_2d import (
 )
 
 
-def gen_diffusion_flux_pyst_mpi_blocking_kernel_2d(
+def gen_diffusion_flux_pyst_mpi_kernel_2d(
     real_t, mpi_construct, ghost_exchange_communicator
 ):
-
     # Note currently I'm generating these for arbit size arrays, we ca optimise this
     # more by generating fixed size for the interior stencil and arbit size for
     # boundary crunching
     diffusion_flux_pyst_kernel = gen_diffusion_flux_pyst_kernel_2d(real_t=real_t)
 
-    def diffusion_flux_pyst_mpi_blocking_kernel_2d(
-        diffusion_flux,
-        field,
-        prefactor,
-    ):
-        ghost_exchange_communicator.blocking_exchange(field, mpi_construct)
-        kernel_max_range_y = field.shape[0]
-        kernel_max_range_x = field.shape[1]
-        diffusion_flux_pyst_kernel(
-            diffusion_flux=diffusion_flux[0:kernel_max_range_y, 0:kernel_max_range_x],
-            field=field[0:kernel_max_range_y, 0:kernel_max_range_x],
-            prefactor=prefactor,
-        )
-
-    return diffusion_flux_pyst_mpi_blocking_kernel_2d
-
-
-def gen_diffusion_flux_pyst_mpi_non_blocking_kernel_2d(
-    real_t, mpi_construct, ghost_exchange_communicator
-):
-
-    diffusion_flux_pyst_kernel = gen_diffusion_flux_pyst_kernel_2d(real_t=real_t)
-
-    def diffusion_flux_pyst_mpi_non_blocking_kernel_2d(
+    def diffusion_flux_pyst_mpi_kernel_2d(
         diffusion_flux,
         field,
         prefactor,
     ):
         # begin ghost comm.
-        ghost_exchange_communicator.non_blocking_exchange_init(field, mpi_construct)
+        ghost_exchange_communicator.exchange_init(field, mpi_construct)
 
         # crunch interior stencil
         ghost_size = ghost_exchange_communicator.ghost_size
@@ -53,7 +29,7 @@ def gen_diffusion_flux_pyst_mpi_non_blocking_kernel_2d(
             prefactor=prefactor,
         )
         # finalise ghost comm.
-        ghost_exchange_communicator.non_blocking_exchange_finalise()
+        ghost_exchange_communicator.exchange_finalise()
 
         # crunch boundary numbers
         # NOTE we pass in arrays of width 3 * ghost_size because the
@@ -93,4 +69,4 @@ def gen_diffusion_flux_pyst_mpi_non_blocking_kernel_2d(
             prefactor=prefactor,
         )
 
-    return diffusion_flux_pyst_mpi_non_blocking_kernel_2d
+    return diffusion_flux_pyst_mpi_kernel_2d

@@ -10,16 +10,14 @@ from sopht_mpi.utils import (
     MPIFieldIOCommunicator2D,
 )
 from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_2d import (
-    gen_diffusion_flux_pyst_mpi_blocking_kernel_2d,
-    gen_diffusion_flux_pyst_mpi_non_blocking_kernel_2d,
+    gen_diffusion_flux_pyst_mpi_kernel_2d,
 )
 
 
 @pytest.mark.mpi(group="MPI_stencil_ops_2d")
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("n_values", [16])
-@pytest.mark.parametrize("comm_type", ["blocking", "non_blocking"])
-def test_mpi_diffusion_flux_2d(n_values, precision, comm_type):
+def test_mpi_diffusion_flux_2d(n_values, precision):
     real_t = get_real_t(precision)
     # Generate the MPI topology minimal object
     mpi_construct = MPIConstruct2D(
@@ -64,22 +62,12 @@ def test_mpi_diffusion_flux_2d(n_values, precision, comm_type):
     scatter_global_field(local_field, ref_field, mpi_construct)
 
     # compute the diffusion flux
-    if comm_type == "blocking":
-        diffusion_flux_pyst_mpi_kernel = gen_diffusion_flux_pyst_mpi_blocking_kernel_2d(
-            real_t=real_t,
-            mpi_construct=mpi_construct,
-            ghost_exchange_communicator=mpi_ghost_exchange_communicator,
-        )
-    elif comm_type == "non_blocking":
-        diffusion_flux_pyst_mpi_kernel = (
-            gen_diffusion_flux_pyst_mpi_non_blocking_kernel_2d(
-                real_t=real_t,
-                mpi_construct=mpi_construct,
-                ghost_exchange_communicator=mpi_ghost_exchange_communicator,
-            )
-        )
-    else:
-        raise ValueError("Invalid communication type!")
+    diffusion_flux_pyst_mpi_kernel = gen_diffusion_flux_pyst_mpi_kernel_2d(
+        real_t=real_t,
+        mpi_construct=mpi_construct,
+        ghost_exchange_communicator=mpi_ghost_exchange_communicator,
+    )
+
     diffusion_flux_pyst_mpi_kernel(
         diffusion_flux=local_diffusion_flux,
         field=local_field,
