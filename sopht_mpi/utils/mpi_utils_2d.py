@@ -109,7 +109,7 @@ class MPIGhostCommunicator2D:
         self.num_requests = (
             mpi_construct.grid_dim * 2 * 2
         )  # dimension * 2 request for send/recv * 2 directions along each axis
-        # Better to initialize the requests array?
+        # initialize the requests array
         self.comm_requests = [
             0,
         ] * self.num_requests

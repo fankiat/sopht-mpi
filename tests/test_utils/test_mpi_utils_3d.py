@@ -11,7 +11,7 @@ from sopht_mpi.utils import MPIConstruct3D, MPIGhostCommunicator3D
     "rank_distribution",
     [(0, 1, 1), (1, 0, 1), (1, 1, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)],
 )
-def test_mpi_ghost_non_blocking_communication(ghost_size, precision, rank_distribution):
+def test_mpi_ghost_communication(ghost_size, precision, rank_distribution):
     n_values = 8
     real_t = get_real_t(precision)
     mpi_construct = MPIConstruct3D(
@@ -36,10 +36,7 @@ def test_mpi_ghost_non_blocking_communication(ghost_size, precision, rank_distri
     ).astype(real_t)
 
     # ghost comm.
-    mpi_ghost_exchange_communicator.non_blocking_exchange_init(
-        local_field, mpi_construct
-    )
-    mpi_ghost_exchange_communicator.non_blocking_exchange_finalise()
+    mpi_ghost_exchange_communicator.exchange(local_field, mpi_construct)
 
     # check if comm. done rightly!
     # Along X: comm with previous block
