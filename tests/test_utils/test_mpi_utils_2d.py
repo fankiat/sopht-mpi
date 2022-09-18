@@ -50,7 +50,7 @@ def test_mpi_field_io_gather_scatter(n_values, precision):
 @pytest.mark.parametrize("ghost_size", [1, 2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-def test_mpi_ghost_non_blocking_communication(ghost_size, precision, rank_distribution):
+def test_mpi_ghost_communication(ghost_size, precision, rank_distribution):
     n_values = 16
     real_t = get_real_t(precision)
     mpi_construct = MPIConstruct2D(
@@ -73,10 +73,7 @@ def test_mpi_ghost_non_blocking_communication(ghost_size, precision, rank_distri
     ).astype(real_t)
 
     # ghost comm.
-    mpi_ghost_exchange_communicator.non_blocking_exchange_init(
-        local_field, mpi_construct
-    )
-    mpi_ghost_exchange_communicator.non_blocking_exchange_finalise()
+    mpi_ghost_exchange_communicator.exchange(local_field, mpi_construct)
 
     # check if comm. done rightly!
     np.testing.assert_allclose(
