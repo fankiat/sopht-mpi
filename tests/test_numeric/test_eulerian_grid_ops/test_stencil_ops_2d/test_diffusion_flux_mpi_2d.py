@@ -31,16 +31,14 @@ def test_mpi_diffusion_flux_2d(precision, rank_distribution, aspect_ratio):
 
     # extra width needed for kernel computation
     ghost_size = 1
-    # extra width involved in the field storage (>= ghost_size)
-    field_offset = 1 * ghost_size
     mpi_ghost_exchange_communicator = MPIGhostCommunicator2D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    mpi_field_io_comm_with_offset_size_1 = MPIFieldIOCommunicator2D(
-        field_offset=field_offset, mpi_construct=mpi_construct
+    mpi_field_io_communicator = MPIFieldIOCommunicator2D(
+        ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_io_comm_with_offset_size_1.gather_local_field
-    scatter_global_field = mpi_field_io_comm_with_offset_size_1.scatter_global_field
+    gather_local_field = mpi_field_io_communicator.gather_local_field
+    scatter_global_field = mpi_field_io_communicator.scatter_global_field
 
     # Allocate local field
     local_field = np.zeros(
