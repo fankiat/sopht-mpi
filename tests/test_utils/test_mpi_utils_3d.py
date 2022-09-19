@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from sopht.utils.precision import get_real_t, get_test_tol
+from sopht.utils.precision import get_real_t
 from sopht_mpi.utils import (
     MPIConstruct3D,
     MPIGhostCommunicator3D,
@@ -60,9 +60,7 @@ def test_mpi_field_io_gather_scatter(
     # reconstruct global field from local ranks
     gather_local_field(global_field, local_field, mpi_construct)
     if mpi_construct.rank == 0:
-        np.testing.assert_allclose(
-            ref_global_field, global_field, atol=get_test_tol(precision)
-        )
+        np.testing.assert_allclose(ref_global_field, global_field)
 
 
 @pytest.mark.mpi(group="MPI_utils", min_size=2)
