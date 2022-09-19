@@ -19,8 +19,8 @@ def test_mpi_field_io_gather_scatter(
     n_values = 128
     real_t = get_real_t(precision)
     mpi_construct = MPIConstruct2D(
-        grid_size_y=n_values * aspect_ratio[1],
-        grid_size_x=n_values * aspect_ratio[0],
+        grid_size_y=n_values * aspect_ratio[0],
+        grid_size_x=n_values * aspect_ratio[1],
         real_t=real_t,
         rank_distribution=rank_distribution,
     )
@@ -65,8 +65,8 @@ def test_mpi_ghost_communication(
     n_values = 128
     real_t = get_real_t(precision)
     mpi_construct = MPIConstruct2D(
-        grid_size_y=n_values * aspect_ratio[1],
-        grid_size_x=n_values * aspect_ratio[0],
+        grid_size_y=n_values * aspect_ratio[0],
+        grid_size_x=n_values * aspect_ratio[1],
         periodic_flag=True,
         real_t=real_t,
         rank_distribution=rank_distribution,

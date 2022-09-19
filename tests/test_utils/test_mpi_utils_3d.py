@@ -21,9 +21,9 @@ def test_mpi_ghost_communication(
     n_values = 64
     real_t = get_real_t(precision)
     mpi_construct = MPIConstruct3D(
-        grid_size_z=n_values * aspect_ratio[2],
+        grid_size_z=n_values * aspect_ratio[0],
         grid_size_y=n_values * aspect_ratio[1],
-        grid_size_x=n_values * aspect_ratio[0],
+        grid_size_x=n_values * aspect_ratio[2],
         periodic_flag=True,
         real_t=real_t,
         rank_distribution=rank_distribution,
