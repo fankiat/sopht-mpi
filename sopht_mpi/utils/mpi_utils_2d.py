@@ -86,7 +86,11 @@ class MPIGhostCommunicator2D:
 
     def __init__(self, ghost_size, mpi_construct):
         # extra width needed for kernel computation
-        assert ghost_size > 0, "ghost_size has to be > 0 for calling ghost comm."
+        if ghost_size <= 0 and not isinstance(ghost_size, int):
+            raise ValueError(
+                f"Ghost size {ghost_size} needs to be an integer > 0"
+                "for calling ghost communication."
+            )
         self.ghost_size = ghost_size
         # define field_size variable for local field size (which includes ghost)
         self.field_size = mpi_construct.local_grid_size + 2 * self.ghost_size
