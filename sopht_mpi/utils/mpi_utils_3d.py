@@ -4,9 +4,9 @@ import numpy as np
 
 class MPIConstruct3D:
     """
-    Sets up MPI main construct which stores the 3D grid topology and domain decomp
-    information, has exclusive MPI info, and will be the one whose interface would
-    be provided to the user.
+    Sets up MPI main construct which stores the 3D grid topology and domain
+    decomp information, has exclusive MPI info, and will be the one whose
+    interface would be provided to the user.
     """
 
     def __init__(
@@ -81,8 +81,8 @@ class MPIConstruct3D:
 class MPIGhostCommunicator3D:
     """
     Class exclusive for ghost communication across ranks, initialises data types
-    that will be used for comm. in both blocking and non-blocking styles.
-    Builds dtypes based on ghost_size (determined from stencil width of the kernel)
+    that will be used for comm. in both blocking and non-blocking styles. Builds
+    dtypes based on ghost_size (determined from stencil width of the kernel)
     This class wont be seen by the user, rather based on stencils we determine
     the properties here.
     """
@@ -102,10 +102,10 @@ class MPIGhostCommunicator3D:
         # Note: these can be written in a more involved, but perhaps faster way.
         # Keeping this for now for its readibility and easy implementation.
         # Using the Create_subarray approach, each type for sending / receiving
-        # needs to be initialized based on their starting index location.
-        # In each dimension, we have 2 ghost layers to be sent (to next & prev)
-        # and 2 corresponding receiving layers (from next & prev). This amounts
-        # to (2 type for send/recv) * (2 dir along each dim) * (3 dim) = 12 type
+        # needs to be initialized based on their starting index location. In
+        # each dimension, we have 2 ghost layers to be sent (to next & prev) and
+        # 2 corresponding receiving layers (from next & prev). This amounts to
+        # (2 type for send/recv) * (2 dir along each dim) * (3 dim) = 12 type
         # Along X (next)
         self.send_next_along_x_type = mpi_construct.dtype_generator.Create_subarray(
             sizes=self.field_size,

@@ -4,9 +4,9 @@ import numpy as np
 
 class MPIConstruct2D:
     """
-    Sets up MPI main construct which stores the 2D grid topology and domain decomp
-    information, has exclusive MPI info, and will be the one whose interface would
-    be provided to the user.
+    Sets up MPI main construct which stores the 2D grid topology and domain
+    decomp information, has exclusive MPI info, and will be the one whose
+    interface would be provided to the user.
     """
 
     def __init__(
@@ -78,8 +78,8 @@ class MPIConstruct2D:
 class MPIGhostCommunicator2D:
     """
     Class exclusive for ghost communication across ranks, initialises data types
-    that will be used for comm. in both blocking and non-blocking styles.
-    Builds dtypes based on ghost_size (determined from stencil width of the kernel)
+    that will be used for comm. in both blocking and non-blocking styles. Builds
+    dtypes based on ghost_size (determined from stencil width of the kernel)
     This class wont be seen by the user, rather based on stencils we determine
     the properties here.
     """
@@ -208,9 +208,9 @@ class MPIFieldIOCommunicator2D:
     """
     Class exclusive for field communication across ranks, initialises data types
     that will be used for scattering global fields and aggregating local fields.
-    Builds dtypes based on field_offset (determined from local memory offset of field)
-    This class wont be seen by the user, rather based on field metadata we determine
-    the properties here.
+    Builds dtypes based on ghost_size (determined from stencil width of the
+    employed kernel). This class wont be seen by the user, rather based on field
+    metadata we determine the properties here.
     """
 
     def __init__(self, field_offset, mpi_construct):
@@ -265,7 +265,8 @@ class MPIFieldIOCommunicator2D:
 
     def scatter_global_field(self, local_field, global_field, mpi_construct):
         """
-        Scatter a global field in rank 0 to corresponding ranks into local fields
+        Scatter a global field in rank 0 to corresponding ranks into local
+        fields
         """
         # Fill in field values for rank 0 on the edge
         if mpi_construct.rank == 0:
