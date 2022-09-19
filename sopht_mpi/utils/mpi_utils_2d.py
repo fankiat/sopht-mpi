@@ -1,3 +1,4 @@
+from multiprocessing.sharedctypes import Value
 from mpi4py import MPI
 import numpy as np
 
@@ -213,29 +214,34 @@ class MPIFieldIOCommunicator2D:
     metadata we determine the properties here.
     """
 
-    def __init__(self, field_offset, mpi_construct):
-        # Use offset to define indices for inner cell (actual data without halo)
-        assert field_offset >= 0, "field offset has to be >= 0"
-        self.field_offset = field_offset
-        if self.field_offset == 0:
+    def __init__(self, ghost_size, mpi_construct):
+        # Use ghost_size to define indices for inner cell (actual data without
+        # halo)
+        if ghost_size < 0:
+            raise ValueError("ghost size has to be >= 0")
+        self.ghost_size = ghost_size
+        if self.ghost_size == 0:
             self.inner_idx = ...
         else:
             self.inner_idx = (
-                slice(self.field_offset, -self.field_offset),
+                slice(self.ghost_size, -self.ghost_size),
             ) * mpi_construct.grid_dim
         # Datatypes for subdomain used in gather and scatter
-        field_sub_sizes = mpi_construct.local_grid_size
+        field_sub_size = mpi_construct.local_grid_size
         # Rank 0 uses datatype for receiving sub arrays in full array
         if mpi_construct.rank == 0:
-            field_sizes = mpi_construct.global_grid_size
-            field_offsets = [0, 0]
+            field_size = mpi_construct.global_grid_size
+            self.sub_array_type = mpi_construct.dtype_generator.Create_subarray(
+                sizes=field_size, subsizes=field_sub_size, starts=[0, 0]
+            )
         # Other ranks use datatype for sending sub arrays
         else:
-            field_sizes = mpi_construct.local_grid_size + 2 * self.field_offset
-            field_offsets = [self.field_offset, self.field_offset]
-        self.sub_array_type = mpi_construct.dtype_generator.Create_subarray(
-            sizes=field_sizes, subsizes=field_sub_sizes, starts=field_offsets
-        )
+            field_size = mpi_construct.local_grid_size + 2 * self.ghost_size
+            self.sub_array_type = mpi_construct.dtype_generator.Create_subarray(
+                sizes=field_size,
+                subsizes=field_sub_size,
+                starts=[self.ghost_size, self.ghost_size],
+            )
         self.sub_array_type.Commit()
 
     def gather_local_field(self, global_field, local_field, mpi_construct):

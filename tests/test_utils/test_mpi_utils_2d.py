@@ -16,9 +16,9 @@ def test_mpi_field_io_gather_scatter(n_values, precision):
     mpi_construct = MPIConstruct2D(
         grid_size_y=n_values, grid_size_x=n_values, real_t=real_t
     )
-    offset = 1
-    mpi_field_io_comm_with_offset_size_1 = MPIFieldIOCommunicator2D(
-        field_offset=offset, mpi_construct=mpi_construct
+    ghost_size = 1
+    mpi_field_io_communicator = MPIFieldIOCommunicator2D(
+        ghost_size=ghost_size, mpi_construct=mpi_construct
     )
     global_field = np.random.rand(
         mpi_construct.global_grid_size[0], mpi_construct.global_grid_size[1]
@@ -26,12 +26,12 @@ def test_mpi_field_io_gather_scatter(n_values, precision):
     ref_global_field = global_field.copy()
     local_field = np.zeros(
         (
-            mpi_construct.local_grid_size[0] + 2 * offset,
-            mpi_construct.local_grid_size[1] + 2 * offset,
+            mpi_construct.local_grid_size[0] + 2 * ghost_size,
+            mpi_construct.local_grid_size[1] + 2 * ghost_size,
         )
     ).astype(real_t)
-    gather_local_field = mpi_field_io_comm_with_offset_size_1.gather_local_field
-    scatter_global_field = mpi_field_io_comm_with_offset_size_1.scatter_global_field
+    gather_local_field = mpi_field_io_communicator.gather_local_field
+    scatter_global_field = mpi_field_io_communicator.scatter_global_field
     # scatter global field to other ranks
     scatter_global_field(local_field, ref_global_field, mpi_construct)
     # randomise global field after scatter
