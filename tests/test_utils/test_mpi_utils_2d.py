@@ -24,7 +24,6 @@ def test_mpi_field_io_gather_scatter(
         real_t=real_t,
         rank_distribution=rank_distribution,
     )
-    ghost_size = 1
     mpi_field_io_communicator = MPIFieldIOCommunicator2D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
