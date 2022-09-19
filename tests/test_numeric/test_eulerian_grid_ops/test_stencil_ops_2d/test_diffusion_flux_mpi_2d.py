@@ -10,22 +10,23 @@ from sopht_mpi.utils import (
     MPIFieldIOCommunicator2D,
 )
 from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_2d import (
-    gen_diffusion_flux_pyst_mpi_blocking_kernel_2d,
-    gen_diffusion_flux_pyst_mpi_non_blocking_kernel_2d,
+    gen_diffusion_flux_pyst_mpi_kernel_2d,
 )
 
 
 @pytest.mark.mpi(group="MPI_stencil_ops_2d")
 @pytest.mark.parametrize("precision", ["single", "double"])
-@pytest.mark.parametrize("n_values", [16])
-@pytest.mark.parametrize("comm_type", ["blocking", "non_blocking"])
-def test_mpi_diffusion_flux_2d(n_values, precision, comm_type):
+@pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
+@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
+def test_mpi_diffusion_flux_2d(precision, rank_distribution, aspect_ratio):
+    n_values = 16
     real_t = get_real_t(precision)
     # Generate the MPI topology minimal object
     mpi_construct = MPIConstruct2D(
-        grid_size_y=n_values,
-        grid_size_x=n_values,
+        grid_size_y=n_values * aspect_ratio[1],
+        grid_size_x=n_values * aspect_ratio[0],
         real_t=real_t,
+        rank_distribution=rank_distribution,
     )
 
     # extra width needed for kernel computation
@@ -33,7 +34,7 @@ def test_mpi_diffusion_flux_2d(n_values, precision, comm_type):
     # extra width involved in the field storage (>= ghost_size)
     field_offset = 1 * ghost_size
     mpi_ghost_exchange_communicator = MPIGhostCommunicator2D(
-        ghost_size=ghost_size, field_offset=field_offset, mpi_construct=mpi_construct
+        ghost_size=ghost_size, mpi_construct=mpi_construct
     )
     mpi_field_io_comm_with_offset_size_1 = MPIFieldIOCommunicator2D(
         field_offset=field_offset, mpi_construct=mpi_construct
@@ -44,15 +45,17 @@ def test_mpi_diffusion_flux_2d(n_values, precision, comm_type):
     # Allocate local field
     local_field = np.zeros(
         (
-            mpi_construct.local_grid_size[0] + 2 * field_offset,
-            mpi_construct.local_grid_size[1] + 2 * field_offset,
+            mpi_construct.local_grid_size[0] + 2 * ghost_size,
+            mpi_construct.local_grid_size[1] + 2 * ghost_size,
         )
     ).astype(real_t)
     local_diffusion_flux = np.zeros_like(local_field)
 
     # Initialize and broadcast solution for comparison later
     if mpi_construct.rank == 0:
-        ref_field = np.random.rand(n_values, n_values).astype(real_t)
+        ref_field = np.random.rand(
+            n_values * aspect_ratio[1], n_values * aspect_ratio[0]
+        ).astype(real_t)
         prefactor = real_t(0.1)
     else:
         ref_field = None
@@ -64,22 +67,12 @@ def test_mpi_diffusion_flux_2d(n_values, precision, comm_type):
     scatter_global_field(local_field, ref_field, mpi_construct)
 
     # compute the diffusion flux
-    if comm_type == "blocking":
-        diffusion_flux_pyst_mpi_kernel = gen_diffusion_flux_pyst_mpi_blocking_kernel_2d(
-            real_t=real_t,
-            mpi_construct=mpi_construct,
-            ghost_exchange_communicator=mpi_ghost_exchange_communicator,
-        )
-    elif comm_type == "non_blocking":
-        diffusion_flux_pyst_mpi_kernel = (
-            gen_diffusion_flux_pyst_mpi_non_blocking_kernel_2d(
-                real_t=real_t,
-                mpi_construct=mpi_construct,
-                ghost_exchange_communicator=mpi_ghost_exchange_communicator,
-            )
-        )
-    else:
-        raise ValueError("Invalid communication type!")
+    diffusion_flux_pyst_mpi_kernel = gen_diffusion_flux_pyst_mpi_kernel_2d(
+        real_t=real_t,
+        mpi_construct=mpi_construct,
+        ghost_exchange_communicator=mpi_ghost_exchange_communicator,
+    )
+
     diffusion_flux_pyst_mpi_kernel(
         diffusion_flux=local_diffusion_flux,
         field=local_field,

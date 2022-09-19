@@ -76,3 +76,192 @@ class MPIConstruct3D:
             print(f"global_grid_size : {self.global_grid_size.tolist()}")
             print(f"processes : {self.grid_topology}")
             print(f"local_grid_size : {self.local_grid_size.tolist()}")
+
+
+class MPIGhostCommunicator3D:
+    """
+    Class exclusive for ghost communication across ranks, initialises data types
+    that will be used for comm. in both blocking and non-blocking styles.
+    Builds dtypes based on ghost_size (determined from stencil width of the kernel)
+    This class wont be seen by the user, rather based on stencils we determine
+    the properties here.
+    """
+
+    def __init__(self, ghost_size, mpi_construct):
+        # extra width needed for kernel computation
+        if ghost_size <= 0 and not isinstance(ghost_size, int):
+            raise ValueError(
+                f"Ghost size {ghost_size} needs to be an integer > 0"
+                "for calling ghost communication."
+            )
+        self.ghost_size = ghost_size
+        # define field_size variable for local field size (which includes ghost)
+        self.field_size = mpi_construct.local_grid_size + 2 * self.ghost_size
+
+        # Set datatypes for ghost communication
+        # Note: these can be written in a more involved, but perhaps faster way.
+        # Keeping this for now for its readibility and easy implementation.
+        # Using the Create_subarray approach, each type for sending / receiving
+        # needs to be initialized based on their starting index location.
+        # In each dimension, we have 2 ghost layers to be sent (to next & prev)
+        # and 2 corresponding receiving layers (from next & prev). This amounts
+        # to (2 type for send/recv) * (2 dir along each dim) * (3 dim) = 12 type
+        # Along X (next)
+        self.send_next_along_x_type = mpi_construct.dtype_generator.Create_subarray(
+            sizes=self.field_size,
+            subsizes=[self.field_size[0], self.field_size[1], self.ghost_size],
+            starts=[0, 0, self.field_size[2] - 2 * self.ghost_size],
+        )
+        self.send_next_along_x_type.Commit()
+        self.recv_next_along_x_type = mpi_construct.dtype_generator.Create_subarray(
+            sizes=self.field_size,
+            subsizes=[self.field_size[0], self.field_size[1], self.ghost_size],
+            starts=[0, 0, self.field_size[2] - self.ghost_size],
+        )
+        self.recv_next_along_x_type.Commit()
+        # Along X (prev)
+        self.send_previous_along_x_type = mpi_construct.dtype_generator.Create_subarray(
+            sizes=self.field_size,
+            subsizes=[self.field_size[0], self.field_size[1], self.ghost_size],
+            starts=[0, 0, self.ghost_size],
+        )
+        self.send_previous_along_x_type.Commit()
+        self.recv_previous_along_x_type = mpi_construct.dtype_generator.Create_subarray(
+            sizes=self.field_size,
+            subsizes=[self.field_size[0], self.field_size[1], self.ghost_size],
+            starts=[0, 0, 0],
+        )
+        self.recv_previous_along_x_type.Commit()
+        # Along Y (next)
+        self.send_next_along_y_type = mpi_construct.dtype_generator.Create_subarray(
+            sizes=self.field_size,
+            subsizes=[self.field_size[0], self.ghost_size, self.field_size[2]],
+            starts=[0, self.field_size[1] - 2 * self.ghost_size, 0],
+        )
+        self.send_next_along_y_type.Commit()
+        self.recv_next_along_y_type = mpi_construct.dtype_generator.Create_subarray(
+            sizes=self.field_size,
+            subsizes=[self.field_size[0], self.ghost_size, self.field_size[2]],
+            starts=[0, self.field_size[1] - self.ghost_size, 0],
+        )
+        self.recv_next_along_y_type.Commit()
+        # Along Y (prev)
+        self.send_previous_along_y_type = mpi_construct.dtype_generator.Create_subarray(
+            sizes=self.field_size,
+            subsizes=[self.field_size[0], self.ghost_size, self.field_size[2]],
+            starts=[0, self.ghost_size, 0],
+        )
+        self.send_previous_along_y_type.Commit()
+        self.recv_previous_along_y_type = mpi_construct.dtype_generator.Create_subarray(
+            sizes=self.field_size,
+            subsizes=[self.field_size[0], self.ghost_size, self.field_size[2]],
+            starts=[0, 0, 0],
+        )
+        self.recv_previous_along_y_type.Commit()
+
+        # Along Z (next)
+        self.send_next_along_z_type = mpi_construct.dtype_generator.Create_subarray(
+            sizes=self.field_size,
+            subsizes=[self.ghost_size, self.field_size[1], self.field_size[2]],
+            starts=[self.field_size[0] - 2 * self.ghost_size, 0, 0],
+        )
+        self.send_next_along_z_type.Commit()
+        self.recv_next_along_z_type = mpi_construct.dtype_generator.Create_subarray(
+            sizes=self.field_size,
+            subsizes=[self.ghost_size, self.field_size[1], self.field_size[2]],
+            starts=[self.field_size[0] - self.ghost_size, 0, 0],
+        )
+        self.recv_next_along_z_type.Commit()
+        # Along Z (prev)
+        self.send_previous_along_z_type = mpi_construct.dtype_generator.Create_subarray(
+            sizes=self.field_size,
+            subsizes=[self.ghost_size, self.field_size[1], self.field_size[2]],
+            starts=[self.ghost_size, 0, 0],
+        )
+        self.send_previous_along_z_type.Commit()
+        self.recv_previous_along_z_type = mpi_construct.dtype_generator.Create_subarray(
+            sizes=self.field_size,
+            subsizes=[self.ghost_size, self.field_size[1], self.field_size[2]],
+            starts=[0, 0, 0],
+        )
+        self.recv_previous_along_z_type.Commit()
+
+        # non-blocking comm, stuff
+        self.num_requests = (
+            mpi_construct.grid_dim * 2 * 2
+        )  # dimension * 2 request for send/recv * 2 directions along each axis
+        # initialize the requests array
+        self.comm_requests = [
+            0,
+        ] * self.num_requests
+
+    def exchange_init(self, local_field, mpi_construct):
+        """
+        Exchange ghost data between neighbors.
+        """
+        # Lines below to make code more literal
+        z_axis = 0
+        y_axis = 1
+        x_axis = 2
+        # Along X: send to previous block, receive from next block
+        self.comm_requests[0] = mpi_construct.grid.Isend(
+            (local_field, self.send_previous_along_x_type),
+            dest=mpi_construct.previous_grid_along[x_axis],
+        )
+        self.comm_requests[1] = mpi_construct.grid.Irecv(
+            (local_field, self.recv_next_along_x_type),
+            source=mpi_construct.next_grid_along[x_axis],
+        )
+        # Along X: send to next block, receive from previous block
+        self.comm_requests[2] = mpi_construct.grid.Isend(
+            (local_field, self.send_next_along_x_type),
+            dest=mpi_construct.next_grid_along[x_axis],
+        )
+        self.comm_requests[3] = mpi_construct.grid.Irecv(
+            (local_field, self.recv_previous_along_x_type),
+            source=mpi_construct.previous_grid_along[x_axis],
+        )
+
+        # Along Y: send to previous block, receive from next block
+        self.comm_requests[4] = mpi_construct.grid.Isend(
+            (local_field, self.send_previous_along_y_type),
+            dest=mpi_construct.previous_grid_along[y_axis],
+        )
+        self.comm_requests[5] = mpi_construct.grid.Irecv(
+            (local_field, self.recv_next_along_y_type),
+            source=mpi_construct.next_grid_along[y_axis],
+        )
+        # Along Y: send to next block, receive from previous block
+        self.comm_requests[6] = mpi_construct.grid.Isend(
+            (local_field, self.send_next_along_y_type),
+            dest=mpi_construct.next_grid_along[y_axis],
+        )
+        self.comm_requests[7] = mpi_construct.grid.Irecv(
+            (local_field, self.recv_previous_along_y_type),
+            source=mpi_construct.previous_grid_along[y_axis],
+        )
+
+        # Along Z: send to previous block, receive from next block
+        self.comm_requests[8] = mpi_construct.grid.Isend(
+            (local_field, self.send_previous_along_z_type),
+            dest=mpi_construct.previous_grid_along[z_axis],
+        )
+        self.comm_requests[9] = mpi_construct.grid.Irecv(
+            (local_field, self.recv_next_along_z_type),
+            source=mpi_construct.next_grid_along[z_axis],
+        )
+        # Along Z: send to next block, receive from previous block
+        self.comm_requests[10] = mpi_construct.grid.Isend(
+            (local_field, self.send_next_along_z_type),
+            dest=mpi_construct.next_grid_along[z_axis],
+        )
+        self.comm_requests[11] = mpi_construct.grid.Irecv(
+            (local_field, self.recv_previous_along_z_type),
+            source=mpi_construct.previous_grid_along[z_axis],
+        )
+
+    def exchange_finalise(self):
+        """
+        Finalizing non-blocking exchange ghost data between neighbors.
+        """
+        MPI.Request.Waitall(self.comm_requests)
