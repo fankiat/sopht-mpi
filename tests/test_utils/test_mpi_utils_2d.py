@@ -50,7 +50,7 @@ def test_mpi_field_io_gather_scatter(n_values, precision):
 @pytest.mark.parametrize("ghost_size", [1, 2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1), (1, 1)])
+@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
 def test_mpi_ghost_communication(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
