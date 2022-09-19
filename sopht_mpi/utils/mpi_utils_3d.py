@@ -265,3 +265,98 @@ class MPIGhostCommunicator3D:
         Finalizing non-blocking exchange ghost data between neighbors.
         """
         MPI.Request.Waitall(self.comm_requests)
+
+
+class MPIFieldIOCommunicator3D:
+    """
+    Class exclusive for field communication across ranks, initialises data types
+    that will be used for scattering global fields and aggregating local fields.
+    Builds dtypes based on ghost_size (determined from stencil width of the
+    employed kernel). This class wont be seen by the user, rather based on field
+    metadata we determine the properties here.
+    """
+
+    def __init__(self, ghost_size, mpi_construct):
+        # Use ghost_size to define indices for inner cell (actual data without
+        # halo)
+        if ghost_size < 0:
+            raise ValueError("ghost size has to be >= 0")
+        self.ghost_size = ghost_size
+        if self.ghost_size == 0:
+            self.inner_idx = ...
+        else:
+            self.inner_idx = (
+                slice(self.ghost_size, -self.ghost_size),
+            ) * mpi_construct.grid_dim
+        # Datatypes for subdomain used in gather and scatter
+        field_sub_size = mpi_construct.local_grid_size
+        # Rank 0 uses datatype for receiving sub arrays in full array
+        if mpi_construct.rank == 0:
+            field_size = mpi_construct.global_grid_size
+            self.sub_array_type = mpi_construct.dtype_generator.Create_subarray(
+                sizes=field_size,
+                subsizes=field_sub_size,
+                starts=[0] * mpi_construct.grid_dim,
+            )
+        # Other ranks use datatype for sending sub arrays
+        else:
+            field_size = mpi_construct.local_grid_size + 2 * self.ghost_size
+            self.sub_array_type = mpi_construct.dtype_generator.Create_subarray(
+                sizes=field_size,
+                subsizes=field_sub_size,
+                starts=[self.ghost_size] * mpi_construct.grid_dim,
+            )
+        self.sub_array_type.Commit()
+
+    def gather_local_field(self, global_field, local_field, mpi_construct):
+        """
+        Gather local fields from all ranks and return a global field in rank 0
+        """
+        if mpi_construct.rank == 0:
+            # Fill in field values for rank 0 on the edge
+            global_field[
+                : mpi_construct.local_grid_size[0],
+                : mpi_construct.local_grid_size[1],
+                : mpi_construct.local_grid_size[2],
+            ] = local_field[self.inner_idx]
+            # Receiving from other ranks as contiguous array
+            for rank_idx in range(1, mpi_construct.size):
+                coords = mpi_construct.grid.Get_coords(rank_idx)
+                idx = np.ravel_multi_index(
+                    coords * mpi_construct.local_grid_size,
+                    mpi_construct.global_grid_size,
+                )
+                mpi_construct.grid.Recv(
+                    (global_field.ravel()[idx:], 1, self.sub_array_type),
+                    source=rank_idx,
+                )
+        else:
+            # Sending as contiguous chunks
+            mpi_construct.grid.Send((local_field, 1, self.sub_array_type), dest=0)
+
+    def scatter_global_field(self, local_field, global_field, mpi_construct):
+        """
+        Scatter a global field in rank 0 to corresponding ranks into local
+        fields
+        """
+        # Fill in field values for rank 0 on the edge
+        if mpi_construct.rank == 0:
+            local_field[self.inner_idx] = global_field[
+                : mpi_construct.local_grid_size[0],
+                : mpi_construct.local_grid_size[1],
+                : mpi_construct.local_grid_size[2],
+            ]
+            # Sending to other ranks as contiguous array
+            for rank_idx in range(1, mpi_construct.size):
+                coords = mpi_construct.grid.Get_coords(rank_idx)
+                idx = np.ravel_multi_index(
+                    coords * mpi_construct.local_grid_size,
+                    mpi_construct.global_grid_size,
+                )
+                mpi_construct.grid.Send(
+                    (global_field.ravel()[idx:], 1, self.sub_array_type),
+                    dest=rank_idx,
+                )
+        else:
+            # Receiving from rank 0 as contiguous array
+            mpi_construct.grid.Recv((local_field, 1, self.sub_array_type), source=0)

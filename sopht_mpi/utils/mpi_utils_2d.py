@@ -232,7 +232,9 @@ class MPIFieldIOCommunicator2D:
         if mpi_construct.rank == 0:
             field_size = mpi_construct.global_grid_size
             self.sub_array_type = mpi_construct.dtype_generator.Create_subarray(
-                sizes=field_size, subsizes=field_sub_size, starts=[0, 0]
+                sizes=field_size,
+                subsizes=field_sub_size,
+                starts=[0] * mpi_construct.grid_dim,
             )
         # Other ranks use datatype for sending sub arrays
         else:
@@ -240,7 +242,7 @@ class MPIFieldIOCommunicator2D:
             self.sub_array_type = mpi_construct.dtype_generator.Create_subarray(
                 sizes=field_size,
                 subsizes=field_sub_size,
-                starts=[self.ghost_size, self.ghost_size],
+                starts=[self.ghost_size] * mpi_construct.grid_dim,
             )
         self.sub_array_type.Commit()
 
