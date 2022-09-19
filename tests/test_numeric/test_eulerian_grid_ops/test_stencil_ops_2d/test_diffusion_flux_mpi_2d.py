@@ -16,14 +16,17 @@ from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_2d import (
 
 @pytest.mark.mpi(group="MPI_stencil_ops_2d")
 @pytest.mark.parametrize("precision", ["single", "double"])
-@pytest.mark.parametrize("n_values", [16])
-def test_mpi_diffusion_flux_2d(n_values, precision):
+@pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
+@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
+def test_mpi_diffusion_flux_2d(precision, rank_distribution, aspect_ratio):
+    n_values = 16
     real_t = get_real_t(precision)
     # Generate the MPI topology minimal object
     mpi_construct = MPIConstruct2D(
-        grid_size_y=n_values,
-        grid_size_x=n_values,
+        grid_size_y=n_values * aspect_ratio[1],
+        grid_size_x=n_values * aspect_ratio[0],
         real_t=real_t,
+        rank_distribution=rank_distribution,
     )
 
     # extra width needed for kernel computation
@@ -50,7 +53,9 @@ def test_mpi_diffusion_flux_2d(n_values, precision):
 
     # Initialize and broadcast solution for comparison later
     if mpi_construct.rank == 0:
-        ref_field = np.random.rand(n_values, n_values).astype(real_t)
+        ref_field = np.random.rand(
+            n_values * aspect_ratio[1], n_values * aspect_ratio[0]
+        ).astype(real_t)
         prefactor = real_t(0.1)
     else:
         ref_field = None
