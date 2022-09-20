@@ -7,7 +7,7 @@ from sopht.numeric.eulerian_grid_ops.stencil_ops_2d import (
 from sopht_mpi.utils import (
     MPIConstruct2D,
     MPIGhostCommunicator2D,
-    MPIFieldIOCommunicator2D,
+    MPIFieldCommunicator2D,
 )
 from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_2d import (
     gen_diffusion_flux_pyst_mpi_kernel_2d,
@@ -34,7 +34,7 @@ def test_mpi_diffusion_flux_2d(ghost_size, precision, rank_distribution, aspect_
     mpi_ghost_exchange_communicator = MPIGhostCommunicator2D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    mpi_field_io_communicator = MPIFieldIOCommunicator2D(
+    mpi_field_io_communicator = MPIFieldCommunicator2D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
     gather_local_field = mpi_field_io_communicator.gather_local_field

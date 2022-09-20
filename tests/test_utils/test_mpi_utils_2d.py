@@ -4,7 +4,7 @@ from sopht.utils.precision import get_real_t
 from sopht_mpi.utils import (
     MPIConstruct2D,
     MPIGhostCommunicator2D,
-    MPIFieldIOCommunicator2D,
+    MPIFieldCommunicator2D,
 )
 
 
@@ -13,7 +13,7 @@ from sopht_mpi.utils import (
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
-def test_mpi_field_io_gather_scatter(
+def test_mpi_field_gather_scatter(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
     n_values = 128
@@ -24,7 +24,7 @@ def test_mpi_field_io_gather_scatter(
         real_t=real_t,
         rank_distribution=rank_distribution,
     )
-    mpi_field_io_communicator = MPIFieldIOCommunicator2D(
+    mpi_field_io_communicator = MPIFieldCommunicator2D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
     global_field = np.random.rand(
