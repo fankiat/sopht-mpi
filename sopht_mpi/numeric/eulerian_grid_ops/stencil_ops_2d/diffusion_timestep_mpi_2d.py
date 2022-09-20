@@ -46,7 +46,7 @@ def gen_diffusion_timestep_euler_forward_pyst_mpi_kernel_2d(
         """
         # define and store kernel support size
         diffusion_timestep_euler_forward_pyst_mpi_kernel_2d.kernel_support = (
-            kernel_support
+            gen_diffusion_flux_pyst_mpi_kernel_2d.kernel_support
         )
         set_fixed_val_pyst_kernel_2d(field=diffusion_flux, fixed_val=0)
         diffusion_flux_mpi_kernel_2d(
