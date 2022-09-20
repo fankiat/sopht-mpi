@@ -4,9 +4,9 @@ import numpy as np
 
 class MPIConstruct2D:
     """
-    Sets up MPI main construct which stores the 2D grid topology and domain decomp
-    information, has exclusive MPI info, and will be the one whose interface would
-    be provided to the user.
+    Sets up MPI main construct which stores the 2D grid topology and domain
+    decomp information, has exclusive MPI info, and will be the one whose
+    interface would be provided to the user.
     """
 
     def __init__(
@@ -78,8 +78,8 @@ class MPIConstruct2D:
 class MPIGhostCommunicator2D:
     """
     Class exclusive for ghost communication across ranks, initialises data types
-    that will be used for comm. in both blocking and non-blocking styles.
-    Builds dtypes based on ghost_size (determined from stencil width of the kernel)
+    that will be used for comm. in both blocking and non-blocking styles. Builds
+    dtypes based on ghost_size (determined from stencil width of the kernel)
     This class wont be seen by the user, rather based on stencils we determine
     the properties here.
     """
@@ -208,34 +208,44 @@ class MPIFieldIOCommunicator2D:
     """
     Class exclusive for field communication across ranks, initialises data types
     that will be used for scattering global fields and aggregating local fields.
-    Builds dtypes based on field_offset (determined from local memory offset of field)
-    This class wont be seen by the user, rather based on field metadata we determine
-    the properties here.
+    Builds dtypes based on ghost_size (determined from stencil width of the
+    employed kernel). This class wont be seen by the user, rather based on field
+    metadata we determine the properties here.
     """
 
-    def __init__(self, field_offset, mpi_construct):
-        # Use offset to define indices for inner cell (actual data without halo)
-        assert field_offset >= 0, "field offset has to be >= 0"
-        self.field_offset = field_offset
-        if self.field_offset == 0:
+    def __init__(self, ghost_size, mpi_construct):
+        # Use ghost_size to define indices for inner cell (actual data without
+        # halo)
+        if ghost_size < 0 and not isinstance(ghost_size, int):
+            raise ValueError(
+                f"Ghost size {ghost_size} needs to be an integer >= 0"
+                "for field IO communication."
+            )
+        self.ghost_size = ghost_size
+        if self.ghost_size == 0:
             self.inner_idx = ...
         else:
             self.inner_idx = (
-                slice(self.field_offset, -self.field_offset),
+                slice(self.ghost_size, -self.ghost_size),
             ) * mpi_construct.grid_dim
         # Datatypes for subdomain used in gather and scatter
-        field_sub_sizes = mpi_construct.local_grid_size
+        field_sub_size = mpi_construct.local_grid_size
         # Rank 0 uses datatype for receiving sub arrays in full array
         if mpi_construct.rank == 0:
-            field_sizes = mpi_construct.global_grid_size
-            field_offsets = [0, 0]
+            field_size = mpi_construct.global_grid_size
+            self.sub_array_type = mpi_construct.dtype_generator.Create_subarray(
+                sizes=field_size,
+                subsizes=field_sub_size,
+                starts=[0] * mpi_construct.grid_dim,
+            )
         # Other ranks use datatype for sending sub arrays
         else:
-            field_sizes = mpi_construct.local_grid_size + 2 * self.field_offset
-            field_offsets = [self.field_offset, self.field_offset]
-        self.sub_array_type = mpi_construct.dtype_generator.Create_subarray(
-            sizes=field_sizes, subsizes=field_sub_sizes, starts=field_offsets
-        )
+            field_size = mpi_construct.local_grid_size + 2 * self.ghost_size
+            self.sub_array_type = mpi_construct.dtype_generator.Create_subarray(
+                sizes=field_size,
+                subsizes=field_sub_size,
+                starts=[self.ghost_size] * mpi_construct.grid_dim,
+            )
         self.sub_array_type.Commit()
 
     def gather_local_field(self, global_field, local_field, mpi_construct):
@@ -265,7 +275,8 @@ class MPIFieldIOCommunicator2D:
 
     def scatter_global_field(self, local_field, global_field, mpi_construct):
         """
-        Scatter a global field in rank 0 to corresponding ranks into local fields
+        Scatter a global field in rank 0 to corresponding ranks into local
+        fields
         """
         # Fill in field values for rank 0 on the edge
         if mpi_construct.rank == 0:
