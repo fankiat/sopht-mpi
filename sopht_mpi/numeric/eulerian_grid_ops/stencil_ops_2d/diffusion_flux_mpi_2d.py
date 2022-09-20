@@ -2,7 +2,7 @@
 from sopht.numeric.eulerian_grid_ops.stencil_ops_2d import (
     gen_diffusion_flux_pyst_kernel_2d,
 )
-from sopht_mpi.utils.mpi_utils import is_valid_ghost_size_and_kernel_support
+from sopht_mpi.utils.mpi_utils import check_valid_ghost_size_and_kernel_support
 
 
 def gen_diffusion_flux_pyst_mpi_kernel_2d(
@@ -23,16 +23,14 @@ def gen_diffusion_flux_pyst_mpi_kernel_2d(
         # define variable for use later
         kernel_support = diffusion_flux_pyst_mpi_kernel_2d.kernel_support
         ghost_size = ghost_exchange_communicator.ghost_size
-        if not is_valid_ghost_size_and_kernel_support(
-            ghost_size=ghost_size, kernel_support=kernel_support
-        ):
-            raise ValueError(
-                f"Inconsistent ghost_size ({ghost_size}) and kernel_support ({kernel_support})"
-                "Need to have ghost_size >= kernel_support"
-            )
+        check_valid_ghost_size_and_kernel_support(
+            ghost_size=ghost_size,
+            kernel_support=kernel_support,
+        )
 
         # begin ghost comm.
         ghost_exchange_communicator.exchange_init(field, mpi_construct)
+
         # crunch interior stencil
         diffusion_flux_pyst_kernel(
             diffusion_flux=diffusion_flux[
