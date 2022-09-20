@@ -1,6 +1,8 @@
+"""MPI-supported kernels for computing diffusion flux in 2D."""
 from sopht.numeric.eulerian_grid_ops.stencil_ops_2d import (
     gen_diffusion_flux_pyst_kernel_2d,
 )
+from sopht_mpi.utils.mpi_utils import check_valid_ghost_size_and_kernel_support
 
 
 def gen_diffusion_flux_pyst_mpi_kernel_2d(
@@ -11,17 +13,24 @@ def gen_diffusion_flux_pyst_mpi_kernel_2d(
     # boundary crunching
     diffusion_flux_pyst_kernel = gen_diffusion_flux_pyst_kernel_2d(real_t=real_t)
     kernel_support = 1
+    check_valid_ghost_size_and_kernel_support(
+        ghost_size=ghost_exchange_communicator.ghost_size,
+        kernel_support=kernel_support,
+    )
 
     def diffusion_flux_pyst_mpi_kernel_2d(
         diffusion_flux,
         field,
         prefactor,
     ):
+        # define kernel support for kernel
+        diffusion_flux_pyst_mpi_kernel_2d.kernel_support = kernel_support
+        # define variable for use later
+        ghost_size = ghost_exchange_communicator.ghost_size
         # begin ghost comm.
         ghost_exchange_communicator.exchange_init(field, mpi_construct)
 
         # crunch interior stencil
-        ghost_size = ghost_exchange_communicator.ghost_size
         diffusion_flux_pyst_kernel(
             diffusion_flux=diffusion_flux[
                 ghost_size:-ghost_size, ghost_size:-ghost_size

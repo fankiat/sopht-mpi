@@ -8,3 +8,4 @@ from .mpi_utils_3d import (
     MPIGhostCommunicator3D,
     MPIFieldCommunicator3D,
 )
+from .mpi_utils import check_valid_ghost_size_and_kernel_support

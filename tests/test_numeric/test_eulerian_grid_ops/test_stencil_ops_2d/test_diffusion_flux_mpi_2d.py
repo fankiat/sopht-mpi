@@ -92,7 +92,11 @@ def test_mpi_diffusion_flux_2d(ghost_size, precision, rank_distribution, aspect_
             field=ref_field,
             prefactor=prefactor,
         )
-        inner_idx = (slice(ghost_size, -ghost_size),) * 2
+        kernel_support = diffusion_flux_pyst_mpi_kernel.kernel_support
+        # check kernel_support for the diffusion kernel
+        assert kernel_support == 1, "Incorrect kernel support!"
+        # check field correctness
+        inner_idx = (slice(kernel_support, -kernel_support),) * 2
         np.testing.assert_allclose(
             ref_diffusion_flux[inner_idx],
             global_diffusion_flux[inner_idx],

@@ -16,7 +16,7 @@ from scipy.fft import rfftn
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
 def test_mpi_fft_slab(ghost_size, precision, rank_distribution, aspect_ratio):
     """
-    Test parallel FFT on slab distributed along y
+    Test parallel FFT on slab distributed along x and y
     """
     n_values = 32
     real_t = get_real_t(precision)
