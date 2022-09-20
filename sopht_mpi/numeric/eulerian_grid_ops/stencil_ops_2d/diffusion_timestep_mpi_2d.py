@@ -26,8 +26,8 @@ def gen_diffusion_timestep_euler_forward_pyst_mpi_kernel_2d(
     # Since the generated function has not been called yet, we cannot access the
     # kernel support variable. However, because of the way we implemented the
     # generator function, we can retrieve it from the generator function.
-    # define this here so that ghost size and kernel support is checked during
-    # generation phase itself
+    # Define the variables below so that we check ghost size and kernel support
+    # during generation phase itself
     kernel_support = gen_diffusion_flux_pyst_mpi_kernel_2d.kernel_support
     gen_diffusion_timestep_euler_forward_pyst_mpi_kernel_2d.kernel_support = (
         kernel_support

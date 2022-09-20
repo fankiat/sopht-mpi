@@ -22,7 +22,7 @@ from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_2d import (
 def test_mpi_diffusion_timestep_2d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    n_values = 64
+    n_values = 128
     real_t = get_real_t(precision)
 
     # Generate the MPI topology minimal object
@@ -83,8 +83,8 @@ def test_mpi_diffusion_timestep_2d(
     )
 
     # gather back the diffusion flux globally
-    global_diffusion_flux = np.zeros_like(ref_field)
-    gather_local_field(global_diffusion_flux, local_diffusion_flux, mpi_construct)
+    global_field = np.zeros_like(ref_field)
+    gather_local_field(global_field, local_field, mpi_construct)
 
     # assert correct
     if mpi_construct.rank == 0:
@@ -93,7 +93,7 @@ def test_mpi_diffusion_timestep_2d(
                 real_t=real_t,
             )
         )
-        ref_diffusion_flux = np.zeros_like(ref_field)
+        ref_diffusion_flux = np.ones_like(ref_field)
         diffusion_timestep_euler_forward_pyst_kernel(
             diffusion_flux=ref_diffusion_flux,
             field=ref_field,
@@ -105,7 +105,7 @@ def test_mpi_diffusion_timestep_2d(
         # check field correctness
         inner_idx = (slice(kernel_support, -kernel_support),) * 2
         np.testing.assert_allclose(
-            ref_diffusion_flux[inner_idx],
-            global_diffusion_flux[inner_idx],
+            ref_field[inner_idx],
+            global_field[inner_idx],
             atol=get_test_tol(precision),
         )
