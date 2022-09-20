@@ -1,5 +1,4 @@
 """MPI-supported kernels for performing diffusion timestep in 2D."""
-from tabnanny import check
 from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_2d.diffusion_flux_mpi_2d import (
     gen_diffusion_flux_pyst_mpi_kernel_2d,
 )

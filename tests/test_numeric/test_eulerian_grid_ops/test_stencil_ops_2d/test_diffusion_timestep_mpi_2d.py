@@ -82,7 +82,7 @@ def test_mpi_diffusion_timestep_2d(
         nu_dt_by_dx2=nu_dt_by_dx2,
     )
 
-    # gather back the diffusion flux globally
+    # gather back the field globally after diffusion timestep
     global_field = np.zeros_like(ref_field)
     gather_local_field(global_field, local_field, mpi_construct)
 
