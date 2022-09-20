@@ -267,7 +267,7 @@ class MPIGhostCommunicator3D:
         MPI.Request.Waitall(self.comm_requests)
 
 
-class MPIFieldIOCommunicator3D:
+class MPIFieldCommunicator3D:
     """
     Class exclusive for field communication across ranks, initialises data types
     that will be used for scattering global fields and aggregating local fields.

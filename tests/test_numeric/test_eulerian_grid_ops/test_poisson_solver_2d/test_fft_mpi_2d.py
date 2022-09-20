@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from sopht_mpi.utils import (
     MPIConstruct2D,
-    MPIFieldIOCommunicator2D,
+    MPIFieldCommunicator2D,
 )
 from sopht_mpi.numeric.eulerian_grid_ops.poisson_solver_2d import FFTMPI2D
 from sopht.utils.precision import get_real_t, get_test_tol
@@ -37,7 +37,7 @@ def test_mpi_fft_slab(ghost_size, precision, rank_distribution, aspect_ratio):
     )
 
     # Initialize communicator for scatter and gather
-    mpi_field_io_comm = MPIFieldIOCommunicator2D(
+    mpi_field_io_comm = MPIFieldCommunicator2D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
     gather_local_field = mpi_field_io_comm.gather_local_field

@@ -4,7 +4,7 @@ from sopht.utils.precision import get_real_t
 from sopht_mpi.utils import (
     MPIConstruct3D,
     MPIGhostCommunicator3D,
-    MPIFieldIOCommunicator3D,
+    MPIFieldCommunicator3D,
 )
 
 
@@ -31,7 +31,7 @@ def test_mpi_field_io_gather_scatter(
         real_t=real_t,
         rank_distribution=rank_distribution,
     )
-    mpi_field_io_communicator = MPIFieldIOCommunicator3D(
+    mpi_field_io_communicator = MPIFieldCommunicator3D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
     global_field = np.random.rand(

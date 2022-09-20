@@ -204,7 +204,7 @@ class MPIGhostCommunicator2D:
         MPI.Request.Waitall(self.comm_requests)
 
 
-class MPIFieldIOCommunicator2D:
+class MPIFieldCommunicator2D:
     """
     Class exclusive for field communication across ranks, initialises data types
     that will be used for scattering global fields and aggregating local fields.
