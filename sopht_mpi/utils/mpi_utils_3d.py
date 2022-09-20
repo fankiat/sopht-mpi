@@ -279,8 +279,11 @@ class MPIFieldIOCommunicator3D:
     def __init__(self, ghost_size, mpi_construct):
         # Use ghost_size to define indices for inner cell (actual data without
         # halo)
-        if ghost_size < 0:
-            raise ValueError("ghost size has to be >= 0")
+        if ghost_size < 0 and not isinstance(ghost_size, int):
+            raise ValueError(
+                f"Ghost size {ghost_size} needs to be an integer >= 0"
+                "for field IO communication."
+            )
         self.ghost_size = ghost_size
         if self.ghost_size == 0:
             self.inner_idx = ...
