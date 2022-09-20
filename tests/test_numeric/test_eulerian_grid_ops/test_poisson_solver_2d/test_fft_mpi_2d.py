@@ -18,7 +18,7 @@ def test_mpi_fft_slab(ghost_size, precision, rank_distribution, aspect_ratio):
     """
     Test parallel FFT on slab distributed along y
     """
-    n_values = 64
+    n_values = 32
     real_t = get_real_t(precision)
     # Generate the MPI topology minimal object
     mpi_construct = MPIConstruct2D(
