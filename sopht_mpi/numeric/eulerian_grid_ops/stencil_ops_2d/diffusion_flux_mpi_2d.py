@@ -1,3 +1,4 @@
+"""MPI-supported kernels for computing diffusion flux in 2D."""
 from sopht.numeric.eulerian_grid_ops.stencil_ops_2d import (
     gen_diffusion_flux_pyst_kernel_2d,
 )
@@ -10,13 +11,17 @@ def gen_diffusion_flux_pyst_mpi_kernel_2d(
     # more by generating fixed size for the interior stencil and arbit size for
     # boundary crunching
     diffusion_flux_pyst_kernel = gen_diffusion_flux_pyst_kernel_2d(real_t=real_t)
-    kernel_support = 1
 
     def diffusion_flux_pyst_mpi_kernel_2d(
         diffusion_flux,
         field,
         prefactor,
     ):
+        # define kernel support for kernel
+        diffusion_flux_pyst_mpi_kernel_2d.kernel_support = 1
+        # define variable for use later
+        kernel_support = diffusion_flux_pyst_mpi_kernel_2d.kernel_support
+
         # begin ghost comm.
         ghost_exchange_communicator.exchange_init(field, mpi_construct)
 
