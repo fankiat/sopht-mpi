@@ -1,4 +1,3 @@
-from multiprocessing.sharedctypes import Value
 from mpi4py import MPI
 import numpy as np
 
