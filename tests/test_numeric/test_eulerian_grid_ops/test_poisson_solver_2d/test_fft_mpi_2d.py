@@ -10,19 +10,20 @@ from scipy.fft import rfftn
 
 
 @pytest.mark.mpi(group="MPI_Poisson_solver_2d")
+@pytest.mark.parametrize("ghost_size", [1, 2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
-@pytest.mark.parametrize("n_values", [16])
-def test_mpi_fft_slab(n_values, precision):
+@pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
+@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
+def test_mpi_fft_slab(ghost_size, precision, rank_distribution, aspect_ratio):
     """
     Test parallel FFT on slab distributed along y
     """
+    n_values = 64
     real_t = get_real_t(precision)
-    rank_distribution = (0, 1)  # slab distributed along y
-    # rank_distribution = (1, 0)  # slab distributed along x
     # Generate the MPI topology minimal object
     mpi_construct = MPIConstruct2D(
-        grid_size_y=n_values,
-        grid_size_x=n_values,
+        grid_size_y=n_values * aspect_ratio[0],
+        grid_size_x=n_values * aspect_ratio[1],
         real_t=real_t,
         rank_distribution=rank_distribution,
     )
@@ -36,9 +37,8 @@ def test_mpi_fft_slab(n_values, precision):
     )
 
     # Initialize communicator for scatter and gather
-    offset = 1
     mpi_field_io_comm = MPIFieldIOCommunicator2D(
-        field_offset=offset, mpi_construct=mpi_construct
+        ghost_size=ghost_size, mpi_construct=mpi_construct
     )
     gather_local_field = mpi_field_io_comm.gather_local_field
     scatter_global_field = mpi_field_io_comm.scatter_global_field
@@ -46,13 +46,17 @@ def test_mpi_fft_slab(n_values, precision):
 
     # Generate solution and broadcast solution from rank 0 to all ranks
     if mpi_construct.rank == 0:
-        ref_field = np.random.randn(n_values, n_values).astype(real_t)
+        ref_field = np.random.randn(
+            n_values * aspect_ratio[0], n_values * aspect_ratio[1]
+        ).astype(real_t)
     else:
         ref_field = None
     ref_field = mpi_construct.grid.bcast(ref_field, root=0)
 
     # 1. Scatter initial local field from solution ref field
-    local_field = np.zeros(mpi_construct.local_grid_size + 2 * offset).astype(real_t)
+    local_field = np.zeros(mpi_construct.local_grid_size + 2 * ghost_size).astype(
+        real_t
+    )
     scatter_global_field(local_field, ref_field, mpi_construct)
 
     # 2. Forward transform (fourier field)
