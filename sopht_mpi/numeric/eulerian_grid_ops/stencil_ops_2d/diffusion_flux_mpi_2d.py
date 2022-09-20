@@ -12,6 +12,11 @@ def gen_diffusion_flux_pyst_mpi_kernel_2d(
     # more by generating fixed size for the interior stencil and arbit size for
     # boundary crunching
     diffusion_flux_pyst_kernel = gen_diffusion_flux_pyst_kernel_2d(real_t=real_t)
+    kernel_support = 1
+    check_valid_ghost_size_and_kernel_support(
+        ghost_size=ghost_exchange_communicator.ghost_size,
+        kernel_support=kernel_support,
+    )
 
     def diffusion_flux_pyst_mpi_kernel_2d(
         diffusion_flux,
@@ -19,15 +24,9 @@ def gen_diffusion_flux_pyst_mpi_kernel_2d(
         prefactor,
     ):
         # define kernel support for kernel
-        diffusion_flux_pyst_mpi_kernel_2d.kernel_support = 1
+        diffusion_flux_pyst_mpi_kernel_2d.kernel_support = kernel_support
         # define variable for use later
-        kernel_support = diffusion_flux_pyst_mpi_kernel_2d.kernel_support
         ghost_size = ghost_exchange_communicator.ghost_size
-        check_valid_ghost_size_and_kernel_support(
-            ghost_size=ghost_size,
-            kernel_support=kernel_support,
-        )
-
         # begin ghost comm.
         ghost_exchange_communicator.exchange_init(field, mpi_construct)
 
