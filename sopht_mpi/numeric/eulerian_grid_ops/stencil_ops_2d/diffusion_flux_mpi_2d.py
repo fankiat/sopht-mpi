@@ -10,6 +10,7 @@ def gen_diffusion_flux_pyst_mpi_kernel_2d(
     # more by generating fixed size for the interior stencil and arbit size for
     # boundary crunching
     diffusion_flux_pyst_kernel = gen_diffusion_flux_pyst_kernel_2d(real_t=real_t)
+    kernel_support = 1
 
     def diffusion_flux_pyst_mpi_kernel_2d(
         diffusion_flux,
@@ -32,40 +33,63 @@ def gen_diffusion_flux_pyst_mpi_kernel_2d(
         ghost_exchange_communicator.exchange_finalise()
 
         # crunch boundary numbers
-        # NOTE we pass in arrays of width 3 * ghost_size because the
-        # interior stencil computation leaves out a width of ghost_size.
-        # Since the support needed by the kernel is 2 * ghost_size on both
-        # sides, we need to pass an array of width 3 * ghost_size.
+        # NOTE: we pass in arrays of width 3 * kernel support size because the
+        # interior stencil computation leaves out a width of kernel_support.
+        # Since the support needed by the kernel is kernel_support on each side,
+        # we need to pass an array of width 3 * kernel_support, starting from
+        # index +/-(ghost_size - kernel_support) on the lower and upper end.
         # Pystencils then automatically sets the kernel comp. bounds and
-        # crunches numbers in the ghost_size thickness zone at the boundary.
-        ghost_size = ghost_exchange_communicator.ghost_size
-        kernel_max_range_y = field.shape[0]
-        kernel_max_range_x = field.shape[1]
-
+        # crunches numbers in the kernel_support thickness zone at the boundary.
         # Start of Y axis
         diffusion_flux_pyst_kernel(
-            diffusion_flux=diffusion_flux[0 : 3 * ghost_size, ghost_size:-ghost_size],
-            field=field[0 : 3 * ghost_size, ghost_size:-ghost_size],
+            diffusion_flux=diffusion_flux[
+                ghost_size - kernel_support : ghost_size + 2 * kernel_support,
+                ghost_size:-ghost_size,
+            ],
+            field=field[
+                ghost_size - kernel_support : ghost_size + 2 * kernel_support,
+                ghost_size:-ghost_size,
+            ],
             prefactor=prefactor,
         )
         # End of Y axis
         diffusion_flux_pyst_kernel(
             diffusion_flux=diffusion_flux[
-                -3 * ghost_size : kernel_max_range_y, ghost_size:-ghost_size
+                -(ghost_size + 2 * kernel_support) : field.shape[0]
+                - (ghost_size - kernel_support),
+                ghost_size:-ghost_size,
             ],
-            field=field[-3 * ghost_size : kernel_max_range_y, ghost_size:-ghost_size],
+            field=field[
+                -(ghost_size + 2 * kernel_support) : field.shape[0]
+                - (ghost_size - kernel_support),
+                ghost_size:-ghost_size,
+            ],
             prefactor=prefactor,
         )
         # Start of X axis
         diffusion_flux_pyst_kernel(
-            diffusion_flux=diffusion_flux[:, 0 : 3 * ghost_size],
-            field=field[:, 0 : 3 * ghost_size],
+            diffusion_flux=diffusion_flux[
+                :,
+                ghost_size - kernel_support : ghost_size + 2 * kernel_support,
+            ],
+            field=field[
+                :,
+                ghost_size - kernel_support : ghost_size + 2 * kernel_support,
+            ],
             prefactor=prefactor,
         )
         # End of X axis
         diffusion_flux_pyst_kernel(
-            diffusion_flux=diffusion_flux[:, -3 * ghost_size : kernel_max_range_x],
-            field=field[:, -3 * ghost_size : kernel_max_range_x],
+            diffusion_flux=diffusion_flux[
+                :,
+                -(ghost_size + 2 * kernel_support) : field.shape[1]
+                - (ghost_size - kernel_support),
+            ],
+            field=field[
+                :,
+                -(ghost_size + 2 * kernel_support) : field.shape[1]
+                - (ghost_size - kernel_support),
+            ],
             prefactor=prefactor,
         )
 
