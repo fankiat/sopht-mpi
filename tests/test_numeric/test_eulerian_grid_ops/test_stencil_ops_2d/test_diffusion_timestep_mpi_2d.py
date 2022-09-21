@@ -27,8 +27,8 @@ def test_mpi_diffusion_timestep_2d(
 
     # Generate the MPI topology minimal object
     mpi_construct = MPIConstruct2D(
-        grid_size_y=n_values * aspect_ratio[1],
-        grid_size_x=n_values * aspect_ratio[0],
+        grid_size_y=n_values * aspect_ratio[0],
+        grid_size_x=n_values * aspect_ratio[1],
         real_t=real_t,
         rank_distribution=rank_distribution,
     )
@@ -55,7 +55,7 @@ def test_mpi_diffusion_timestep_2d(
     # Initialize and broadcast solution for comparison later
     if mpi_construct.rank == 0:
         ref_field = np.random.rand(
-            n_values * aspect_ratio[1], n_values * aspect_ratio[0]
+            n_values * aspect_ratio[0], n_values * aspect_ratio[1]
         ).astype(real_t)
         nu_dt_by_dx2 = real_t(0.1)
     else:
