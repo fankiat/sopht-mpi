@@ -8,7 +8,7 @@ from sopht_mpi.utils import (
 )
 
 
-@pytest.mark.mpi(group="MPI_utils")
+@pytest.mark.mpi(group="MPI_utils", min_size=2)
 @pytest.mark.parametrize("ghost_size", [1, 2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
