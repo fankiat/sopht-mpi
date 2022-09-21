@@ -22,7 +22,7 @@ from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_2d import (
 def test_mpi_advection_flux_conservative_eno3(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    n_values = 64
+    n_values = 128
     real_t = get_real_t(precision)
     # Generate the MPI topology minimal object
     mpi_construct = MPIConstruct2D(
