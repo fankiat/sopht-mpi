@@ -13,9 +13,12 @@ def gen_diffusion_flux_pyst_mpi_kernel_2d(
     # boundary crunching
     diffusion_flux_pyst_kernel = gen_diffusion_flux_pyst_kernel_2d(real_t=real_t)
     kernel_support = 1
+    # define this here so that ghost size and kernel support is checked during
+    # generation phase itself
+    gen_diffusion_flux_pyst_mpi_kernel_2d.kernel_support = kernel_support
     check_valid_ghost_size_and_kernel_support(
         ghost_size=ghost_exchange_communicator.ghost_size,
-        kernel_support=kernel_support,
+        kernel_support=gen_diffusion_flux_pyst_mpi_kernel_2d.kernel_support,
     )
 
     def diffusion_flux_pyst_mpi_kernel_2d(
@@ -24,7 +27,9 @@ def gen_diffusion_flux_pyst_mpi_kernel_2d(
         prefactor,
     ):
         # define kernel support for kernel
-        diffusion_flux_pyst_mpi_kernel_2d.kernel_support = kernel_support
+        diffusion_flux_pyst_mpi_kernel_2d.kernel_support = (
+            gen_diffusion_flux_pyst_mpi_kernel_2d.kernel_support
+        )
         # define variable for use later
         ghost_size = ghost_exchange_communicator.ghost_size
         # begin ghost comm.
