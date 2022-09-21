@@ -12,7 +12,7 @@ from sopht_mpi.utils.mpi_utils import check_valid_ghost_size_and_kernel_support
 def gen_advection_timestep_euler_forward_conservative_eno3_pyst_mpi_kernel_2d(
     real_t, mpi_construct, ghost_exchange_communicator
 ):
-    """MPI-supoprted 2D Advection (ENO3 stencil) Euler forward timestep generator"""
+    """MPI-supported 2D Advection (ENO3 stencil) Euler forward timestep generator"""
     elementwise_sum_pyst_kernel_2d = gen_elementwise_sum_pyst_kernel_2d(real_t=real_t)
     set_fixed_val_pyst_kernel_2d = gen_set_fixed_val_pyst_kernel_2d(real_t=real_t)
     advection_flux_conservative_eno3_pyst_mpi_kernel_2d = (
