@@ -34,11 +34,11 @@ def test_mpi_diffusion_flux_2d(ghost_size, precision, rank_distribution, aspect_
     mpi_ghost_exchange_communicator = MPIGhostCommunicator2D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    mpi_field_io_communicator = MPIFieldCommunicator2D(
+    mpi_field_communicator = MPIFieldCommunicator2D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_io_communicator.gather_local_field
-    scatter_global_field = mpi_field_io_communicator.scatter_global_field
+    gather_local_field = mpi_field_communicator.gather_local_field
+    scatter_global_field = mpi_field_communicator.scatter_global_field
 
     # Allocate local field
     local_field = np.zeros(
