@@ -4,11 +4,7 @@ from sopht.utils.precision import get_real_t, get_test_tol
 from sopht.numeric.eulerian_grid_ops.stencil_ops_2d import (
     gen_brinkmann_penalise_pyst_kernel_2d,
 )
-from sopht_mpi.utils import (
-    MPIConstruct2D,
-    MPIGhostCommunicator2D,
-    MPIFieldCommunicator2D,
-)
+from sopht_mpi.utils import MPIConstruct2D, MPIFieldCommunicator2D
 from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_2d import (
     gen_brinkmann_penalise_pyst_mpi_kernel_2d,
 )
