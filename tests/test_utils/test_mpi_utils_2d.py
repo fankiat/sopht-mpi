@@ -16,7 +16,7 @@ from sopht_mpi.utils import (
 def test_mpi_field_gather_scatter(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    n_values = 128
+    n_values = 32
     real_t = get_real_t(precision)
     mpi_construct = MPIConstruct2D(
         grid_size_y=n_values * aspect_ratio[0],
@@ -59,7 +59,7 @@ def test_mpi_field_gather_scatter(
 def test_mpi_ghost_communication(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    n_values = 128
+    n_values = 32
     real_t = get_real_t(precision)
     mpi_construct = MPIConstruct2D(
         grid_size_y=n_values * aspect_ratio[0],

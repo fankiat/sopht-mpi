@@ -22,7 +22,7 @@ from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_2d import (
 def test_mpi_diffusion_timestep_2d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    n_values = 128
+    n_values = 32
     real_t = get_real_t(precision)
 
     # Generate the MPI topology minimal object
