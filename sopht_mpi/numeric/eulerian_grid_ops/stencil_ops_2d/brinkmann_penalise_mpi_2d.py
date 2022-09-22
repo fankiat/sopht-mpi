@@ -2,7 +2,6 @@
 from sopht.numeric.eulerian_grid_ops.stencil_ops_2d import (
     gen_brinkmann_penalise_pyst_kernel_2d,
 )
-from sopht_mpi.utils.mpi_utils import check_valid_ghost_size_and_kernel_support
 
 
 def gen_brinkmann_penalise_pyst_mpi_kernel_2d(real_t, field_type="scalar"):
