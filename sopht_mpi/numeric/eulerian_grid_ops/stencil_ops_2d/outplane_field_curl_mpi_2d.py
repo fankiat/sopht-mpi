@@ -35,8 +35,6 @@ def gen_outplane_field_curl_pyst_mpi_kernel_2d(
         # define variable for use later
         ghost_size = ghost_exchange_communicator.ghost_size
         # begin ghost comm.
-        ghost_exchange_communicator.exchange_init(curl[0], mpi_construct)
-        ghost_exchange_communicator.exchange_init(curl[1], mpi_construct)
         ghost_exchange_communicator.exchange_init(field, mpi_construct)
 
         # crunch interior stencil
