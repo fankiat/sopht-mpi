@@ -77,7 +77,7 @@ def test_mpi_field_io_gather_scatter(
 def test_mpi_ghost_communication(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    n_values = 64
+    n_values = 32
     real_t = get_real_t(precision)
     mpi_construct = MPIConstruct3D(
         grid_size_z=n_values * aspect_ratio[0],
