@@ -19,7 +19,7 @@ from sopht_mpi.utils import (
     "aspect_ratio",
     [(1, 1, 1), (1, 1, 2), (1, 2, 1), (2, 1, 1), (1, 2, 2), (2, 1, 2), (2, 2, 1)],
 )
-def test_mpi_field_io_gather_scatter(
+def test_mpi_field_gather_scatter(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
     n_values = 32
@@ -31,7 +31,7 @@ def test_mpi_field_io_gather_scatter(
         real_t=real_t,
         rank_distribution=rank_distribution,
     )
-    mpi_field_io_communicator = MPIFieldCommunicator3D(
+    mpi_field_communicator = MPIFieldCommunicator3D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
     global_field = np.random.rand(
@@ -47,8 +47,8 @@ def test_mpi_field_io_gather_scatter(
             mpi_construct.local_grid_size[2] + 2 * ghost_size,
         )
     ).astype(real_t)
-    gather_local_field = mpi_field_io_communicator.gather_local_field
-    scatter_global_field = mpi_field_io_communicator.scatter_global_field
+    gather_local_field = mpi_field_communicator.gather_local_field
+    scatter_global_field = mpi_field_communicator.scatter_global_field
     # scatter global field to other ranks
     scatter_global_field(local_field, ref_global_field, mpi_construct)
     # randomise global field after scatter

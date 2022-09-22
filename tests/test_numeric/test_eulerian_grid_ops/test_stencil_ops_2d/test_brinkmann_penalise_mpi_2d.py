@@ -30,11 +30,11 @@ def test_mpi_brinkmann_penalise_scalar_field_2d(
 
     # Initialize field communicator
     # No need for ghost communicator, since no ghost exchange is needed
-    mpi_field_io_communicator = MPIFieldCommunicator2D(
+    mpi_field_communicator = MPIFieldCommunicator2D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_io_communicator.gather_local_field
-    scatter_global_field = mpi_field_io_communicator.scatter_global_field
+    gather_local_field = mpi_field_communicator.gather_local_field
+    scatter_global_field = mpi_field_communicator.scatter_global_field
 
     # Allocate local field
     local_field = np.zeros(
@@ -136,11 +136,11 @@ def test_mpi_brinkmann_penalise_vector_field_2d(
 
     # Initialize field communicator
     # No need for ghost communicator, since no ghost exchange is needed
-    mpi_field_io_communicator = MPIFieldCommunicator2D(
+    mpi_field_communicator = MPIFieldCommunicator2D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_io_communicator.gather_local_field
-    scatter_global_field = mpi_field_io_communicator.scatter_global_field
+    gather_local_field = mpi_field_communicator.gather_local_field
+    scatter_global_field = mpi_field_communicator.scatter_global_field
 
     # Allocate local field
     local_vector_field = np.zeros(

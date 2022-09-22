@@ -37,12 +37,12 @@ def test_mpi_fft_slab(ghost_size, precision, rank_distribution, aspect_ratio):
     )
 
     # Initialize communicator for scatter and gather
-    mpi_field_io_comm = MPIFieldCommunicator2D(
+    mpi_field_comm = MPIFieldCommunicator2D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_io_comm.gather_local_field
-    scatter_global_field = mpi_field_io_comm.scatter_global_field
-    local_field_inner_idx = mpi_field_io_comm.inner_idx
+    gather_local_field = mpi_field_comm.gather_local_field
+    scatter_global_field = mpi_field_comm.scatter_global_field
+    local_field_inner_idx = mpi_field_comm.inner_idx
 
     # Generate solution and broadcast solution from rank 0 to all ranks
     if mpi_construct.rank == 0:
