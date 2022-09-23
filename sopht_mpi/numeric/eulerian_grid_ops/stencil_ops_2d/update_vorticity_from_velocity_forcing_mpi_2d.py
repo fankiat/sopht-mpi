@@ -8,6 +8,7 @@ from sopht_mpi.utils.mpi_utils import check_valid_ghost_size_and_kernel_support
 def gen_update_vorticity_from_velocity_forcing_pyst_mpi_kernel_2d(
     real_t, mpi_construct, ghost_exchange_communicator
 ):
+    """MPI-supported update vorticity based on velocity forcing in 2D kernel generator."""
     update_vorticity_from_velocity_forcing_pyst_kernel_2d = (
         gen_update_vorticity_from_velocity_forcing_pyst_kernel_2d(real_t=real_t)
     )
@@ -25,6 +26,13 @@ def gen_update_vorticity_from_velocity_forcing_pyst_mpi_kernel_2d(
     def update_vorticity_from_velocity_forcing_pyst_mpi_kernel_2d(
         vorticity_field, velocity_forcing_field, prefactor
     ):
+        """MPI-supported kernel for updating vorticity based on velocity forcing
+        Updates vorticity_field based on velocity_forcing_field
+        vorticity_field += prefactor * curl(velocity_forcing_field)
+        prefactor: grid spacing factored out, along with any other multiplier
+        Assumes velocity_forcing_field is (2, n, n).
+        """
+
         # define kernel support for kernel
         update_vorticity_from_velocity_forcing_pyst_mpi_kernel_2d.kernel_support = (
             gen_update_vorticity_from_velocity_forcing_pyst_mpi_kernel_2d.kernel_support
