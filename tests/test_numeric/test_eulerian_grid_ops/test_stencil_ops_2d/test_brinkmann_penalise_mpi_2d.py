@@ -108,10 +108,9 @@ def test_mpi_brinkmann_penalise_scalar_field_2d(
         # check kernel_support for the diffusion kernel
         assert kernel_support == 0, "Incorrect kernel support!"
         # check field correctness
-        inner_idx = (slice(kernel_support, -kernel_support),) * 2
         np.testing.assert_allclose(
-            ref_penalised_field[inner_idx],
-            global_penalised_field[inner_idx],
+            ref_penalised_field,
+            global_penalised_field,
             atol=get_test_tol(precision),
         )
 
@@ -228,9 +227,8 @@ def test_mpi_brinkmann_penalise_vector_field_2d(
         # check kernel_support for the diffusion kernel
         assert kernel_support == 0, "Incorrect kernel support!"
         # check field correctness
-        inner_idx = (slice(kernel_support, -kernel_support),) * 2
         np.testing.assert_allclose(
-            ref_penalised_vector_field[inner_idx],
-            global_penalised_vector_field[inner_idx],
+            ref_penalised_vector_field,
+            global_penalised_vector_field,
             atol=get_test_tol(precision),
         )
