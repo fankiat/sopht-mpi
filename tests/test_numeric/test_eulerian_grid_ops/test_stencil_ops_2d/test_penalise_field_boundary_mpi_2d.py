@@ -12,7 +12,6 @@ from sopht_mpi.utils import (
 from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_2d import (
     gen_penalise_field_boundary_pyst_mpi_kernel_2d,
 )
-import time
 
 
 @pytest.mark.mpi(group="MPI_stencil_ops_2d", min_size=2)
