@@ -18,6 +18,7 @@ class FFTMPI2D:
         self.field_buffer = DistArray(
             global_shape=(grid_size_y, grid_size_x),
             subcomm=mpi_construct.rank_distribution,
+            dtype=self.real_dtype,
         )
         # Use generated distributed array to create parallel fft plan
         self.fft = PFFT(
