@@ -173,9 +173,9 @@ class MPIDomainDoublingCommunicator2D:
             )
         self.ghost_size = ghost_size
 
-        # define grid sizes for actual and doubled domain
-        self.field_sub_size = mpi_construct.local_grid_size
-        self.field_doubled_sub_size = mpi_construct.local_grid_size * 2
+        # define local grid sizes for actual and doubled domain
+        self.field_grid_size = mpi_construct.local_grid_size
+        self.field_doubled_grid_size = mpi_construct.local_grid_size * 2
 
         distributed_dim = np.where(np.array(mpi_construct.grid_topology) != 1)[0]
         if len(distributed_dim) > 1:
@@ -198,8 +198,8 @@ class MPIDomainDoublingCommunicator2D:
         starts = [self.ghost_size] * mpi_construct.grid_dim
         self.send_from_actual_to_doubled_domain_type = (
             self.mpi_construct.dtype_generator.Create_subarray(
-                sizes=self.field_sub_size + 2 * self.ghost_size,
-                subsizes=self.field_sub_size,
+                sizes=self.field_grid_size + 2 * self.ghost_size,
+                subsizes=self.field_grid_size,
                 starts=starts,
             )
         )
@@ -210,19 +210,19 @@ class MPIDomainDoublingCommunicator2D:
         starts = [0] * mpi_construct.grid_dim
         self.recv_from_actual_to_doubled_domain_first_half_type = (
             self.mpi_construct.dtype_generator.Create_subarray(
-                sizes=self.field_doubled_sub_size,
-                subsizes=self.field_sub_size,
+                sizes=self.field_doubled_grid_size,
+                subsizes=self.field_grid_size,
                 starts=starts,
             )
         )
         self.recv_from_actual_to_doubled_domain_first_half_type.Commit()
         # (b) Second half (start offset assumes slab decomp)
         starts = [0, 0]
-        starts[self.distributed_dim] = self.field_sub_size[self.distributed_dim]
+        starts[self.distributed_dim] = self.field_grid_size[self.distributed_dim]
         self.recv_from_actual_to_doubled_domain_second_half_type = (
             self.mpi_construct.dtype_generator.Create_subarray(
-                sizes=self.field_doubled_sub_size,
-                subsizes=self.field_sub_size,
+                sizes=self.field_doubled_grid_size,
+                subsizes=self.field_grid_size,
                 starts=starts,
             )
         )
@@ -235,19 +235,19 @@ class MPIDomainDoublingCommunicator2D:
         starts = [0] * mpi_construct.grid_dim
         self.send_from_doubled_to_actual_domain_first_half_type = (
             self.mpi_construct.dtype_generator.Create_subarray(
-                sizes=self.field_doubled_sub_size,
-                subsizes=self.field_sub_size,
+                sizes=self.field_doubled_grid_size,
+                subsizes=self.field_grid_size,
                 starts=starts,
             )
         )
         self.send_from_doubled_to_actual_domain_first_half_type.Commit()
         # (b) Second half (start offset assumes slab decomp)
         starts = [0, 0]
-        starts[self.distributed_dim] = self.field_sub_size[self.distributed_dim]
+        starts[self.distributed_dim] = self.field_grid_size[self.distributed_dim]
         self.send_from_doubled_to_actual_domain_second_half_type = (
             self.mpi_construct.dtype_generator.Create_subarray(
-                sizes=self.field_doubled_sub_size,
-                subsizes=self.field_sub_size,
+                sizes=self.field_doubled_grid_size,
+                subsizes=self.field_grid_size,
                 starts=starts,
             )
         )
@@ -257,8 +257,8 @@ class MPIDomainDoublingCommunicator2D:
         starts = [self.ghost_size] * mpi_construct.grid_dim
         self.recv_from_doubled_to_actual_domain_type = (
             self.mpi_construct.dtype_generator.Create_subarray(
-                sizes=self.field_sub_size + 2 * self.ghost_size,
-                subsizes=self.field_sub_size,
+                sizes=self.field_grid_size + 2 * self.ghost_size,
+                subsizes=self.field_grid_size,
                 starts=starts,
             )
         )
