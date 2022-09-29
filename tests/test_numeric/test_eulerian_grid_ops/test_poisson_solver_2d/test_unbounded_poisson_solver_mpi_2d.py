@@ -11,9 +11,6 @@ from sopht_mpi.utils import (
 from sopht_mpi.numeric.eulerian_grid_ops.poisson_solver_2d import (
     UnboundedPoissonSolverMPI2D,
 )
-import os
-
-os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
 
 
 @pytest.mark.mpi(group="MPI_unbounded_poisson_solve_2d", min_size=2)
