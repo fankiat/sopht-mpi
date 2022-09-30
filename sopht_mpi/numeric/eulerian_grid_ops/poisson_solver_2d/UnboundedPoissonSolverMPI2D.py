@@ -64,13 +64,11 @@ class UnboundedPoissonSolverMPI2D:
         y_axis = 0
         x_axis = 1
 
-        # define local xy-coord mesh
-        local_x_grid = newDistArray(pfft=self.fft_construct.fft, forward_output=False)
-        local_y_grid = newDistArray(pfft=self.fft_construct.fft, forward_output=False)
-
         # get start and end indices of local grid relative to global grid
-        global_start_idx = np.array(local_x_grid.substart)
-        local_grid_size = local_x_grid.shape
+        # this information is stored in domain_doubled_buffer, which a distarray
+        # initialized in FFTMPI2D
+        global_start_idx = np.array(self.domain_doubled_buffer.substart)
+        local_grid_size = self.domain_doubled_buffer.shape
         global_end_idx = global_start_idx + local_grid_size
 
         # Generate local xy mesh based on local grid location
