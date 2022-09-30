@@ -159,6 +159,8 @@ class MPIDomainDoublingCommunicator2D:
     Since mpi4py-fft always require that at least one axis of a multidimensional
     array remains aligned (non-distributed), in 2D that translates to slab
     decomposition, which will be assumed for the communication operations here.
+
+    TODO: An illustration of the communication pattern is needed for clarity
     """
 
     def __init__(self, ghost_size, mpi_construct):
