@@ -184,6 +184,4 @@ def lamb_oseen_vortex_flow_case(
 
 if __name__ == "__main__":
     grid_size_x = 256
-    lamb_oseen_vortex_flow_case(
-        grid_size_x=grid_size_x, precision="double", rank_distribution=(0, 1)
-    )
+    lamb_oseen_vortex_flow_case(grid_size_x=grid_size_x)
