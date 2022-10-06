@@ -107,7 +107,11 @@ def test_mpi_outplane_field_curl_2d(
         # check kernel_support for the diffusion kernel
         assert kernel_support == 1, "Incorrect kernel support!"
         # check field correctness
-        inner_idx = (slice(kernel_support, -kernel_support),) * 2
+        inner_idx = (
+            slice(None),
+            slice(kernel_support, -kernel_support),
+            slice(kernel_support, -kernel_support),
+        )
         np.testing.assert_allclose(
             ref_curl[inner_idx],
             global_curl[inner_idx],
