@@ -12,7 +12,7 @@ def gen_outplane_field_curl_pyst_mpi_kernel_2d(
 ):
     """MPI-supported 2D outplane field curl kernel generator."""
     outplane_field_curl_pyst_kernel_2d = gen_outplane_field_curl_pyst_kernel_2d(
-        real_t=real_t
+        real_t=real_t, reset_ghost_zone=False
     )
     kernel_support = 1
     # define this here so that ghost size and kernel support is checked during
@@ -121,7 +121,6 @@ def gen_outplane_field_curl_pyst_mpi_kernel_2d(
         )
 
         # Set physical domain boundary curl to zero based on neighboring block
-        # first along X
         if x_previous == MPI.PROC_NULL:
             set_fixed_val_kernel_2d(
                 vector_field=curl[:, :, : ghost_size + 1], fixed_vals=[0.0, 0.0]
@@ -130,8 +129,6 @@ def gen_outplane_field_curl_pyst_mpi_kernel_2d(
             set_fixed_val_kernel_2d(
                 vector_field=curl[:, :, -ghost_size - 1 :], fixed_vals=[0.0, 0.0]
             )
-
-        # then along Y
         if y_previous == MPI.PROC_NULL:
             set_fixed_val_kernel_2d(
                 vector_field=curl[:, : ghost_size + 1, :], fixed_vals=[0.0, 0.0]
