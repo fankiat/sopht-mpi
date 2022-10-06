@@ -1,8 +1,10 @@
 """MPI-supported kernels for computing curl of outplane field in 2D."""
 from sopht.numeric.eulerian_grid_ops.stencil_ops_2d import (
     gen_outplane_field_curl_pyst_kernel_2d,
+    gen_set_fixed_val_pyst_kernel_2d,
 )
 from sopht_mpi.utils.mpi_utils import check_valid_ghost_size_and_kernel_support
+from mpi4py import MPI
 
 
 def gen_outplane_field_curl_pyst_mpi_kernel_2d(
@@ -19,6 +21,13 @@ def gen_outplane_field_curl_pyst_mpi_kernel_2d(
     check_valid_ghost_size_and_kernel_support(
         ghost_size=ghost_exchange_communicator.ghost_size,
         kernel_support=gen_outplane_field_curl_pyst_mpi_kernel_2d.kernel_support,
+    )
+
+    # for setting values at physical domain boundary
+    y_next, x_next = mpi_construct.next_grid_along
+    y_previous, x_previous = mpi_construct.previous_grid_along
+    set_fixed_val_kernel_2d = gen_set_fixed_val_pyst_kernel_2d(
+        real_t=real_t, field_type="vector"
     )
 
     def outplane_field_curl_pyst_mpi_kernel_2d(curl, field, prefactor):
@@ -110,5 +119,41 @@ def gen_outplane_field_curl_pyst_mpi_kernel_2d(
             ],
             prefactor=prefactor,
         )
+
+        # Code below works
+        # NOTE: disable set boundary in outfield curl kernel
+        # set zero after taking curl of inner cell
+
+        # crunch interior stencil
+        # outplane_field_curl_pyst_kernel_2d(
+        #     curl=curl,
+        #     field=field,
+        #     prefactor=prefactor,
+        # )
+
+        # Set boundary curl to zero when neighboring block is MPI.PROC_NULL
+        # first along X
+        if x_previous == MPI.PROC_NULL:
+            # curl[:, :, : ghost_size + 1] = 0.0
+            set_fixed_val_kernel_2d(
+                vector_field=curl[:, :, : ghost_size + 1], fixed_vals=[0.0, 0.0]
+            )
+        if x_next == MPI.PROC_NULL:
+            # curl[:, :, -ghost_size - 1 :] = 0.0
+            set_fixed_val_kernel_2d(
+                vector_field=curl[:, :, -ghost_size - 1 :], fixed_vals=[0.0, 0.0]
+            )
+
+        # then along Y
+        if y_previous == MPI.PROC_NULL:
+            # curl[:, : ghost_size + 1, :] = 0.0
+            set_fixed_val_kernel_2d(
+                vector_field=curl[:, : ghost_size + 1, :], fixed_vals=[0.0, 0.0]
+            )
+        if y_next == MPI.PROC_NULL:
+            # curl[:, -ghost_size - 1 :, :] = 0.0
+            set_fixed_val_kernel_2d(
+                vector_field=curl[:, -ghost_size - 1 :, :], fixed_vals=[0.0, 0.0]
+            )
 
     return outplane_field_curl_pyst_mpi_kernel_2d
