@@ -183,7 +183,13 @@ class MPIDomainDoublingCommunicator2D:
                 f"Distributed in {len(distributed_dim)} dimensions."
                 "Only 1 dimension is allowed to be distributed in 2D (slab decomp)"
             )
-        self.distributed_dim = distributed_dim[0]
+        # Handles the case when only a single process is spawned
+        if self.mpi_construct.size == 1:
+            self.distributed_dim = (
+                0  # doesnt matter since its all aligned so set either 0 or 1 here
+            )
+        else:
+            self.distributed_dim = distributed_dim[-1]
         # Copying from actual to doubled domain -> two receives, one send
         # Copying from doubled to actual domain -> two sends, one receive
         # Total requests needed = 3 requests
