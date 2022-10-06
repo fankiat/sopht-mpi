@@ -1,5 +1,7 @@
 from mpi4py import MPI
 import numpy as np
+import matplotlib.pyplot as plt
+from sopht_mpi.utils.lab_cmap import lab_cmap
 
 
 class MPIConstruct2D:
@@ -19,6 +21,7 @@ class MPIConstruct2D:
     ):
         # grid/problem dimensions
         self.grid_dim = 2
+        self.real_t = real_t
         # Set the MPI dtype generator based on precision
         self.dtype_generator = MPI.FLOAT if real_t == np.float32 else MPI.DOUBLE
         # Setup MPI environment
@@ -298,3 +301,109 @@ class MPIFieldCommunicator2D:
         else:
             # Receiving from rank 0 as contiguous array
             mpi_construct.grid.Recv((local_field, 1, self.sub_array_type), source=0)
+
+
+class MPIPlotter2D:
+    """
+    Minimal plotting tool for MPI 2D flow simulator.
+    Currently supports only contourf functionality.
+    TODO: maybe we will implement line plot functions if needed
+
+    Warning: Use this only for quick visualization and debugging on problem with
+    small grid size (preferably <256). Performance may suffer when problem size
+    becomes large, since all plotting is gathered and done on a single rank.
+    """
+
+    def __init__(self, mpi_construct, ghost_size, fig_aspect_ratio=1.0):
+        self.mpi_construct = mpi_construct
+        self.ghost_size = ghost_size
+
+        # Initialize communicator for gather
+        self.mpi_field_comm = MPIFieldCommunicator2D(
+            ghost_size=self.ghost_size, mpi_construct=self.mpi_construct
+        )
+        self.gather_local_field = self.mpi_field_comm.gather_local_field
+
+        # Initialize global buffers for plotting
+        self.field_io = np.zeros(self.mpi_construct.global_grid_size).astype(
+            self.mpi_construct.real_t
+        )
+        self.x_grid_io = np.zeros_like(self.field_io)
+        self.y_grid_io = np.zeros_like(self.field_io)
+
+        # Initialize figure
+        self.create_figure_and_axes(fig_aspect_ratio)
+
+    @staticmethod
+    def execute_only_on_root(func):
+        def wrapper(*args, **kwargs):
+            self = args[0]
+            if self.mpi_construct.rank == 0:
+                func(*args, **kwargs)
+            else:
+                pass
+
+        return wrapper
+
+    def create_figure_and_axes(self, fig_aspect_ratio):
+        """Creates figure and axes for plotting contour fields (on all ranks)"""
+        plt.style.use("seaborn")
+        self.fig = plt.figure(frameon=True, dpi=150)
+        self.ax = self.fig.add_subplot(111)
+        if fig_aspect_ratio == "default":
+            pass
+        else:
+            self.ax.set_aspect(aspect=fig_aspect_ratio)
+
+    def contourf(
+        self,
+        x_grid,
+        y_grid,
+        field,
+        title="",
+        levels=np.linspace(0, 1, 50),
+        cmap=lab_cmap,
+        *args,
+        **kwargs,
+    ):
+        """
+        Plot contour fields.
+
+        Note: this runs on every rank, but since we gather the field to rank 0,
+        only rank 0 contains useful information. This will be saved later when
+        `save_and_clear_fig(...)` is called, which runs only on rank 0. The
+        plotting here is done on all rank since they have to wait for rank 0
+        anyway, and gather field needs to be called on all rank otherwise we run
+        into deadlock situations.
+        """
+        self.gather_local_field(self.field_io, field, self.mpi_construct)
+        self.gather_local_field(self.x_grid_io, x_grid, self.mpi_construct)
+        self.gather_local_field(self.y_grid_io, y_grid, self.mpi_construct)
+        self.ax.set_title(title)
+        contourf_obj = self.ax.contourf(
+            self.x_grid_io,
+            self.y_grid_io,
+            self.field_io,
+            levels=levels,
+            cmap=cmap,
+            *args,
+            **kwargs,
+        )
+        self.cbar = self.fig.colorbar(mappable=contourf_obj, ax=self.ax)
+
+    @execute_only_on_root
+    def savefig(self, file_name, *args, **kwargs):
+        """Save figure (only on root)"""
+        self.fig.savefig(
+            file_name,
+            bbox_inches="tight",
+            pad_inches=0,
+            *args,
+            **kwargs,
+        )
+
+    def clearfig(self):
+        """Clears figure (on all ranks) for next iteration"""
+        self.ax.cla()
+        if self.cbar is not None:
+            self.cbar.remove()
