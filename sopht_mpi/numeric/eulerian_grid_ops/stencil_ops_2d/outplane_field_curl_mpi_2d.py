@@ -120,38 +120,23 @@ def gen_outplane_field_curl_pyst_mpi_kernel_2d(
             prefactor=prefactor,
         )
 
-        # Code below works
-        # NOTE: disable set boundary in outfield curl kernel
-        # set zero after taking curl of inner cell
-
-        # crunch interior stencil
-        # outplane_field_curl_pyst_kernel_2d(
-        #     curl=curl,
-        #     field=field,
-        #     prefactor=prefactor,
-        # )
-
-        # Set boundary curl to zero when neighboring block is MPI.PROC_NULL
+        # Set physical domain boundary curl to zero based on neighboring block
         # first along X
         if x_previous == MPI.PROC_NULL:
-            # curl[:, :, : ghost_size + 1] = 0.0
             set_fixed_val_kernel_2d(
                 vector_field=curl[:, :, : ghost_size + 1], fixed_vals=[0.0, 0.0]
             )
         if x_next == MPI.PROC_NULL:
-            # curl[:, :, -ghost_size - 1 :] = 0.0
             set_fixed_val_kernel_2d(
                 vector_field=curl[:, :, -ghost_size - 1 :], fixed_vals=[0.0, 0.0]
             )
 
         # then along Y
         if y_previous == MPI.PROC_NULL:
-            # curl[:, : ghost_size + 1, :] = 0.0
             set_fixed_val_kernel_2d(
                 vector_field=curl[:, : ghost_size + 1, :], fixed_vals=[0.0, 0.0]
             )
         if y_next == MPI.PROC_NULL:
-            # curl[:, -ghost_size - 1 :, :] = 0.0
             set_fixed_val_kernel_2d(
                 vector_field=curl[:, -ghost_size - 1 :, :], fixed_vals=[0.0, 0.0]
             )
