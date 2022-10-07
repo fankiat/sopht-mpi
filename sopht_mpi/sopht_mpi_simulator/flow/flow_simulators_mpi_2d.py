@@ -81,7 +81,11 @@ class UnboundedFlowSimulator2D:
                 self.penalty_zone_width = kwargs.get("penalty_zone_width")
             else:
                 self.penalty_zone_width = 2
-        self.compile_kernels()
+        try:
+            self.compile_kernels()
+        except Exception as error:
+            print("Error with compiling kernels for simulator!")
+            print(f"{type(error).__name__}: " + str(error))
         self.finalise_flow_timestep()
 
     def init_mpi(self):
