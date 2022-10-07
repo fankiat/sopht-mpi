@@ -292,7 +292,7 @@ class UnboundedFlowSimulator2D:
                 )
                 + get_test_tol(precision)
             ),
-            0.9 * self.dx**2 / (2 * self.grid_dim) / self.kinematic_viscosity,
+            0.9 * self.dx**2 / (2 * self.grid_dim) / (self.kinematic_viscosity + get_test_tol(precision)),
         )
         # Get smallest timestep among all the ranks
         dt = self.mpi_construct.grid.allreduce(dt, op=MPI.MIN)
