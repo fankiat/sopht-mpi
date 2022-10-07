@@ -29,6 +29,7 @@ class UnboundedFlowSimulator2D:
         with_free_stream_flow=False,
         real_t=np.float32,
         rank_distribution=None,
+        ghost_size=2,
         **kwargs,
     ):
         """Class initialiser
@@ -70,9 +71,7 @@ class UnboundedFlowSimulator2D:
 
         # MPI-related variables
         self.rank_distribution = rank_distribution
-        # How do we know max(ghost_size) among all employed kernels apriori
-        # before we even compile the kernels? Hardcoding it for now.
-        self.ghost_size = 2
+        self.ghost_size = ghost_size
 
         self.init_mpi()
         self.init_domain()
