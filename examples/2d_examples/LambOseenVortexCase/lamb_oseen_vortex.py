@@ -92,8 +92,8 @@ def lamb_oseen_vortex_flow_case(
             mpi_plotter.clearfig()
 
             # TODO: (logger) refactor later
-            max_vort = np.amax(flow_sim.vorticity_field)
-            max_vort = flow_sim.mpi_construct.grid.allreduce(max_vort, op=MPI.MAX)
+            max_vort_local = np.amax(flow_sim.vorticity_field)
+            max_vort = flow_sim.mpi_construct.grid.allreduce(max_vort_local, op=MPI.MAX)
             if flow_sim.mpi_construct.rank == 0:
                 print(
                     f"time: {t:.2f} ({((t-t_start)/(t_end-t_start)*100):2.1f}%), "
