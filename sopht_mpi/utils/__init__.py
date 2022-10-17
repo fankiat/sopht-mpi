@@ -2,6 +2,7 @@ from .mpi_utils_2d import (
     MPIConstruct2D,
     MPIGhostCommunicator2D,
     MPIFieldCommunicator2D,
+    MPILagrangianFieldCommunicator2D,
     MPIPlotter2D,
 )
 from .mpi_utils_3d import (
