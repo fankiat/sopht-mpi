@@ -350,12 +350,14 @@ class MPILagrangianFieldCommunicator2D:
         Locate corresponding blocks (and ranks) the lagrangian nodes reside in such that
         they stay in the half-open interval [subblock_lower_bound, subblock_upper_bound)
         """
+        # Note: Lagrangian positions follow xy order in grid_dim here. while quantities
+        # derived from mpi_construct follow yx ordering (follows from MPI cart comm)
         eul_subblock_coords_y = (
-            (global_lag_positions[0, ...] - self.eul_grid_shift)
+            (global_lag_positions[1, ...] - self.eul_grid_shift)
             / self.eul_subblock_dx[0]
         ).astype(np.int32)
         eul_subblock_coords_x = (
-            (global_lag_positions[1, ...] - self.eul_grid_shift)
+            (global_lag_positions[0, ...] - self.eul_grid_shift)
             / self.eul_subblock_dx[1]
         ).astype(np.int32)
         lag_nodes_rank_address = self.rank_map[

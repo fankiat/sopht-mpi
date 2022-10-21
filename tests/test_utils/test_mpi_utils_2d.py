@@ -148,8 +148,8 @@ def test_mpi_lagrangian_field_map(
         [mpi_lagrangian_field_communicator.grid_dim, 1],
     ).astype(real_t)
     # rescale to spread them across the scaled eulerian domain
-    global_lagrangian_positions[0, :] *= y_range
-    global_lagrangian_positions[1, :] *= x_range
+    global_lagrangian_positions[0, :] *= x_range
+    global_lagrangian_positions[1, :] *= y_range
 
     # Map the lagrangian nodes to respective ranks
     mpi_lagrangian_field_communicator.map_lagrangian_nodes_based_on_position(
@@ -168,11 +168,11 @@ def test_mpi_lagrangian_field_map(
     subend_y, subend_x = subend_idx * eul_grid_dx + eul_grid_shift
 
     # Check locally mapped lagrangian nodes are within local eulerian grid bounds
-    assert np.all(local_lagrangian_positions[1, :] >= substart_x) & np.all(
-        local_lagrangian_positions[1, :] < subend_x
+    assert np.all(local_lagrangian_positions[0, :] >= substart_x) & np.all(
+        local_lagrangian_positions[0, :] < subend_x
     )
-    assert np.all(local_lagrangian_positions[0, :] >= substart_y) & np.all(
-        local_lagrangian_positions[0, :] < subend_y
+    assert np.all(local_lagrangian_positions[1, :] >= substart_y) & np.all(
+        local_lagrangian_positions[1, :] < subend_y
     )
 
     # Ensure that we taken all lagrangian points into account
@@ -225,10 +225,10 @@ def test_mpi_lagrangian_field_gather_scatter(
         (mpi_lagrangian_field_communicator.grid_dim, global_num_lag_nodes)
     ).astype(real_t)
     global_lagrangian_positions[0, :] = np.random.uniform(
-        2 * eul_grid_shift, y_range - 2 * eul_grid_shift, global_num_lag_nodes
+        2 * eul_grid_shift, x_range - 2 * eul_grid_shift, global_num_lag_nodes
     )
     global_lagrangian_positions[1, :] = np.random.uniform(
-        2 * eul_grid_shift, x_range - 2 * eul_grid_shift, global_num_lag_nodes
+        2 * eul_grid_shift, y_range - 2 * eul_grid_shift, global_num_lag_nodes
     )
     # generate random velocities at these lagrangian nodes
     global_lagrangian_velocities = np.random.rand(
