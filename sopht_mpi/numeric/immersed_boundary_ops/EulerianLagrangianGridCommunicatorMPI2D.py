@@ -614,6 +614,7 @@ class MPIGhostSumCommunicator2D:
         )
         # add to field
         local_field[-2 * self.ghost_size : -self.ghost_size, :] += self.row_buffer
+        self.row_buffer *= 0
 
         # Along X: send to previous block, receive from next block
         self.mpi_construct.grid.Send(
@@ -630,6 +631,7 @@ class MPIGhostSumCommunicator2D:
         )
         # add to field
         local_field[:, -2 * self.ghost_size : -self.ghost_size] += self.col_buffer
+        self.col_buffer *= 0
 
         # zero out ghost cells
         self.clear_ghost_cells(local_field)
