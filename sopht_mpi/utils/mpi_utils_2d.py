@@ -360,6 +360,10 @@ class MPILagrangianFieldCommunicator2D:
             (global_lag_positions[0, ...] - self.eul_grid_shift)
             / self.eul_subblock_dx[1]
         ).astype(np.int32)
+        if np.any(
+            eul_subblock_coords_x >= self.mpi_construct.grid_topology[1]
+        ) or np.any(eul_subblock_coords_y >= self.mpi_construct.grid_topology[0]):
+            raise ValueError("Lagrangian node is found outside of Eulerian domain!")
         lag_nodes_rank_address = self.rank_map[
             eul_subblock_coords_y, eul_subblock_coords_x
         ]
