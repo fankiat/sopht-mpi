@@ -500,13 +500,10 @@ def test_mpi_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
     )
 
     # Get corresponding local chunk of ref solution
+    local_grid_size_y, local_grid_size_x = mpi_construct.local_grid_size
     mpi_local_sol_idx = (
-        slice(
-            mpi_substart_idx[1], mpi_substart_idx[1] + mpi_construct.local_grid_size[0]
-        ),
-        slice(
-            mpi_substart_idx[0], mpi_substart_idx[0] + mpi_construct.local_grid_size[1]
-        ),
+        slice(mpi_substart_idx[1], mpi_substart_idx[1] + local_grid_size_y),
+        slice(mpi_substart_idx[0], mpi_substart_idx[0] + local_grid_size_x),
     )
 
     np.testing.assert_allclose(
@@ -599,15 +596,16 @@ def test_mpi_vector_field_lag_to_eul_grid_interpolation_kernel_2d(
     )
 
     # Get corresponding local chunk of ref solution
+    local_grid_size_y, local_grid_size_x = mpi_construct.local_grid_size
     mpi_local_sol_idx = (
         slice(None, None),
         slice(
             mpi_substart_idx[1],
-            mpi_substart_idx[1] + mpi_construct.local_grid_size[0],
+            mpi_substart_idx[1] + local_grid_size_y,
         ),
         slice(
             mpi_substart_idx[0],
-            mpi_substart_idx[0] + mpi_construct.local_grid_size[1],
+            mpi_substart_idx[0] + local_grid_size_x,
         ),
     )
 
@@ -618,7 +616,7 @@ def test_mpi_vector_field_lag_to_eul_grid_interpolation_kernel_2d(
     )
 
 
-@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=8)
+@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
 @pytest.mark.parametrize("ghost_size", [1, 2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
@@ -681,7 +679,7 @@ def test_mpi_interpolation_weights_kernel_on_nodes_2d(
     # `local_eulerian_grid_support_of_lagrangian_grid_kernel(...)` kernel
     mask = np.where(rank_address == mpi_lagrangian_field_communicator.rank)[0]
     mpi_local_local_eul_grid_support_of_lag_grid = (
-        mock_soln.mock_local_eul_grid_support_of_lag_grid
+        mock_soln.local_eul_grid_support_of_lag_grid[..., mask].copy()
     )
     mpi_local_interp_weights = np.zeros(
         (
