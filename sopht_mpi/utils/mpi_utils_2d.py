@@ -360,10 +360,15 @@ class MPILagrangianFieldCommunicator2D:
             (global_lag_positions[0, ...] - self.eul_grid_shift)
             / self.eul_subblock_dx[1]
         ).astype(np.int32)
-        if np.any(
-            eul_subblock_coords_x >= self.mpi_construct.grid_topology[1]
-        ) or np.any(eul_subblock_coords_y >= self.mpi_construct.grid_topology[0]):
-            raise ValueError("Lagrangian node is found outside of Eulerian domain!")
+        if (np.any(eul_subblock_coords_x >= self.mpi_construct.grid_topology[1])) or (
+            np.any(eul_subblock_coords_y >= self.mpi_construct.grid_topology[0])
+        ):
+            # TODO: replace this with logger message
+            # python error handling exception would not work here because it halts the
+            # process before abort is called
+            print("Lagrangian node is found outside of Eulerian domain!")
+            self.mpi_construct.grid.Abort()
+
         lag_nodes_rank_address = self.rank_map[
             eul_subblock_coords_y, eul_subblock_coords_x
         ]
@@ -372,9 +377,11 @@ class MPILagrangianFieldCommunicator2D:
     def map_lagrangian_nodes_based_on_position(self, global_lag_positions):
         if self.rank == self.master_rank:
             if global_lag_positions.shape[0] != self.grid_dim:
-                raise ValueError(
-                    f"global_lag_positions needs to be shape ({self.grid_dim}, ...)"
-                )
+                # TODO: replace this with logger message
+                # python error handling exception would not work here because it halts the
+                # process before abort is called
+                print(f"global_lag_positions needs to be shape ({self.grid_dim}, ...)")
+                self.mpi_construct.grid.Abort()
             rank_address = self._compute_lag_nodes_rank_address(global_lag_positions)
         else:
             rank_address = None
