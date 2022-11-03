@@ -127,7 +127,7 @@ def test_mpi_lagrangian_field_map(
     x_range = real_t(1.0)
     y_range = x_range * grid_size_y / grid_size_x
     eul_grid_dx = real_t(x_range / grid_size_x)
-    eul_grid_shift = real_t(eul_grid_dx / 2.0)
+    eul_grid_coord_shift = real_t(eul_grid_dx / 2.0)
 
     # Lagrangian grid stuff
     # Define a master rank that "owns" the lagrangian grid
@@ -135,7 +135,7 @@ def test_mpi_lagrangian_field_map(
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
         eul_grid_dx=eul_grid_dx,
-        eul_grid_shift=eul_grid_shift,
+        eul_grid_coord_shift=eul_grid_coord_shift,
         mpi_construct=mpi_construct,
         master_rank=master_rank,
         real_t=real_t,
@@ -144,7 +144,11 @@ def test_mpi_lagrangian_field_map(
     # Initialize fields for testing
     # Sample a diagonal line across domain
     global_lagrangian_positions = np.tile(
-        np.arange(2 * eul_grid_shift, x_range - 2 * eul_grid_shift, eul_grid_dx / 2.0),
+        np.arange(
+            2 * eul_grid_coord_shift,
+            x_range - 2 * eul_grid_coord_shift,
+            eul_grid_dx / 2.0,
+        ),
         [mpi_lagrangian_field_communicator.grid_dim, 1],
     ).astype(real_t)
     # rescale to spread them across the scaled eulerian domain
@@ -164,8 +168,8 @@ def test_mpi_lagrangian_field_map(
     local_grid_size = mpi_construct.local_grid_size
     substart_idx = mpi_construct.grid.coords * local_grid_size
     subend_idx = substart_idx + local_grid_size
-    substart_y, substart_x = substart_idx * eul_grid_dx + eul_grid_shift
-    subend_y, subend_x = subend_idx * eul_grid_dx + eul_grid_shift
+    substart_y, substart_x = substart_idx * eul_grid_dx + eul_grid_coord_shift
+    subend_y, subend_x = subend_idx * eul_grid_dx + eul_grid_coord_shift
 
     # Check locally mapped lagrangian nodes are within local eulerian grid bounds
     assert np.all(local_lagrangian_positions[0, :] >= substart_x) & np.all(
@@ -204,7 +208,7 @@ def test_mpi_lagrangian_field_gather_scatter(
     x_range = real_t(1.0)
     y_range = x_range * grid_size_y / grid_size_x
     eul_grid_dx = real_t(x_range / grid_size_x)
-    eul_grid_shift = real_t(eul_grid_dx / 2.0)
+    eul_grid_coord_shift = real_t(eul_grid_dx / 2.0)
 
     # Lagrangian grid stuff
     # Define a master rank that "owns" the lagrangian grid
@@ -212,7 +216,7 @@ def test_mpi_lagrangian_field_gather_scatter(
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
         eul_grid_dx=eul_grid_dx,
-        eul_grid_shift=eul_grid_shift,
+        eul_grid_coord_shift=eul_grid_coord_shift,
         mpi_construct=mpi_construct,
         master_rank=master_rank,
         real_t=real_t,
@@ -225,10 +229,14 @@ def test_mpi_lagrangian_field_gather_scatter(
         (mpi_lagrangian_field_communicator.grid_dim, global_num_lag_nodes)
     ).astype(real_t)
     global_lagrangian_positions[0, :] = np.random.uniform(
-        2 * eul_grid_shift, x_range - 2 * eul_grid_shift, global_num_lag_nodes
+        2 * eul_grid_coord_shift,
+        x_range - 2 * eul_grid_coord_shift,
+        global_num_lag_nodes,
     )
     global_lagrangian_positions[1, :] = np.random.uniform(
-        2 * eul_grid_shift, y_range - 2 * eul_grid_shift, global_num_lag_nodes
+        2 * eul_grid_coord_shift,
+        y_range - 2 * eul_grid_coord_shift,
+        global_num_lag_nodes,
     )
     # generate random velocities at these lagrangian nodes
     global_lagrangian_velocities = np.random.rand(
