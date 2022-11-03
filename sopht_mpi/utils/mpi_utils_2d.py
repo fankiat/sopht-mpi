@@ -321,7 +321,7 @@ class MPILagrangianFieldCommunicator2D:
     def __init__(
         self,
         eul_grid_dx,
-        eul_grid_shift,
+        eul_grid_coord_shift,
         mpi_construct,
         master_rank=0,
         real_t=np.float64,
@@ -331,7 +331,7 @@ class MPILagrangianFieldCommunicator2D:
         self.master_rank = master_rank
         self.rank = self.mpi_construct.rank
         self.eul_subblock_dx = eul_grid_dx * self.mpi_construct.local_grid_size
-        self.eul_grid_shift = eul_grid_shift
+        self.eul_grid_coord_shift = eul_grid_coord_shift
 
         self.real_t = real_t
 
@@ -353,11 +353,11 @@ class MPILagrangianFieldCommunicator2D:
         # Note: Lagrangian positions follow xy order in grid_dim here. while quantities
         # derived from mpi_construct follow yx ordering (follows from MPI cart comm)
         eul_subblock_coords_y = (
-            (global_lag_positions[1, ...] - self.eul_grid_shift)
+            (global_lag_positions[1, ...] - self.eul_grid_coord_shift)
             / self.eul_subblock_dx[0]
         ).astype(np.int32)
         eul_subblock_coords_x = (
-            (global_lag_positions[0, ...] - self.eul_grid_shift)
+            (global_lag_positions[0, ...] - self.eul_grid_coord_shift)
             / self.eul_subblock_dx[1]
         ).astype(np.int32)
         if (np.any(eul_subblock_coords_x >= self.mpi_construct.grid_topology[1])) or (
