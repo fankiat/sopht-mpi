@@ -184,7 +184,7 @@ def test_mpi_local_eulerian_grid_support_of_lagrangian_grid_2d(
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
         eul_grid_dx=mock_soln.eul_grid_dx,
-        eul_grid_shift=mock_soln.eul_grid_coord_shift,
+        eul_grid_coord_shift=mock_soln.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
         master_rank=master_rank,
         real_t=mock_soln.real_t,
@@ -278,7 +278,7 @@ def test_mpi_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
         eul_grid_dx=mock_soln.eul_grid_dx,
-        eul_grid_shift=mock_soln.eul_grid_coord_shift,
+        eul_grid_coord_shift=mock_soln.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
         master_rank=master_rank,
         real_t=mock_soln.real_t,
@@ -360,7 +360,7 @@ def test_mpi_vector_field_eul_to_lag_grid_interpolation_kernel_2d(
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
         eul_grid_dx=mock_soln.eul_grid_dx,
-        eul_grid_shift=mock_soln.eul_grid_coord_shift,
+        eul_grid_coord_shift=mock_soln.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
         master_rank=master_rank,
         real_t=mock_soln.real_t,
@@ -453,7 +453,7 @@ def test_mpi_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
         eul_grid_dx=mock_soln.eul_grid_dx,
-        eul_grid_shift=mock_soln.eul_grid_coord_shift,
+        eul_grid_coord_shift=mock_soln.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
         master_rank=master_rank,
         real_t=mock_soln.real_t,
@@ -543,7 +543,7 @@ def test_mpi_vector_field_lag_to_eul_grid_interpolation_kernel_2d(
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
         eul_grid_dx=mock_soln.eul_grid_dx,
-        eul_grid_shift=mock_soln.eul_grid_coord_shift,
+        eul_grid_coord_shift=mock_soln.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
         master_rank=master_rank,
         real_t=mock_soln.real_t,
@@ -651,7 +651,7 @@ def test_mpi_interpolation_weights_kernel_on_nodes_2d(
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
         eul_grid_dx=mock_soln.eul_grid_dx,
-        eul_grid_shift=mock_soln.eul_grid_coord_shift,
+        eul_grid_coord_shift=mock_soln.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
         master_rank=master_rank,
         real_t=mock_soln.real_t,
