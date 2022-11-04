@@ -76,7 +76,7 @@ class ReferenceVirtualBoundaryForcing(VirtualBoundaryForcing):
         )
         ghost_size = virtual_boundary_forcing.ghost_size
         mpi_global_nearest_eul_grid_index_to_lag_grid = (
-            virtual_boundary_forcing.nearest_eul_grid_index_to_lag_grid
+            virtual_boundary_forcing.local_nearest_eul_grid_index_to_lag_grid
             - ghost_size
             + mpi_substart_idx.reshape(virtual_boundary_forcing.grid_dim, 1)
         )
@@ -88,19 +88,19 @@ class ReferenceVirtualBoundaryForcing(VirtualBoundaryForcing):
         )
         # Check lag grid flow velocity field
         np.testing.assert_allclose(
-            virtual_boundary_forcing.lag_grid_flow_velocity_field,
+            virtual_boundary_forcing.local_lag_grid_flow_velocity_field,
             self.lag_grid_flow_velocity_field[..., mask],
             atol=self.test_tol,
         )
         # Check lag grid velocity mismatch field
         np.testing.assert_allclose(
-            virtual_boundary_forcing.lag_grid_velocity_mismatch_field,
+            virtual_boundary_forcing.local_lag_grid_velocity_mismatch_field,
             self.lag_grid_velocity_mismatch_field[..., mask],
             atol=self.test_tol,
         )
         # Check lag grid forcing field
         np.testing.assert_allclose(
-            virtual_boundary_forcing.lag_grid_forcing_field,
+            virtual_boundary_forcing.local_lag_grid_forcing_field,
             self.lag_grid_forcing_field[..., mask],
             atol=self.test_tol,
         )
@@ -136,7 +136,7 @@ def test_mpi_virtual_boundary_forcing_init(
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
         eul_grid_dx=ref_virtual_boundary_forcing.dx,
-        eul_grid_shift=ref_virtual_boundary_forcing.eul_grid_coord_shift,
+        eul_grid_coord_shift=ref_virtual_boundary_forcing.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
         master_rank=master_rank,
         real_t=ref_virtual_boundary_forcing.real_t,
@@ -148,7 +148,11 @@ def test_mpi_virtual_boundary_forcing_init(
     rank_address = mpi_lagrangian_field_communicator.rank_address
     mask = np.where(rank_address == mpi_lagrangian_field_communicator.rank)[0]
     mpi_local_num_lag_nodes = mpi_lagrangian_field_communicator.local_num_lag_nodes
-    # Initialize MPI virtual boundary forcing
+    # Initialize MPI virtual boundary forcing with global reference lag positions
+    if mpi_construct.rank == master_rank:
+        global_ref_lag_grid_position_field = ref_virtual_boundary_forcing.lag_positions
+    else:
+        global_ref_lag_grid_position_field = None
     mpi_virtual_boundary_forcing = VirtualBoundaryForcingMPI(
         mpi_construct=mpi_construct,
         ghost_size=ghost_size,
@@ -156,9 +160,10 @@ def test_mpi_virtual_boundary_forcing_init(
         virtual_boundary_damping_coeff=ref_virtual_boundary_forcing.virtual_boundary_damping_coeff,
         grid_dim=ref_virtual_boundary_forcing.grid_dim,
         dx=ref_virtual_boundary_forcing.dx,
-        num_lag_nodes=mpi_local_num_lag_nodes,
         real_t=ref_virtual_boundary_forcing.real_t,
         start_time=ref_virtual_boundary_forcing.time,
+        global_lag_grid_position_field=global_ref_lag_grid_position_field,
+        moving_boundary=True,
     )
 
     # 3. Test initialized variables and field buffers
@@ -172,67 +177,38 @@ def test_mpi_virtual_boundary_forcing_init(
         mpi_virtual_boundary_forcing.virtual_boundary_damping_coeff
         == ref_virtual_boundary_forcing.virtual_boundary_damping_coeff
     )
-    assert mpi_virtual_boundary_forcing.nearest_eul_grid_index_to_lag_grid.dtype == int
     assert (
-        mpi_virtual_boundary_forcing.nearest_eul_grid_index_to_lag_grid[
-            ..., : mpi_virtual_boundary_forcing.local_num_lag_nodes
-        ].shape
+        mpi_virtual_boundary_forcing.local_nearest_eul_grid_index_to_lag_grid.dtype
+        == int
+    )
+    assert (
+        mpi_virtual_boundary_forcing.local_nearest_eul_grid_index_to_lag_grid.shape
         == ref_virtual_boundary_forcing.nearest_eul_grid_index_to_lag_grid[
             ..., mask
         ].shape
     )
-    # figure out a clean way for this!
-    if grid_dim == 2:
-        assert (
-            mpi_virtual_boundary_forcing.local_eul_grid_support_of_lag_grid[
-                ..., : mpi_virtual_boundary_forcing.local_num_lag_nodes
-            ].shape
-            == ref_virtual_boundary_forcing.local_eul_grid_support_of_lag_grid[
-                ..., mask
-            ].shape
-        )
-        assert (
-            mpi_virtual_boundary_forcing.interp_weights[
-                ..., : mpi_virtual_boundary_forcing.local_num_lag_nodes
-            ].shape
-            == ref_virtual_boundary_forcing.interp_weights[..., mask].shape
-        )
-    # elif grid_dim == 3:
-    #     assert mpi_virtual_boundary_forcing.local_eul_grid_support_of_lag_grid[
-    #         ..., : mpi_virtual_boundary_forcing.local_num_lag_nodes
-    #     ].shape == (
-    #         grid_dim,
-    #         2 * ref_virtual_boundary_forcing.interp_kernel_width,
-    #         2 * ref_virtual_boundary_forcing.interp_kernel_width,
-    #         2 * ref_virtual_boundary_forcing.interp_kernel_width,
-    #         mpi_local_num_lag_nodes,
-    #     )
-    #     assert mpi_virtual_boundary_forcing.interp_weights[
-    #         ..., : mpi_virtual_boundary_forcing.local_num_lag_nodes
-    #     ].shape == (
-    #         2 * ref_virtual_boundary_forcing.interp_kernel_width,
-    #         2 * ref_virtual_boundary_forcing.interp_kernel_width,
-    #         2 * ref_virtual_boundary_forcing.interp_kernel_width,
-    #         mpi_local_num_lag_nodes,
-    #     )
     assert (
-        mpi_virtual_boundary_forcing.lag_grid_flow_velocity_field[
-            ..., : mpi_virtual_boundary_forcing.local_num_lag_nodes
+        mpi_virtual_boundary_forcing.local_local_eul_grid_support_of_lag_grid.shape
+        == ref_virtual_boundary_forcing.local_eul_grid_support_of_lag_grid[
+            ..., mask
         ].shape
+    )
+    assert (
+        mpi_virtual_boundary_forcing.local_interp_weights.shape
+        == ref_virtual_boundary_forcing.interp_weights[..., mask].shape
+    )
+    assert (
+        mpi_virtual_boundary_forcing.local_lag_grid_flow_velocity_field.shape
         == ref_virtual_boundary_forcing.lag_grid_flow_velocity_field[..., mask].shape
     )
     assert (
-        mpi_virtual_boundary_forcing.lag_grid_velocity_mismatch_field[
-            ..., : mpi_virtual_boundary_forcing.local_num_lag_nodes
-        ].shape
+        mpi_virtual_boundary_forcing.local_lag_grid_velocity_mismatch_field.shape
         == ref_virtual_boundary_forcing.lag_grid_velocity_mismatch_field[
             ..., mask
         ].shape
     )
     assert (
-        mpi_virtual_boundary_forcing.lag_grid_position_mismatch_field[
-            ..., : mpi_virtual_boundary_forcing.local_num_lag_nodes
-        ].shape
+        mpi_virtual_boundary_forcing.local_lag_grid_position_mismatch_field.shape
         == ref_virtual_boundary_forcing.lag_grid_position_mismatch_field[
             ..., mask
         ].shape
@@ -269,7 +245,7 @@ def test_mpi_compute_lag_grid_velocity_mismatch_field(
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
         eul_grid_dx=ref_virtual_boundary_forcing.dx,
-        eul_grid_shift=ref_virtual_boundary_forcing.eul_grid_coord_shift,
+        eul_grid_coord_shift=ref_virtual_boundary_forcing.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
         master_rank=master_rank,
         real_t=ref_virtual_boundary_forcing.real_t,
@@ -280,8 +256,11 @@ def test_mpi_compute_lag_grid_velocity_mismatch_field(
     )
     rank_address = mpi_lagrangian_field_communicator.rank_address
     mask = np.where(rank_address == mpi_lagrangian_field_communicator.rank)[0]
-    mpi_local_num_lag_nodes = mpi_lagrangian_field_communicator.local_num_lag_nodes
-    # Initialize MPI virtual boundary forcing
+    # Initialize MPI virtual boundary forcing with global reference lag positions
+    if mpi_construct.rank == master_rank:
+        global_ref_lag_grid_position_field = ref_virtual_boundary_forcing.lag_positions
+    else:
+        global_ref_lag_grid_position_field = None
     mpi_virtual_boundary_forcing = VirtualBoundaryForcingMPI(
         mpi_construct=mpi_construct,
         ghost_size=ghost_size,
@@ -289,9 +268,9 @@ def test_mpi_compute_lag_grid_velocity_mismatch_field(
         virtual_boundary_damping_coeff=ref_virtual_boundary_forcing.virtual_boundary_damping_coeff,
         grid_dim=ref_virtual_boundary_forcing.grid_dim,
         dx=ref_virtual_boundary_forcing.dx,
-        num_lag_nodes=mpi_local_num_lag_nodes,
         real_t=ref_virtual_boundary_forcing.real_t,
         start_time=ref_virtual_boundary_forcing.time,
+        global_lag_grid_position_field=global_ref_lag_grid_position_field,
     )
 
     # 3. Generate reference fields and test against reference solutions
@@ -313,23 +292,28 @@ def test_mpi_compute_lag_grid_velocity_mismatch_field(
         ref_lag_grid_flow_velocity_field, root=0
     )
     ref_lag_grid_velocity_mismatch_field = np.zeros_like(ref_lag_grid_velocity_field)
+    # Generate reference solution field
     ref_virtual_boundary_forcing.compute_lag_grid_velocity_mismatch_field(
         lag_grid_velocity_mismatch_field=ref_lag_grid_velocity_mismatch_field,
         lag_grid_flow_velocity_field=ref_lag_grid_flow_velocity_field,
         lag_grid_body_velocity_field=ref_lag_grid_velocity_field,
     )
-
-    mpi_local_lag_grid_velocity_field = ref_lag_grid_velocity_field[..., mask]
-    mpi_local_lag_grid_flow_velocity_field = ref_lag_grid_flow_velocity_field[..., mask]
-    mpi_virtual_boundary_forcing.compute_lag_grid_velocity_mismatch_field(
-        lag_grid_velocity_mismatch_field=mpi_virtual_boundary_forcing.lag_grid_velocity_mismatch_field,
-        lag_grid_flow_velocity_field=mpi_local_lag_grid_flow_velocity_field,
-        lag_grid_body_velocity_field=mpi_local_lag_grid_velocity_field,
+    # Compute solution field
+    mpi_virtual_boundary_forcing.local_lag_grid_velocity_field = (
+        ref_lag_grid_velocity_field[..., mask]
     )
-
+    mpi_virtual_boundary_forcing.local_lag_grid_flow_velocity_field = (
+        ref_lag_grid_flow_velocity_field[..., mask]
+    )
+    mpi_virtual_boundary_forcing.compute_lag_grid_velocity_mismatch_field(
+        lag_grid_velocity_mismatch_field=mpi_virtual_boundary_forcing.local_lag_grid_velocity_mismatch_field,
+        lag_grid_flow_velocity_field=mpi_virtual_boundary_forcing.local_lag_grid_flow_velocity_field,
+        lag_grid_body_velocity_field=mpi_virtual_boundary_forcing.local_lag_grid_velocity_field,
+    )
+    # Compare and test solution field
     np.testing.assert_allclose(
         ref_lag_grid_velocity_mismatch_field[..., mask],
-        mpi_virtual_boundary_forcing.lag_grid_velocity_mismatch_field,
+        mpi_virtual_boundary_forcing.local_lag_grid_velocity_mismatch_field,
         atol=get_test_tol(precision),
     )
 
@@ -364,7 +348,7 @@ def test_mpi_update_lag_grid_position_mismatch_field_via_euler_forward(
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
         eul_grid_dx=ref_virtual_boundary_forcing.dx,
-        eul_grid_shift=ref_virtual_boundary_forcing.eul_grid_coord_shift,
+        eul_grid_coord_shift=ref_virtual_boundary_forcing.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
         master_rank=master_rank,
         real_t=ref_virtual_boundary_forcing.real_t,
@@ -375,8 +359,11 @@ def test_mpi_update_lag_grid_position_mismatch_field_via_euler_forward(
     )
     rank_address = mpi_lagrangian_field_communicator.rank_address
     mask = np.where(rank_address == mpi_lagrangian_field_communicator.rank)[0]
-    mpi_local_num_lag_nodes = mpi_lagrangian_field_communicator.local_num_lag_nodes
     # Initialize MPI virtual boundary forcing
+    if mpi_construct.rank == master_rank:
+        global_ref_lag_grid_position_field = ref_virtual_boundary_forcing.lag_positions
+    else:
+        global_ref_lag_grid_position_field = None
     mpi_virtual_boundary_forcing = VirtualBoundaryForcingMPI(
         mpi_construct=mpi_construct,
         ghost_size=ghost_size,
@@ -384,9 +371,9 @@ def test_mpi_update_lag_grid_position_mismatch_field_via_euler_forward(
         virtual_boundary_damping_coeff=ref_virtual_boundary_forcing.virtual_boundary_damping_coeff,
         grid_dim=ref_virtual_boundary_forcing.grid_dim,
         dx=ref_virtual_boundary_forcing.dx,
-        num_lag_nodes=mpi_local_num_lag_nodes,
         real_t=ref_virtual_boundary_forcing.real_t,
         start_time=ref_virtual_boundary_forcing.time,
+        global_lag_grid_position_field=global_ref_lag_grid_position_field,
     )
 
     # 3. Generate reference fields and test against reference solutions
@@ -409,7 +396,7 @@ def test_mpi_update_lag_grid_position_mismatch_field_via_euler_forward(
     )
     dt = ref_virtual_boundary_forcing.real_t(0.1)
 
-    mpi_virtual_boundary_forcing.lag_grid_position_mismatch_field = (
+    mpi_virtual_boundary_forcing.local_lag_grid_position_mismatch_field = (
         ref_lag_grid_position_mismatch_field[..., mask].copy()
     )
     # Compute reference solution after making a copy for testing
@@ -418,19 +405,19 @@ def test_mpi_update_lag_grid_position_mismatch_field_via_euler_forward(
         lag_grid_velocity_mismatch_field=ref_lag_grid_velocity_mismatch_field,
         dt=dt,
     )
-
-    mpi_virtual_boundary_forcing.lag_grid_velocity_mismatch_field = (
+    # Compute solution field
+    mpi_virtual_boundary_forcing.local_lag_grid_velocity_mismatch_field = (
         ref_lag_grid_velocity_mismatch_field[..., mask]
     )
     mpi_virtual_boundary_forcing.update_lag_grid_position_mismatch_field_via_euler_forward(
-        lag_grid_position_mismatch_field=mpi_virtual_boundary_forcing.lag_grid_position_mismatch_field,
-        lag_grid_velocity_mismatch_field=mpi_virtual_boundary_forcing.lag_grid_velocity_mismatch_field,
+        lag_grid_position_mismatch_field=mpi_virtual_boundary_forcing.local_lag_grid_position_mismatch_field,
+        lag_grid_velocity_mismatch_field=mpi_virtual_boundary_forcing.local_lag_grid_velocity_mismatch_field,
         dt=dt,
     )
-
+    # Compare and test solution field
     np.testing.assert_allclose(
         ref_lag_grid_position_mismatch_field[..., mask],
-        mpi_virtual_boundary_forcing.lag_grid_position_mismatch_field,
+        mpi_virtual_boundary_forcing.local_lag_grid_position_mismatch_field,
         atol=get_test_tol(precision),
     )
 
@@ -465,7 +452,7 @@ def test_mpi_compute_lag_grid_forcing_field(
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
         eul_grid_dx=ref_virtual_boundary_forcing.dx,
-        eul_grid_shift=ref_virtual_boundary_forcing.eul_grid_coord_shift,
+        eul_grid_coord_shift=ref_virtual_boundary_forcing.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
         master_rank=master_rank,
         real_t=ref_virtual_boundary_forcing.real_t,
@@ -476,8 +463,11 @@ def test_mpi_compute_lag_grid_forcing_field(
     )
     rank_address = mpi_lagrangian_field_communicator.rank_address
     mask = np.where(rank_address == mpi_lagrangian_field_communicator.rank)[0]
-    mpi_local_num_lag_nodes = mpi_lagrangian_field_communicator.local_num_lag_nodes
     # Initialize MPI virtual boundary forcing
+    if mpi_construct.rank == master_rank:
+        global_ref_lag_grid_position_field = ref_virtual_boundary_forcing.lag_positions
+    else:
+        global_ref_lag_grid_position_field = None
     mpi_virtual_boundary_forcing = VirtualBoundaryForcingMPI(
         mpi_construct=mpi_construct,
         ghost_size=ghost_size,
@@ -485,9 +475,9 @@ def test_mpi_compute_lag_grid_forcing_field(
         virtual_boundary_damping_coeff=ref_virtual_boundary_forcing.virtual_boundary_damping_coeff,
         grid_dim=ref_virtual_boundary_forcing.grid_dim,
         dx=ref_virtual_boundary_forcing.dx,
-        num_lag_nodes=mpi_local_num_lag_nodes,
         real_t=ref_virtual_boundary_forcing.real_t,
         start_time=ref_virtual_boundary_forcing.time,
+        global_lag_grid_position_field=global_ref_lag_grid_position_field,
     )
 
     # 3. Generate reference fields and test against reference solutions
@@ -509,6 +499,7 @@ def test_mpi_compute_lag_grid_forcing_field(
         ref_lag_grid_velocity_mismatch_field, root=0
     )
     ref_lag_grid_forcing_field = np.zeros_like(ref_lag_grid_position_mismatch_field)
+    # Compute reference solution
     ref_virtual_boundary_forcing.compute_lag_grid_forcing_field(
         lag_grid_forcing_field=ref_lag_grid_forcing_field,
         lag_grid_position_mismatch_field=ref_lag_grid_position_mismatch_field,
@@ -516,24 +507,24 @@ def test_mpi_compute_lag_grid_forcing_field(
         virtual_boundary_stiffness_coeff=ref_virtual_boundary_forcing.virtual_boundary_stiffness_coeff,
         virtual_boundary_damping_coeff=ref_virtual_boundary_forcing.virtual_boundary_damping_coeff,
     )
-
-    mpi_virtual_boundary_forcing.lag_grid_position_mismatch_field = (
-        ref_lag_grid_position_mismatch_field[..., mask].copy()
+    # Compute solution field
+    mpi_virtual_boundary_forcing.local_lag_grid_position_mismatch_field = (
+        ref_lag_grid_position_mismatch_field[..., mask]
     )
-    mpi_virtual_boundary_forcing.lag_grid_velocity_mismatch_field = (
-        ref_lag_grid_velocity_mismatch_field[..., mask].copy()
+    mpi_virtual_boundary_forcing.local_lag_grid_velocity_mismatch_field = (
+        ref_lag_grid_velocity_mismatch_field[..., mask]
     )
     mpi_virtual_boundary_forcing.compute_lag_grid_forcing_field(
-        lag_grid_forcing_field=mpi_virtual_boundary_forcing.lag_grid_forcing_field,
-        lag_grid_position_mismatch_field=mpi_virtual_boundary_forcing.lag_grid_position_mismatch_field,
-        lag_grid_velocity_mismatch_field=mpi_virtual_boundary_forcing.lag_grid_velocity_mismatch_field,
+        lag_grid_forcing_field=mpi_virtual_boundary_forcing.local_lag_grid_forcing_field,
+        lag_grid_position_mismatch_field=mpi_virtual_boundary_forcing.local_lag_grid_position_mismatch_field,
+        lag_grid_velocity_mismatch_field=mpi_virtual_boundary_forcing.local_lag_grid_velocity_mismatch_field,
         virtual_boundary_stiffness_coeff=mpi_virtual_boundary_forcing.virtual_boundary_stiffness_coeff,
         virtual_boundary_damping_coeff=mpi_virtual_boundary_forcing.virtual_boundary_damping_coeff,
     )
-
+    # Compare and test solution field
     np.testing.assert_allclose(
         ref_lag_grid_forcing_field[..., mask],
-        mpi_virtual_boundary_forcing.lag_grid_forcing_field,
+        mpi_virtual_boundary_forcing.local_lag_grid_forcing_field,
         atol=get_test_tol(precision),
     )
 
@@ -568,7 +559,7 @@ def test_mpi_compute_interaction_force_on_lag_grid(
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
         eul_grid_dx=ref_virtual_boundary_forcing.dx,
-        eul_grid_shift=ref_virtual_boundary_forcing.eul_grid_coord_shift,
+        eul_grid_coord_shift=ref_virtual_boundary_forcing.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
         master_rank=master_rank,
         real_t=ref_virtual_boundary_forcing.real_t,
@@ -579,8 +570,11 @@ def test_mpi_compute_interaction_force_on_lag_grid(
     )
     rank_address = mpi_lagrangian_field_communicator.rank_address
     mask = np.where(rank_address == mpi_lagrangian_field_communicator.rank)[0]
-    mpi_local_num_lag_nodes = mpi_lagrangian_field_communicator.local_num_lag_nodes
     # Initialize MPI virtual boundary forcing
+    if mpi_construct.rank == master_rank:
+        ref_global_lag_grid_position_field = ref_virtual_boundary_forcing.lag_positions
+    else:
+        ref_global_lag_grid_position_field = None
     mpi_virtual_boundary_forcing = VirtualBoundaryForcingMPI(
         mpi_construct=mpi_construct,
         ghost_size=ghost_size,
@@ -588,9 +582,9 @@ def test_mpi_compute_interaction_force_on_lag_grid(
         virtual_boundary_damping_coeff=ref_virtual_boundary_forcing.virtual_boundary_damping_coeff,
         grid_dim=ref_virtual_boundary_forcing.grid_dim,
         dx=ref_virtual_boundary_forcing.dx,
-        num_lag_nodes=mpi_local_num_lag_nodes,
         real_t=ref_virtual_boundary_forcing.real_t,
         start_time=ref_virtual_boundary_forcing.time,
+        global_lag_grid_position_field=ref_global_lag_grid_position_field,
     )
 
     # Field and ghost communicator for eul grid velocity field later
@@ -659,12 +653,16 @@ def test_mpi_compute_interaction_force_on_lag_grid(
     )
     mpi_ghost_exchange_communicator.exchange_finalise()
 
-    mpi_local_lag_grid_position_field = ref_lag_grid_position_field[..., mask].copy()
-    mpi_local_lag_grid_velocity_field = ref_lag_grid_velocity_field[..., mask].copy()
+    if mpi_construct.rank == master_rank:
+        global_ref_lag_grid_position_field = ref_lag_grid_position_field
+        global_ref_lag_grid_velocity_field = ref_lag_grid_velocity_field
+    else:
+        global_ref_lag_grid_position_field = None
+        global_ref_lag_grid_velocity_field = None
     mpi_virtual_boundary_forcing.compute_interaction_force_on_lag_grid(
-        eul_grid_velocity_field=mpi_local_eul_grid_velocity_field,
-        lag_grid_position_field=mpi_local_lag_grid_position_field,
-        lag_grid_velocity_field=mpi_local_lag_grid_velocity_field,
+        local_eul_grid_velocity_field=mpi_local_eul_grid_velocity_field,
+        global_lag_grid_position_field=global_ref_lag_grid_position_field,
+        global_lag_grid_velocity_field=global_ref_lag_grid_velocity_field,
     )
 
     ref_virtual_boundary_forcing.check_lag_grid_interaction_solution(
@@ -709,7 +707,7 @@ def test_mpi_compute_interaction_force_on_eul_and_lag_grid(
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
         eul_grid_dx=ref_virtual_boundary_forcing.dx,
-        eul_grid_shift=ref_virtual_boundary_forcing.eul_grid_coord_shift,
+        eul_grid_coord_shift=ref_virtual_boundary_forcing.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
         master_rank=master_rank,
         real_t=ref_virtual_boundary_forcing.real_t,
@@ -720,8 +718,11 @@ def test_mpi_compute_interaction_force_on_eul_and_lag_grid(
     )
     rank_address = mpi_lagrangian_field_communicator.rank_address
     mask = np.where(rank_address == mpi_lagrangian_field_communicator.rank)[0]
-    mpi_local_num_lag_nodes = mpi_lagrangian_field_communicator.local_num_lag_nodes
     # Initialize MPI virtual boundary forcing
+    if mpi_construct.rank == master_rank:
+        global_ref_lag_grid_position_field = ref_virtual_boundary_forcing.lag_positions
+    else:
+        global_ref_lag_grid_position_field = None
     mpi_virtual_boundary_forcing = VirtualBoundaryForcingMPI(
         mpi_construct=mpi_construct,
         ghost_size=ghost_size,
@@ -729,10 +730,10 @@ def test_mpi_compute_interaction_force_on_eul_and_lag_grid(
         virtual_boundary_damping_coeff=ref_virtual_boundary_forcing.virtual_boundary_damping_coeff,
         grid_dim=ref_virtual_boundary_forcing.grid_dim,
         dx=ref_virtual_boundary_forcing.dx,
-        num_lag_nodes=mpi_local_num_lag_nodes,
         real_t=ref_virtual_boundary_forcing.real_t,
         start_time=ref_virtual_boundary_forcing.time,
         enable_eul_grid_forcing_reset=enable_eul_grid_forcing_reset,
+        global_lag_grid_position_field=global_ref_lag_grid_position_field,
     )
 
     # Field and ghost communicator for eul grid velocity field later
@@ -766,7 +767,7 @@ def test_mpi_compute_interaction_force_on_eul_and_lag_grid(
     )
     ref_lag_grid_position_field = ref_virtual_boundary_forcing.lag_positions
     ref_eul_grid_forcing_field = np.zeros_like(ref_eul_grid_velocity_field)
-
+    # Compute reference solution
     ref_virtual_boundary_forcing.compute_interaction_force_on_eul_and_lag_grid(
         eul_grid_forcing_field=ref_eul_grid_forcing_field,
         eul_grid_velocity_field=ref_eul_grid_velocity_field,
@@ -804,13 +805,16 @@ def test_mpi_compute_interaction_force_on_eul_and_lag_grid(
     )
     mpi_ghost_exchange_communicator.exchange_finalise()
 
-    mpi_local_lag_grid_position_field = ref_lag_grid_position_field[..., mask].copy()
-    mpi_local_lag_grid_velocity_field = ref_lag_grid_velocity_field[..., mask].copy()
+    if mpi_construct.rank == master_rank:
+        global_ref_lag_grid_velocity_field = ref_lag_grid_velocity_field
+    else:
+        global_ref_lag_grid_velocity_field = None
+    # Compute solution field
     mpi_virtual_boundary_forcing.compute_interaction_force_on_eul_and_lag_grid(
-        eul_grid_forcing_field=mpi_local_eul_grid_forcing_field,
-        eul_grid_velocity_field=mpi_local_eul_grid_velocity_field,
-        lag_grid_position_field=mpi_local_lag_grid_position_field,
-        lag_grid_velocity_field=mpi_local_lag_grid_velocity_field,
+        local_eul_grid_forcing_field=mpi_local_eul_grid_forcing_field,
+        local_eul_grid_velocity_field=mpi_local_eul_grid_velocity_field,
+        global_lag_grid_position_field=global_ref_lag_grid_position_field,
+        global_lag_grid_velocity_field=global_ref_lag_grid_velocity_field,
     )
 
     # Check lag grid solution
@@ -867,7 +871,7 @@ def test_mpi_virtual_boundary_forcing_time_step(
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
         eul_grid_dx=ref_virtual_boundary_forcing.dx,
-        eul_grid_shift=ref_virtual_boundary_forcing.eul_grid_coord_shift,
+        eul_grid_coord_shift=ref_virtual_boundary_forcing.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
         master_rank=master_rank,
         real_t=ref_virtual_boundary_forcing.real_t,
@@ -878,8 +882,11 @@ def test_mpi_virtual_boundary_forcing_time_step(
     )
     rank_address = mpi_lagrangian_field_communicator.rank_address
     mask = np.where(rank_address == mpi_lagrangian_field_communicator.rank)[0]
-    mpi_local_num_lag_nodes = mpi_lagrangian_field_communicator.local_num_lag_nodes
     # Initialize MPI virtual boundary forcing
+    if mpi_construct.rank == master_rank:
+        global_ref_lag_grid_position_field = ref_virtual_boundary_forcing.lag_positions
+    else:
+        global_ref_lag_grid_position_field = None
     mpi_virtual_boundary_forcing = VirtualBoundaryForcingMPI(
         mpi_construct=mpi_construct,
         ghost_size=ghost_size,
@@ -887,9 +894,9 @@ def test_mpi_virtual_boundary_forcing_time_step(
         virtual_boundary_damping_coeff=ref_virtual_boundary_forcing.virtual_boundary_damping_coeff,
         grid_dim=ref_virtual_boundary_forcing.grid_dim,
         dx=ref_virtual_boundary_forcing.dx,
-        num_lag_nodes=mpi_local_num_lag_nodes,
         real_t=ref_virtual_boundary_forcing.real_t,
         start_time=ref_virtual_boundary_forcing.time,
+        global_lag_grid_position_field=global_ref_lag_grid_position_field,
     )
 
     # 3. Generate reference fields and test against reference solutions
@@ -911,27 +918,26 @@ def test_mpi_virtual_boundary_forcing_time_step(
         ref_lag_grid_velocity_mismatch_field, root=0
     )
     dt = ref_virtual_boundary_forcing.real_t(0.1)
+    # Compute reference solution after making a copy for testing
     ref_virtual_boundary_forcing.lag_grid_position_mismatch_field = (
-        ref_lag_grid_position_mismatch_field
+        ref_lag_grid_position_mismatch_field.copy()
     )
     ref_virtual_boundary_forcing.lag_grid_velocity_mismatch_field = (
-        ref_lag_grid_velocity_mismatch_field
+        ref_lag_grid_velocity_mismatch_field.copy()
     )
     ref_virtual_boundary_forcing.time_step(dt=dt)
-
     # Compute mpi local solution
-    mpi_virtual_boundary_forcing.lag_grid_position_mismatch_field = (
-        ref_lag_grid_position_mismatch_field[..., mask].copy()
+    mpi_virtual_boundary_forcing.local_lag_grid_position_mismatch_field = (
+        ref_lag_grid_position_mismatch_field[..., mask]
     )
-    mpi_virtual_boundary_forcing.lag_grid_velocity_mismatcg_field = (
-        ref_lag_grid_velocity_mismatch_field[..., mask].copy()
+    mpi_virtual_boundary_forcing.local_lag_grid_velocity_mismatch_field = (
+        ref_lag_grid_velocity_mismatch_field[..., mask]
     )
     mpi_virtual_boundary_forcing.time_step(dt=dt)
-
-    # Check lag grid solution
+    # Compare and test solution fields
     np.testing.assert_allclose(
         ref_virtual_boundary_forcing.lag_grid_position_mismatch_field[..., mask],
-        mpi_virtual_boundary_forcing.lag_grid_position_mismatch_field,
+        mpi_virtual_boundary_forcing.local_lag_grid_position_mismatch_field,
         atol=get_test_tol(precision),
     )
     np.testing.assert_allclose(
