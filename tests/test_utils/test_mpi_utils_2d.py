@@ -15,9 +15,11 @@ from mpi4py import MPI
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
+@pytest.mark.parametrize("master_rank", [0, 1])
 def test_mpi_field_gather_scatter(
-    ghost_size, precision, rank_distribution, aspect_ratio
+    ghost_size, precision, rank_distribution, aspect_ratio, master_rank
 ):
+    print(ghost_size, precision, rank_distribution, aspect_ratio, master_rank)
     n_values = 32
     real_t = get_real_t(precision)
     mpi_construct = MPIConstruct2D(
@@ -27,7 +29,7 @@ def test_mpi_field_gather_scatter(
         rank_distribution=rank_distribution,
     )
     mpi_field_communicator = MPIFieldCommunicator2D(
-        ghost_size=ghost_size, mpi_construct=mpi_construct
+        ghost_size=ghost_size, mpi_construct=mpi_construct, master_rank=master_rank
     )
     global_field = np.random.rand(
         mpi_construct.global_grid_size[0], mpi_construct.global_grid_size[1]
@@ -49,7 +51,7 @@ def test_mpi_field_gather_scatter(
     ).astype(real_t)
     # reconstruct global field from local ranks
     gather_local_field(global_field, local_field, mpi_construct)
-    if mpi_construct.rank == 0:
+    if mpi_construct.rank == master_rank:
         np.testing.assert_allclose(ref_global_field, global_field)
 
 
