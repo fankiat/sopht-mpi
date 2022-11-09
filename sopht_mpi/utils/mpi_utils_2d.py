@@ -473,20 +473,29 @@ class MPIPlotter2D:
     """
     Minimal plotting tool for MPI 2D flow simulator.
     Currently supports only contourf functionality.
-    TODO: maybe we will implement line plot functions if needed
 
     Warning: Use this only for quick visualization and debugging on problem with
     small grid size (preferably <256). Performance may suffer when problem size
     becomes large, since all plotting is gathered and done on a single rank.
+
+    Note: For the most part, master_rank is default 0 and does not affect plotting,
+    unless global lagrangian grids that are present only in specific rank, then master
+    rank here needs to be consistent with the master rank holding all the lagragngian
+    grid points.
     """
 
-    def __init__(self, mpi_construct, ghost_size, fig_aspect_ratio=1.0):
+    def __init__(
+        self, mpi_construct, ghost_size, fig_aspect_ratio=1.0, title="", master_rank=0
+    ):
         self.mpi_construct = mpi_construct
         self.ghost_size = ghost_size
+        self.master_rank = master_rank
 
         # Initialize communicator for gather
         self.mpi_field_comm = MPIFieldCommunicator2D(
-            ghost_size=self.ghost_size, mpi_construct=self.mpi_construct
+            ghost_size=self.ghost_size,
+            mpi_construct=self.mpi_construct,
+            master_rank=self.master_rank,
         )
         self.gather_local_field = self.mpi_field_comm.gather_local_field
 
@@ -498,20 +507,20 @@ class MPIPlotter2D:
         self.y_grid_io = np.zeros_like(self.field_io)
 
         # Initialize figure
-        self.create_figure_and_axes(fig_aspect_ratio)
+        self.create_figure_and_axes(fig_aspect_ratio, title=title)
 
     @staticmethod
-    def execute_only_on_root(func):
+    def execute_only_on_master(func):
         def wrapper(*args, **kwargs):
             self = args[0]
-            if self.mpi_construct.rank == 0:
+            if self.mpi_construct.rank == self.master_rank:
                 func(*args, **kwargs)
             else:
                 pass
 
         return wrapper
 
-    def create_figure_and_axes(self, fig_aspect_ratio):
+    def create_figure_and_axes(self, fig_aspect_ratio, title=""):
         """Creates figure and axes for plotting contour fields (on all ranks)"""
         plt.style.use("seaborn")
         self.fig = plt.figure(frameon=True, dpi=150)
@@ -520,13 +529,13 @@ class MPIPlotter2D:
             pass
         else:
             self.ax.set_aspect(aspect=fig_aspect_ratio)
+        self.ax.set_title(title)
 
     def contourf(
         self,
         x_grid,
         y_grid,
         field,
-        title="",
         levels=np.linspace(0, 1, 50),
         cmap=lab_cmap,
         *args,
@@ -535,17 +544,16 @@ class MPIPlotter2D:
         """
         Plot contour fields.
 
-        Note: this runs on every rank, but since we gather the field to rank 0,
-        only rank 0 contains useful information. This will be saved later when
-        `save_and_clear_fig(...)` is called, which runs only on rank 0. The
-        plotting here is done on all rank since they have to wait for rank 0
+        Note: this runs on every rank, but since we gather the field to master rank,
+        only master rank contains useful information. This will be saved later when
+        `save_and_clear_fig(...)` is called, which runs only on master_rank. The
+        plotting here is done on all rank since they have to wait for master_rank
         anyway, and gather field needs to be called on all rank otherwise we run
         into deadlock situations.
         """
         self.gather_local_field(self.field_io, field, self.mpi_construct)
         self.gather_local_field(self.x_grid_io, x_grid, self.mpi_construct)
         self.gather_local_field(self.y_grid_io, y_grid, self.mpi_construct)
-        self.ax.set_title(title)
         contourf_obj = self.ax.contourf(
             self.x_grid_io,
             self.y_grid_io,
@@ -557,9 +565,23 @@ class MPIPlotter2D:
         )
         self.cbar = self.fig.colorbar(mappable=contourf_obj, ax=self.ax)
 
-    @execute_only_on_root
+    @execute_only_on_master
+    def scatter(self, x, y, *args, **kwargs):
+        """
+        Plot scatter (only on master).
+        """
+        self.ax.scatter(x, y, *args, **kwargs)
+
+    @execute_only_on_master
+    def plot(self, x, y, *args, **kwargs):
+        """
+        Plot line (only on master).
+        """
+        self.ax.plot(x, y, *args, **kwargs)
+
+    @execute_only_on_master
     def savefig(self, file_name, *args, **kwargs):
-        """Save figure (only on root)"""
+        """Save figure (only on master)"""
         self.fig.savefig(
             file_name,
             bbox_inches="tight",
