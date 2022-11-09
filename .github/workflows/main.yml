@@ -18,13 +18,13 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.10"]
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest] #, macos-latest]
         mpi: ['openmpi']
         include:
           - os: ubuntu-latest
             path: ~/.cache/pip
-          - os: macos-latest
-            path: ~/Library/Caches/pip
+          # - os: macos-latest
+          #   path: ~/Library/Caches/pip
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -38,10 +38,10 @@ jobs:
         run: |
           sudo apt update
           sudo apt install libhdf5-mpi-dev
-      - name: Install hdf5-mpi on macos
-        if: startsWith(matrix.os, 'macos')
-        run: |
-          brew install hdf5-mpi
+      # - name: Install hdf5-mpi on macos
+      #   if: startsWith(matrix.os, 'macos')
+      #   run: |
+      #     brew install hdf5-mpi
       # setup conda and install related dependencies
       - name: setup-conda
         uses: s-weigand/setup-conda@v1
