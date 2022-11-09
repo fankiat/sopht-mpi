@@ -364,6 +364,13 @@ class VirtualBoundaryForcingMPI:
             virtual_boundary_damping_coeff=self.virtual_boundary_damping_coeff,
         )
 
+        # Done computing forces on lag grid
+        # Update global lag grid forcing field based on updated local lag grid forcing
+        self.mpi_lagrangian_field_communicator.gather_local_field(
+            global_lag_field=self.global_lag_grid_forcing_field,
+            local_lag_field=self.local_lag_grid_forcing_field,
+        )
+
     def compute_interaction_force_on_eul_and_lag_grid(
         self,
         local_eul_grid_forcing_field,
