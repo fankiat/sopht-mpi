@@ -216,7 +216,7 @@ class MPIFieldCommunicator2D:
     metadata we determine the properties here.
     """
 
-    def __init__(self, ghost_size, mpi_construct):
+    def __init__(self, ghost_size, mpi_construct, master_rank=0):
         # Use ghost_size to define indices for inner cell (actual data without
         # halo)
         if ghost_size < 0 and not isinstance(ghost_size, int):
@@ -233,8 +233,10 @@ class MPIFieldCommunicator2D:
             ) * mpi_construct.grid_dim
         # Datatypes for subdomain used in gather and scatter
         field_sub_size = mpi_construct.local_grid_size
-        # Rank 0 uses datatype for receiving sub arrays in full array
-        if mpi_construct.rank == 0:
+        # master rank uses datatype for receiving sub arrays in full array
+        self.master_rank = master_rank
+        self.slave_ranks = set(np.arange(mpi_construct.size)) - set([self.master_rank])
+        if mpi_construct.rank == self.master_rank:
             field_size = mpi_construct.global_grid_size
             self.sub_array_type = mpi_construct.dtype_generator.Create_subarray(
                 sizes=field_size,
@@ -253,16 +255,24 @@ class MPIFieldCommunicator2D:
 
     def gather_local_field(self, global_field, local_field, mpi_construct):
         """
-        Gather local fields from all ranks and return a global field in rank 0
+        Gather local fields from all ranks and return a global field in master rank
         """
-        if mpi_construct.rank == 0:
-            # Fill in field values for rank 0 on the edge
-            global_field[
-                : mpi_construct.local_grid_size[0],
-                : mpi_construct.local_grid_size[1],
-            ] = local_field[self.inner_idx]
+        if mpi_construct.rank == self.master_rank:
+            # Fill in field values for master rank
+            coords = mpi_construct.grid.Get_coords(self.master_rank)
+            local_chunk_idx = (
+                slice(
+                    coords[0] * mpi_construct.local_grid_size[0],
+                    (coords[0] + 1) * mpi_construct.local_grid_size[0],
+                ),
+                slice(
+                    coords[1] * mpi_construct.local_grid_size[1],
+                    (coords[1] + 1) * mpi_construct.local_grid_size[1],
+                ),
+            )
+            global_field[local_chunk_idx] = local_field[self.inner_idx]
             # Receiving from other ranks as contiguous array
-            for rank_idx in range(1, mpi_construct.size):
+            for rank_idx in self.slave_ranks:
                 coords = mpi_construct.grid.Get_coords(rank_idx)
                 idx = np.ravel_multi_index(
                     coords * mpi_construct.local_grid_size,
@@ -274,21 +284,31 @@ class MPIFieldCommunicator2D:
                 )
         else:
             # Sending as contiguous chunks
-            mpi_construct.grid.Send((local_field, 1, self.sub_array_type), dest=0)
+            mpi_construct.grid.Send(
+                (local_field, 1, self.sub_array_type), dest=self.master_rank
+            )
 
     def scatter_global_field(self, local_field, global_field, mpi_construct):
         """
-        Scatter a global field in rank 0 to corresponding ranks into local
+        Scatter a global field in master rank to corresponding ranks into local
         fields
         """
-        # Fill in field values for rank 0 on the edge
-        if mpi_construct.rank == 0:
-            local_field[self.inner_idx] = global_field[
-                : mpi_construct.local_grid_size[0],
-                : mpi_construct.local_grid_size[1],
-            ]
+        # Fill in field values for master rank on the edge
+        if mpi_construct.rank == self.master_rank:
+            coords = mpi_construct.grid.Get_coords(self.master_rank)
+            local_chunk_idx = (
+                slice(
+                    coords[0] * mpi_construct.local_grid_size[0],
+                    (coords[0] + 1) * mpi_construct.local_grid_size[0],
+                ),
+                slice(
+                    coords[1] * mpi_construct.local_grid_size[1],
+                    (coords[1] + 1) * mpi_construct.local_grid_size[1],
+                ),
+            )
+            local_field[self.inner_idx] = global_field[local_chunk_idx]
             # Sending to other ranks as contiguous array
-            for rank_idx in range(1, mpi_construct.size):
+            for rank_idx in self.slave_ranks:
                 coords = mpi_construct.grid.Get_coords(rank_idx)
                 idx = np.ravel_multi_index(
                     coords * mpi_construct.local_grid_size,
@@ -299,8 +319,10 @@ class MPIFieldCommunicator2D:
                     dest=rank_idx,
                 )
         else:
-            # Receiving from rank 0 as contiguous array
-            mpi_construct.grid.Recv((local_field, 1, self.sub_array_type), source=0)
+            # Receiving from master_rank as contiguous array
+            mpi_construct.grid.Recv(
+                (local_field, 1, self.sub_array_type), source=self.master_rank
+            )
 
 
 class MPILagrangianFieldCommunicator2D:
@@ -451,20 +473,29 @@ class MPIPlotter2D:
     """
     Minimal plotting tool for MPI 2D flow simulator.
     Currently supports only contourf functionality.
-    TODO: maybe we will implement line plot functions if needed
 
     Warning: Use this only for quick visualization and debugging on problem with
     small grid size (preferably <256). Performance may suffer when problem size
     becomes large, since all plotting is gathered and done on a single rank.
+
+    Note: For the most part, master_rank is default 0 and does not affect plotting,
+    unless global lagrangian grids that are present only in specific rank, then master
+    rank here needs to be consistent with the master rank holding all the lagragngian
+    grid points.
     """
 
-    def __init__(self, mpi_construct, ghost_size, fig_aspect_ratio=1.0):
+    def __init__(
+        self, mpi_construct, ghost_size, fig_aspect_ratio=1.0, title="", master_rank=0
+    ):
         self.mpi_construct = mpi_construct
         self.ghost_size = ghost_size
+        self.master_rank = master_rank
 
         # Initialize communicator for gather
         self.mpi_field_comm = MPIFieldCommunicator2D(
-            ghost_size=self.ghost_size, mpi_construct=self.mpi_construct
+            ghost_size=self.ghost_size,
+            mpi_construct=self.mpi_construct,
+            master_rank=self.master_rank,
         )
         self.gather_local_field = self.mpi_field_comm.gather_local_field
 
@@ -476,20 +507,20 @@ class MPIPlotter2D:
         self.y_grid_io = np.zeros_like(self.field_io)
 
         # Initialize figure
-        self.create_figure_and_axes(fig_aspect_ratio)
+        self.create_figure_and_axes(fig_aspect_ratio, title=title)
 
     @staticmethod
-    def execute_only_on_root(func):
+    def execute_only_on_master(func):
         def wrapper(*args, **kwargs):
             self = args[0]
-            if self.mpi_construct.rank == 0:
+            if self.mpi_construct.rank == self.master_rank:
                 func(*args, **kwargs)
             else:
                 pass
 
         return wrapper
 
-    def create_figure_and_axes(self, fig_aspect_ratio):
+    def create_figure_and_axes(self, fig_aspect_ratio, title=""):
         """Creates figure and axes for plotting contour fields (on all ranks)"""
         plt.style.use("seaborn")
         self.fig = plt.figure(frameon=True, dpi=150)
@@ -498,13 +529,13 @@ class MPIPlotter2D:
             pass
         else:
             self.ax.set_aspect(aspect=fig_aspect_ratio)
+        self.ax.set_title(title)
 
     def contourf(
         self,
         x_grid,
         y_grid,
         field,
-        title="",
         levels=np.linspace(0, 1, 50),
         cmap=lab_cmap,
         *args,
@@ -513,17 +544,16 @@ class MPIPlotter2D:
         """
         Plot contour fields.
 
-        Note: this runs on every rank, but since we gather the field to rank 0,
-        only rank 0 contains useful information. This will be saved later when
-        `save_and_clear_fig(...)` is called, which runs only on rank 0. The
-        plotting here is done on all rank since they have to wait for rank 0
+        Note: this runs on every rank, but since we gather the field to master rank,
+        only master rank contains useful information. This will be saved later when
+        `save_and_clear_fig(...)` is called, which runs only on master_rank. The
+        plotting here is done on all rank since they have to wait for master_rank
         anyway, and gather field needs to be called on all rank otherwise we run
         into deadlock situations.
         """
         self.gather_local_field(self.field_io, field, self.mpi_construct)
         self.gather_local_field(self.x_grid_io, x_grid, self.mpi_construct)
         self.gather_local_field(self.y_grid_io, y_grid, self.mpi_construct)
-        self.ax.set_title(title)
         contourf_obj = self.ax.contourf(
             self.x_grid_io,
             self.y_grid_io,
@@ -535,9 +565,23 @@ class MPIPlotter2D:
         )
         self.cbar = self.fig.colorbar(mappable=contourf_obj, ax=self.ax)
 
-    @execute_only_on_root
+    @execute_only_on_master
+    def scatter(self, x, y, *args, **kwargs):
+        """
+        Plot scatter (only on master).
+        """
+        self.ax.scatter(x, y, *args, **kwargs)
+
+    @execute_only_on_master
+    def plot(self, x, y, *args, **kwargs):
+        """
+        Plot line (only on master).
+        """
+        self.ax.plot(x, y, *args, **kwargs)
+
+    @execute_only_on_master
     def savefig(self, file_name, *args, **kwargs):
-        """Save figure (only on root)"""
+        """Save figure (only on master)"""
         self.fig.savefig(
             file_name,
             bbox_inches="tight",
