@@ -314,8 +314,6 @@ class MPILagrangianFieldCommunicator2D:
     - Then each initialized virtual boundary instance will have its own communicator
     - Virtual boundary forcing can then call synchronization utils from this class
       and proceed with calculating quantities related to lag nodes in respective ranks
-    - elastica simulator lives only on one rank? what do we do when we have more than 1?
-    -
     """
 
     def __init__(
