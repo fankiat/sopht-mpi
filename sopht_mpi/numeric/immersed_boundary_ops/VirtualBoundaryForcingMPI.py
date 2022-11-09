@@ -328,58 +328,38 @@ class VirtualBoundaryForcingMPI:
         # Start working on the local chunks of data
         # 1. Find Eulerian grid local support of the Lagrangian grid
         self.eul_lag_grid_communicator.local_eulerian_grid_support_of_lagrangian_grid_kernel(
-            local_eul_grid_support_of_lag_grid=self.local_local_eul_grid_support_of_lag_grid[
-                ..., : self.local_num_lag_nodes
-            ],
-            nearest_eul_grid_index_to_lag_grid=self.local_nearest_eul_grid_index_to_lag_grid[
-                ..., : self.local_num_lag_nodes
-            ],
+            local_eul_grid_support_of_lag_grid=self.local_local_eul_grid_support_of_lag_grid,
+            nearest_eul_grid_index_to_lag_grid=self.local_nearest_eul_grid_index_to_lag_grid,
             lag_positions=self.local_lag_grid_position_field,
         )
 
         # 2. Compute interpolation weights based on local Eulerian grid support
         self.eul_lag_grid_communicator.interpolation_weights_kernel(
-            interp_weights=self.local_interp_weights[..., : self.local_num_lag_nodes],
-            local_eul_grid_support_of_lag_grid=self.local_local_eul_grid_support_of_lag_grid[
-                ..., : self.local_num_lag_nodes
-            ],
+            interp_weights=self.local_interp_weights,
+            local_eul_grid_support_of_lag_grid=self.local_local_eul_grid_support_of_lag_grid,
         )
 
         # 3. Interpolate Eulerian flow velocity onto the Lagrangian grid
         self.eul_lag_grid_communicator.eulerian_to_lagrangian_grid_interpolation_kernel(
-            lag_grid_field=self.local_lag_grid_flow_velocity_field[
-                ..., : self.local_num_lag_nodes
-            ],
+            lag_grid_field=self.local_lag_grid_flow_velocity_field,
             eul_grid_field=local_eul_grid_velocity_field,
-            interp_weights=self.local_interp_weights[..., : self.local_num_lag_nodes],
-            nearest_eul_grid_index_to_lag_grid=self.local_nearest_eul_grid_index_to_lag_grid[
-                ..., : self.local_num_lag_nodes
-            ],
+            interp_weights=self.local_interp_weights,
+            nearest_eul_grid_index_to_lag_grid=self.local_nearest_eul_grid_index_to_lag_grid,
         )
 
         # 4. Compute velocity mismatch between flow and body on Lagrangian grid
         self.compute_lag_grid_velocity_mismatch_field(
-            lag_grid_velocity_mismatch_field=self.local_lag_grid_velocity_mismatch_field[
-                ..., : self.local_num_lag_nodes
-            ],
-            lag_grid_flow_velocity_field=self.local_lag_grid_flow_velocity_field[
-                ..., : self.local_num_lag_nodes
-            ],
+            lag_grid_velocity_mismatch_field=self.local_lag_grid_velocity_mismatch_field,
+            lag_grid_flow_velocity_field=self.local_lag_grid_flow_velocity_field,
             lag_grid_body_velocity_field=self.local_lag_grid_velocity_field,
         )
 
         # 5. Compute penalty force using virtual boundary forcing formulation
         # on Lagrangian grid
         self.compute_lag_grid_forcing_field(
-            lag_grid_forcing_field=self.local_lag_grid_forcing_field[
-                ..., : self.local_num_lag_nodes
-            ],
-            lag_grid_position_mismatch_field=self.local_lag_grid_position_mismatch_field[
-                ..., : self.local_num_lag_nodes
-            ],
-            lag_grid_velocity_mismatch_field=self.local_lag_grid_velocity_mismatch_field[
-                ..., : self.local_num_lag_nodes
-            ],
+            lag_grid_forcing_field=self.local_lag_grid_forcing_field,
+            lag_grid_position_mismatch_field=self.local_lag_grid_position_mismatch_field,
+            lag_grid_velocity_mismatch_field=self.local_lag_grid_velocity_mismatch_field,
             virtual_boundary_stiffness_coeff=self.virtual_boundary_stiffness_coeff,
             virtual_boundary_damping_coeff=self.virtual_boundary_damping_coeff,
         )
