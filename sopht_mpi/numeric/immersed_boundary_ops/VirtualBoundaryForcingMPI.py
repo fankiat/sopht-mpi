@@ -164,6 +164,9 @@ class VirtualBoundaryForcingMPI:
         self.global_lag_grid_velocity_mismatch_field = np.zeros_like(
             self.global_lag_grid_position_mismatch_field
         )
+        self.global_lag_grid_forcing_field = np.zeros_like(
+            self.global_lag_grid_position_mismatch_field
+        )
 
     def _init_local_buffers(self, num_lag_nodes):
         self.local_nearest_eul_grid_index_to_lag_grid = np.empty(
