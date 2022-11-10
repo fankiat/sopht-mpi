@@ -1,5 +1,4 @@
 # TODO: Add tests for with grid dim parameter
-from cgitb import enable
 import numpy as np
 import pytest
 from sopht.numeric.immersed_boundary_ops import VirtualBoundaryForcing
