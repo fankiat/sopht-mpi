@@ -208,15 +208,11 @@ class VirtualBoundaryForcingMPI:
         # This needs to be done before remapping.
         self.mpi_lagrangian_field_communicator.gather_local_field(
             global_lag_field=self.global_lag_grid_position_mismatch_field,
-            local_lag_field=self.local_lag_grid_position_mismatch_field[
-                ..., : self.local_num_lag_nodes
-            ],
+            local_lag_field=self.local_lag_grid_position_mismatch_field,
         )
         self.mpi_lagrangian_field_communicator.gather_local_field(
             global_lag_field=self.global_lag_grid_velocity_mismatch_field,
-            local_lag_field=self.local_lag_grid_velocity_mismatch_field[
-                ..., : self.local_num_lag_nodes
-            ],
+            local_lag_field=self.local_lag_grid_velocity_mismatch_field,
         )
         # Re-map the lagrangian nodes
         self.mpi_lagrangian_field_communicator.map_lagrangian_nodes_based_on_position(
@@ -389,13 +385,9 @@ class VirtualBoundaryForcingMPI:
         # 2. Interpolate penalty forcing from Lagrangian onto the Eulerian grid
         self.eul_lag_grid_communicator.lagrangian_to_eulerian_grid_interpolation_kernel(
             eul_grid_field=local_eul_grid_forcing_field,
-            lag_grid_field=self.local_lag_grid_forcing_field[
-                ..., : self.local_num_lag_nodes
-            ],
-            interp_weights=self.local_interp_weights[..., : self.local_num_lag_nodes],
-            nearest_eul_grid_index_to_lag_grid=self.local_nearest_eul_grid_index_to_lag_grid[
-                ..., : self.local_num_lag_nodes
-            ],
+            lag_grid_field=self.local_lag_grid_forcing_field,
+            interp_weights=self.local_interp_weights,
+            nearest_eul_grid_index_to_lag_grid=self.local_nearest_eul_grid_index_to_lag_grid,
         )
 
     def compute_interaction_force_on_eul_and_lag_grid_with_eul_grid_forcing_reset(
@@ -422,12 +414,8 @@ class VirtualBoundaryForcingMPI:
     def time_step(self, dt):
         """Virtual boundary forcing time step, updates grid deviation."""
         self.update_lag_grid_position_mismatch_field_via_euler_forward(
-            lag_grid_position_mismatch_field=self.local_lag_grid_position_mismatch_field[
-                ..., : self.local_num_lag_nodes
-            ],
-            lag_grid_velocity_mismatch_field=self.local_lag_grid_velocity_mismatch_field[
-                ..., : self.local_num_lag_nodes
-            ],
+            lag_grid_position_mismatch_field=self.local_lag_grid_position_mismatch_field,
+            lag_grid_velocity_mismatch_field=self.local_lag_grid_velocity_mismatch_field,
             dt=dt,
         )
         self.time += dt
