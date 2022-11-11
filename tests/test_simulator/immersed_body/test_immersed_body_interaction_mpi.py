@@ -7,7 +7,6 @@ from sopht_mpi.utils import MPIConstruct2D, MPIGhostCommunicator2D
 from tests.test_simulator.immersed_body.rigid_body.test_rigid_body_forcing_grids import (
     mock_2d_cylinder,
 )
-import elastica as ea
 
 
 def mock_2d_cylinder_flow_interactor(
