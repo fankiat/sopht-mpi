@@ -295,11 +295,15 @@ class UnboundedFlowSimulator2D:
                 )
                 + get_test_tol(precision)
             ),
-            0.9
-            * self.dx**2
-            / (2 * self.grid_dim)
-            / (self.kinematic_viscosity + get_test_tol(precision)),
+            0.9 * self.dx**2 / (2 * self.grid_dim) / (self.kinematic_viscosity),
         )
         # Get smallest timestep among all the ranks
         dt = self.mpi_construct.grid.allreduce(dt, op=MPI.MIN)
         return dt * dt_prefac
+
+    def get_max_vorticity(self):
+        """Compute maximum vorticity"""
+        gs = self.ghost_size
+        max_vort_local = np.amax(self.vorticity_field[gs:-gs, gs:-gs])
+        max_vort = self.mpi_construct.grid.allreduce(max_vort_local, op=MPI.MAX)
+        return max_vort
