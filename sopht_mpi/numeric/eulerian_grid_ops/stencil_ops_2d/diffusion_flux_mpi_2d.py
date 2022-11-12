@@ -11,7 +11,9 @@ def gen_diffusion_flux_pyst_mpi_kernel_2d(
     # Note currently I'm generating these for arbit size arrays, we ca optimise this
     # more by generating fixed size for the interior stencil and arbit size for
     # boundary crunching
-    diffusion_flux_pyst_kernel = gen_diffusion_flux_pyst_kernel_2d(real_t=real_t)
+    diffusion_flux_pyst_kernel = gen_diffusion_flux_pyst_kernel_2d(
+        real_t=real_t, reset_ghost_zone=False
+    )
     kernel_support = 1
     # define this here so that ghost size and kernel support is checked during
     # generation phase itself

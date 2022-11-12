@@ -45,13 +45,13 @@ def gen_penalise_field_boundary_pyst_mpi_kernel_2d(
 
         x_front_boundary_slice = ps.make_slice[:, : (width + ghost_size)]
         x_front_boundary_kernel_config = get_pyst_kernel_config(
-            pyst_dtype=real_t,
+            real_t=real_t,
             num_threads=False,
             iteration_slice=x_front_boundary_slice,
         )
         x_back_boundary_slice = ps.make_slice[:, -(width + ghost_size) :]
         x_back_boundary_kernel_config = get_pyst_kernel_config(
-            pyst_dtype=real_t,
+            real_t=real_t,
             num_threads=False,
             iteration_slice=x_back_boundary_slice,
         )
@@ -86,13 +86,13 @@ def gen_penalise_field_boundary_pyst_mpi_kernel_2d(
 
         y_front_boundary_slice = ps.make_slice[: (ghost_size + width), :]
         y_front_boundary_kernel_config = get_pyst_kernel_config(
-            pyst_dtype=real_t,
+            real_t=real_t,
             num_threads=False,
             iteration_slice=y_front_boundary_slice,
         )
         y_back_boundary_slice = ps.make_slice[-(ghost_size + width) :, :]
         y_back_boundary_kernel_config = get_pyst_kernel_config(
-            pyst_dtype=real_t,
+            real_t=real_t,
             num_threads=False,
             iteration_slice=y_back_boundary_slice,
         )
