@@ -47,6 +47,9 @@ class ImmersedBodyFlowInteractionMPI(VirtualBoundaryForcingMPI):
         # check relative resolutions of the Lagrangian and Eulerian grids
         log = logging.getLogger()
         max_lag_grid_dx = self.forcing_grid.get_maximum_lagrangian_grid_spacing()
+        max_lag_grid_dx = mpi_construct.grid.bcast(
+            max_lag_grid_dx, root=self.master_rank
+        )
         grid_type = type(self.forcing_grid).__name__
         # TODO: implement with logger when available
         if mpi_construct.rank == self.master_rank:
@@ -79,6 +82,11 @@ class ImmersedBodyFlowInteractionMPI(VirtualBoundaryForcingMPI):
                     "\ngrid of the flow."
                 )
             log.warning("==========================================================")
+
+        # rescale the virtual boundary coeffs by grid spacings
+        # (based on previous penalty immersed boundary method works)
+        virtual_boundary_stiffness_coeff *= max_lag_grid_dx ** (grid_dim - 1)
+        virtual_boundary_damping_coeff *= max_lag_grid_dx ** (grid_dim - 1)
 
         # initialising super class
         super().__init__(
