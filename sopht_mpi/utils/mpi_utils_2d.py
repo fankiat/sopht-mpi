@@ -595,3 +595,4 @@ class MPIPlotter2D:
         self.ax.cla()
         if self.cbar is not None:
             self.cbar.remove()
+            self.cbar = None
