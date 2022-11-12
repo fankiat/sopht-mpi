@@ -405,24 +405,6 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
-name = "pyelastica"
-version = "0.3.0"
-description = "Elastica is a software to simulate the dynamics of filaments that, at every cross-section, can undergo all six possible modes of deformation, allowing the filament to bend, twist, stretch and shear, while interacting with complex environments via muscular activity, surface contact, friction and hydrodynamics."
-category = "main"
-optional = false
-python-versions = ">=3.7,<3.11"
-
-[package.dependencies]
-numba = ">=0.55.0,<0.56.0"
-numpy = ">=1.19.2,<2.0.0"
-scipy = ">=1.5.2,<2.0.0"
-tqdm = ">=4.61.1,<5.0.0"
-
-[package.extras]
-docs = ["Sphinx[docs] (>=4.4.0,<5.0.0)", "docutils[docs] (>=0.17.1,<0.18.0)", "myst-parser[docs] (>=0.17.2,<0.18.0)", "numpydoc[docs] (>=1.3.1,<2.0.0)", "readthedocs-sphinx-search[docs] (>=0.1.1,<0.2.0)", "sphinx-autodoc-typehints[docs] (>=1.17.1,<2.0.0)", "sphinx-book-theme[docs] (>=0.3.2,<0.4.0)"]
-examples = ["cma[examples] (>=3.2.2,<4.0.0)", "matplotlib[examples] (>=3.3.2,<4.0.0)"]
-
-[[package]]
 name = "pyFFTW"
 version = "0.13.0"
 description = "A pythonic wrapper around FFTW, the FFT library, presenting a unified interface for all the supported transforms."
@@ -1192,10 +1174,7 @@ pycodestyle = [
     {file = "pycodestyle-2.8.0-py2.py3-none-any.whl", hash = "sha256:720f8b39dde8b293825e7ff02c475f3077124006db4f440dcbc9a20b76548a20"},
     {file = "pycodestyle-2.8.0.tar.gz", hash = "sha256:eddd5847ef438ea1c7870ca7eb78a9d47ce0cdb4851a5523949f2601d0cbbe7f"},
 ]
-pyelastica = [
-    {file = "pyelastica-0.3.0-py3-none-any.whl", hash = "sha256:954bf1cadd4eb1c453dd4fe9628ffe99ea253b8b36064e29f9b5a2842eb6e293"},
-    {file = "pyelastica-0.3.0.tar.gz", hash = "sha256:fe1a97c6577e54a204a643e7e4ef67b0b1f97f1c080eb324f1e2bf805f394341"},
-]
+
 pyFFTW = [
     {file = "pyFFTW-0.13.0-cp310-cp310-macosx_10_13_x86_64.whl", hash = "sha256:6500d354d7d6b6bddd975f912446d7e4925015f28ed130311e998dc2e78e529f"},
     {file = "pyFFTW-0.13.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ef4cb18150d3ece2f40ef702db79815c951ff2188e0e42417cd756ca7c59e107"},
@@ -1330,10 +1309,6 @@ toml = [
 tomli = [
     {file = "tomli-2.0.1-py3-none-any.whl", hash = "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc"},
     {file = "tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"},
-]
-tqdm = [
-    {file = "tqdm-4.64.1-py2.py3-none-any.whl", hash = "sha256:6fee160d6ffcd1b1c68c65f14c829c22832bc401726335ce92c52d395944a6a1"},
-    {file = "tqdm-4.64.1.tar.gz", hash = "sha256:5f4f682a004951c1b450bc753c710e9280c5746ce6ffedee253ddbcbf54cf1e4"},
 ]
 typing-extensions = [
     {file = "typing_extensions-4.4.0-py3-none-any.whl", hash = "sha256:16fa4864408f655d35ec496218b85f79b3437c829e93320c7c9215ccfd92489e"},
