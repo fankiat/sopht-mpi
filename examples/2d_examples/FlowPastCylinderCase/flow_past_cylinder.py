@@ -10,8 +10,8 @@ from sopht_mpi.utils.mpi_utils_2d import MPIPlotter2D
 def flow_past_cylinder_boundary_forcing_case(
     grid_size_x,
     grid_size_y,
-    coupling_stiffness=-1.5e2,
-    coupling_damping=-6e-2,
+    coupling_stiffness=-5e4,
+    coupling_damping=-20,
     rank_distribution=None,
     precision="single",
     save_diagnostic=False,
@@ -100,6 +100,7 @@ def flow_past_cylinder_boundary_forcing_case(
         # Plot solution
         if foto_timer >= foto_timer_limit or foto_timer == 0:
             foto_timer = 0.0
+            mpi_plotter.ax.set_title(f"Vorticity, time: {t / timescale:.2f}")
             mpi_plotter.contourf(
                 flow_sim.x_grid,
                 flow_sim.y_grid,
@@ -184,7 +185,7 @@ def flow_past_cylinder_boundary_forcing_case(
 
 if __name__ == "__main__":
     grid_size_x = 512
-    grid_size_y = 256
+    grid_size_y = grid_size_x // 2
     flow_past_cylinder_boundary_forcing_case(
         grid_size_x=grid_size_x,
         grid_size_y=grid_size_y,
