@@ -1,1 +1,1 @@
-from .grid_utils import *
+from .grid_utils import VectorField
