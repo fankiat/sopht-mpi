@@ -8,6 +8,7 @@ from sopht_mpi.numeric.eulerian_grid_ops import (
     UnboundedPoissonSolverMPI2D,
 )
 from sopht_mpi.utils import MPIConstruct2D, MPIGhostCommunicator2D
+from sopht_mpi.sopht_mpi_simulator.utils.grid_utils import VectorField
 from sopht.numeric.eulerian_grid_ops import (
     gen_add_fixed_val_pyst_kernel_2d,
     gen_set_fixed_val_pyst_kernel_2d,
@@ -123,7 +124,8 @@ class UnboundedFlowSimulator2D:
             subend_y - eul_grid_shift + ghost_grid_shift,
             local_grid_size_y + self.grid_dim * self.ghost_size,
         ).astype(self.real_t)
-        self.x_grid, self.y_grid = np.meshgrid(local_x, local_y)
+        # flipud so that position field are ordered according to VectorField convention
+        self.position_field = np.flipud(np.meshgrid(local_y, local_x, indexing="ij"))
 
         # TODO: (logger) refactor this after implementing a mpi-supported logger
         if self.mpi_construct.rank == 0:
@@ -139,9 +141,9 @@ class UnboundedFlowSimulator2D:
     def init_fields(self):
         """Initialize the necessary field arrays, i.e. vorticity, velocity, etc."""
         # Initialize flow field
-        self.primary_scalar_field = np.zeros_like(self.x_grid)
+        self.primary_scalar_field = np.zeros(self.grid_size, dtype=self.real_t)
         self.velocity_field = np.zeros(
-            (self.grid_dim, *self.x_grid.shape), dtype=self.real_t
+            (self.grid_dim, *self.grid_size), dtype=self.real_t
         )
         # we use the same buffer for advection, diffusion and velocity recovery
         self.buffer_scalar_field = np.zeros_like(self.primary_scalar_field)
@@ -188,8 +190,8 @@ class UnboundedFlowSimulator2D:
                 gen_penalise_field_boundary_pyst_mpi_kernel_2d(
                     width=self.penalty_zone_width,
                     dx=self.dx,
-                    x_grid_field=self.x_grid,
-                    y_grid_field=self.y_grid,
+                    x_grid_field=self.position_field[VectorField.x_axis_idx()],
+                    y_grid_field=self.position_field[VectorField.y_axis_idx()],
                     real_t=self.real_t,
                     mpi_construct=self.mpi_construct,
                     ghost_exchange_communicator=self.mpi_ghost_exchange_communicator,
