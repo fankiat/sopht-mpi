@@ -8,8 +8,7 @@ from sopht_mpi.utils.mpi_utils_2d import MPIPlotter2D
 
 
 def flow_past_cylinder_boundary_forcing_case(
-    grid_size_x,
-    grid_size_y,
+    grid_size,
     coupling_stiffness=-5e4,
     coupling_damping=-20,
     rank_distribution=None,
@@ -21,21 +20,22 @@ def flow_past_cylinder_boundary_forcing_case(
     boundary forcing.
     """
     real_t = get_real_t(precision)
+    x_axis_idx = sps.VectorField.x_axis_idx()
+    y_axis_idx = sps.VectorField.y_axis_idx()
+
     # Flow parameters
-    U_inf = real_t(1.0)
+    U_inf = 1.0
     velocity_free_stream = np.zeros(2)
     velocity_free_stream[0] = U_inf
-    cyl_radius = real_t(0.03)
+    cyl_radius = 0.03
     Re = 200
     nu = cyl_radius * U_inf / Re
-    CFL = real_t(0.1)
     x_range = 1.0
 
     flow_sim = sps.UnboundedFlowSimulator2D(
-        grid_size=(grid_size_y, grid_size_x),
+        grid_size=grid_size,
         x_range=x_range,
         kinematic_viscosity=nu,
-        CFL=CFL,
         flow_type="navier_stokes_with_forcing",
         with_free_stream_flow=True,
         real_t=real_t,
@@ -44,9 +44,9 @@ def flow_past_cylinder_boundary_forcing_case(
 
     # ==================FLOW-BODY COMMUNICATOR SETUP START======
     # Initialize fixed cylinder (elastica rigid body) with direction along Z
-    X_cm = real_t(2.5) * cyl_radius
-    Y_cm = real_t(0.5) * grid_size_y / grid_size_x
-    start = np.array([X_cm, Y_cm, 0.0])
+    x_cm = 2.5 * cyl_radius
+    y_cm = 0.5 * flow_sim.grid_size_y / flow_sim.grid_size_x
+    start = np.array([x_cm, y_cm, 0.0])
     direction = np.array([0.0, 0.0, 1.0])
     normal = np.array([1.0, 0.0, 0.0])
     base_length = 1.0
@@ -65,7 +65,7 @@ def flow_past_cylinder_boundary_forcing_case(
         virtual_boundary_stiffness_coeff=coupling_stiffness,
         virtual_boundary_damping_coeff=coupling_damping,
         dx=flow_sim.dx,
-        grid_dim=2,
+        grid_dim=flow_sim.grid_dim,
         real_t=real_t,
         moving_body=False,  # initialize as non-moving boundary
         master_rank=master_rank,
@@ -76,9 +76,9 @@ def flow_past_cylinder_boundary_forcing_case(
 
     # iterate
     timescale = cyl_radius / U_inf
-    t_end_hat = real_t(200.0)  # non-dimensional end time
+    t_end_hat = 200.0  # non-dimensional end time
     t_end = t_end_hat * timescale  # dimensional end time
-    t = real_t(0.0)
+    t = 0.0
     foto_timer = 0.0
     foto_timer_limit = t_end / 50
 
@@ -102,15 +102,15 @@ def flow_past_cylinder_boundary_forcing_case(
             foto_timer = 0.0
             mpi_plotter.ax.set_title(f"Vorticity, time: {t / timescale:.2f}")
             mpi_plotter.contourf(
-                flow_sim.x_grid,
-                flow_sim.y_grid,
+                flow_sim.position_field[x_axis_idx],
+                flow_sim.position_field[y_axis_idx],
                 flow_sim.vorticity_field,
                 levels=np.linspace(-25, 25, 100),
                 extend="both",
             )
             mpi_plotter.scatter(
-                cylinder_flow_interactor.forcing_grid.position_field[0],
-                cylinder_flow_interactor.forcing_grid.position_field[1],
+                cylinder_flow_interactor.forcing_grid.position_field[x_axis_idx],
+                cylinder_flow_interactor.forcing_grid.position_field[y_axis_idx],
                 s=4,
                 color="k",
             )
@@ -137,7 +137,7 @@ def flow_past_cylinder_boundary_forcing_case(
                 time.append(t / timescale)
                 # calculate drag
                 F = np.sum(
-                    cylinder_flow_interactor.global_lag_grid_forcing_field[0, ...]
+                    cylinder_flow_interactor.global_lag_grid_forcing_field[x_axis_idx, ...]
                 )
                 drag_coeff = np.fabs(F) / U_inf / U_inf / cyl_radius
                 drag_coeffs.append(drag_coeff)
@@ -187,8 +187,6 @@ if __name__ == "__main__":
     grid_size_x = 512
     grid_size_y = grid_size_x // 2
     flow_past_cylinder_boundary_forcing_case(
-        grid_size_x=grid_size_x,
-        grid_size_y=grid_size_y,
+        grid_size=(grid_size_y, grid_size_x),
         save_diagnostic=True,
-        precision="double",
     )
