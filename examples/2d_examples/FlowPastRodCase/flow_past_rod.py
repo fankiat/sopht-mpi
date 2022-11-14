@@ -321,6 +321,7 @@ if __name__ == "__main__":
     ):
         sim_grid_size_y = sim_grid_size_x // 2
         sim_grid_size = (sim_grid_size_y, sim_grid_size_x)
+        # TODO: replace with mpi logger when available, for now its echoed on every rank
         click.echo(f"Grid size: {sim_grid_size}")
         click.echo(f"Reynolds number: {reynolds}")
         click.echo(f"Non-dimensional bending stiffness: {nondim_bending_stiffness}")
