@@ -126,6 +126,7 @@ class UnboundedFlowSimulator2D:
         ).astype(self.real_t)
         # flipud so that position field are ordered according to VectorField convention
         self.position_field = np.flipud(np.meshgrid(local_y, local_x, indexing="ij"))
+        self.local_grid_size_with_ghost = local_grid_size + 2 * self.ghost_size
 
         # TODO: (logger) refactor this after implementing a mpi-supported logger
         if self.mpi_construct.rank == 0:
@@ -141,9 +142,11 @@ class UnboundedFlowSimulator2D:
     def init_fields(self):
         """Initialize the necessary field arrays, i.e. vorticity, velocity, etc."""
         # Initialize flow field
-        self.primary_scalar_field = np.zeros(self.grid_size, dtype=self.real_t)
+        self.primary_scalar_field = np.zeros(
+            self.local_grid_size_with_ghost, dtype=self.real_t
+        )
         self.velocity_field = np.zeros(
-            (self.grid_dim, *self.grid_size), dtype=self.real_t
+            (self.grid_dim, *self.local_grid_size_with_ghost), dtype=self.real_t
         )
         # we use the same buffer for advection, diffusion and velocity recovery
         self.buffer_scalar_field = np.zeros_like(self.primary_scalar_field)
