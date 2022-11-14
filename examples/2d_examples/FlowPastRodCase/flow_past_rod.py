@@ -9,8 +9,7 @@ from sopht_mpi.utils.mpi_utils_2d import MPIPlotter2D
 
 def flow_past_rod_case(
     non_dim_final_time,
-    grid_size_x,
-    grid_size_y,
+    grid_size,
     reynolds=200.0,
     nondim_bending_stiffness=1.5e-3,
     nondim_mass_ratio=1.5,
@@ -22,6 +21,10 @@ def flow_past_rod_case(
     precision="single",
 ):
     # =================COMMON SIMULATOR STUFF=======================
+    x_axis_idx = sps.VectorField.x_axis_idx()
+    y_axis_idx = sps.VectorField.y_axis_idx()
+    grid_size_y, grid_size_x = grid_size
+
     velocity_free_stream = 1.0
     rho_f = 1.0
     base_length = 1.0
@@ -71,7 +74,7 @@ def flow_past_rod_case(
         youngs_modulus,
         shear_modulus=youngs_modulus / (poisson_ratio + 1.0),
     )
-    tip_start_position = flow_past_rod.position_collection[:2, -1]
+    tip_start_position = flow_past_rod.position_collection[(x_axis_idx, y_axis_idx), -1]
     flow_past_sim.append(flow_past_rod)
     flow_past_sim.constrain(flow_past_rod).using(
         ea.OneEndFixedBC, constrained_position_idx=(0,), constrained_director_idx=(0,)
@@ -98,7 +101,7 @@ def flow_past_rod_case(
     # Re = velocity_free_stream * base_length / nu
     nu = base_length * velocity_free_stream / reynolds
     flow_sim = sps.UnboundedFlowSimulator2D(
-        grid_size=(grid_size_y, grid_size_x),
+        grid_size=grid_size,
         x_range=x_range,
         kinematic_viscosity=nu,
         flow_type="navier_stokes_with_forcing",
@@ -119,7 +122,7 @@ def flow_past_rod_case(
         virtual_boundary_stiffness_coeff=coupling_stiffness,
         virtual_boundary_damping_coeff=coupling_damping,
         dx=flow_sim.dx,
-        grid_dim=2,
+        grid_dim=flow_sim.grid_dim,
         real_t=real_t,
         forcing_grid_cls=sps.CosseratRodElementCentricForcingGrid,
         master_rank=master_rank,
@@ -165,15 +168,15 @@ def flow_past_rod_case(
             foto_timer = 0.0
             mpi_plotter.ax.set_title(f"Vorticity, time: {time / timescale:.2f}")
             mpi_plotter.contourf(
-                flow_sim.x_grid,
-                flow_sim.y_grid,
+                flow_sim.position_field[x_axis_idx],
+                flow_sim.position_field[y_axis_idx],
                 flow_sim.vorticity_field,
                 levels=np.linspace(-5, 5, 100),
                 extend="both",
             )
             mpi_plotter.plot(
-                cosserat_rod_flow_interactor.forcing_grid.position_field[0],
-                cosserat_rod_flow_interactor.forcing_grid.position_field[1],
+                cosserat_rod_flow_interactor.forcing_grid.position_field[x_axis_idx],
+                cosserat_rod_flow_interactor.forcing_grid.position_field[y_axis_idx],
                 linewidth=3,
                 color="k",
             )
@@ -196,12 +199,16 @@ def flow_past_rod_case(
                 )
 
         # save diagnostic data
-        if (data_timer >= data_timer_limit or data_timer == 0):
+        if data_timer >= data_timer_limit or data_timer == 0:
             data_timer = 0.0
             if flow_sim.mpi_construct.rank == master_rank:
                 tip_time.append(time / timescale)
                 tip_position.append(
-                    (flow_past_rod.position_collection[:2, -1] - tip_start_position) / base_length
+                    (
+                        flow_past_rod.position_collection[(x_axis_idx, y_axis_idx), -1]
+                        - tip_start_position
+                    )
+                    / base_length
                 )
 
         # compute timestep
@@ -246,12 +253,15 @@ def flow_past_rod_case(
         )
         os.system("rm -f snap*.png")
 
+        tip_time = np.array(tip_time)
+        tip_position = np.array(tip_position)
+
         np.savetxt(
             fname="rod_diagnostics_vs_time.csv",
             X=np.c_[
-                np.array(tip_time),
-                np.array(tip_position)[..., 0],
-                np.array(tip_position)[..., 1],
+                tip_time,
+                tip_position[..., x_axis_idx],
+                tip_position[..., y_axis_idx],
             ],
             header="time, tip_x, tip_y",
             delimiter=",",
@@ -260,8 +270,8 @@ def flow_past_rod_case(
         # Plot tip position
         mpi_plotter.ax.set_aspect(aspect="auto")
         mpi_plotter.ax.set_title("Rod tip deflection")
-        mpi_plotter.plot(np.array(tip_time), np.array(tip_position)[..., 0], label="X")
-        mpi_plotter.plot(np.array(tip_time), np.array(tip_position)[..., 1], label="Y")
+        mpi_plotter.plot(tip_time, tip_position[..., x_axis_idx], label="X")
+        mpi_plotter.plot(tip_time, tip_position[..., y_axis_idx], label="Y")
         mpi_plotter.ax.legend()
         mpi_plotter.ax.set_xlabel("Non-dimensional time")
         mpi_plotter.ax.set_ylabel("Tip deflection")
@@ -269,13 +279,11 @@ def flow_past_rod_case(
         mpi_plotter.clearfig()
 
 
-
 if __name__ == "__main__":
     grid_size_x = 256
     grid_size_y = grid_size_x // 2
     flow_past_rod_case(
         non_dim_final_time=75.0,
-        grid_size_x=grid_size_x,
-        grid_size_y=grid_size_y,
+        grid_size=(grid_size_y, grid_size_x),
         precision="double",
     )
