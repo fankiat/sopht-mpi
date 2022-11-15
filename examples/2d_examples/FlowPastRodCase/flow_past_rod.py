@@ -1,5 +1,5 @@
 import elastica as ea
-import matplotlib.pyplot as plt
+import click
 import numpy as np
 import os
 from sopht.utils.precision import get_real_t
@@ -8,12 +8,12 @@ from sopht_mpi.utils.mpi_utils_2d import MPIPlotter2D
 
 
 def flow_past_rod_case(
-    non_dim_final_time,
+    nondim_final_time,
     grid_size,
-    reynolds=200.0,
-    nondim_bending_stiffness=1.5e-3,
-    nondim_mass_ratio=1.5,
-    froude=0.5,
+    reynolds,
+    nondim_bending_stiffness,
+    nondim_mass_ratio,
+    froude,
     rod_start_incline_angle=0.0,
     coupling_stiffness=-8e4,
     coupling_damping=-30,
@@ -143,7 +143,7 @@ def flow_past_rod_case(
     time = 0.0
     foto_timer = 0.0
     timescale = base_length / velocity_free_stream
-    final_time = non_dim_final_time * timescale
+    final_time = nondim_final_time * timescale
     foto_timer_limit = final_time / 60
 
     # setup freestream ramping
@@ -280,10 +280,61 @@ def flow_past_rod_case(
 
 
 if __name__ == "__main__":
-    grid_size_x = 256
-    grid_size_y = grid_size_x // 2
-    flow_past_rod_case(
-        non_dim_final_time=75.0,
-        grid_size=(grid_size_y, grid_size_x),
-        precision="double",
+    # classical benchmark params
+    bmk_reynolds = 200.0
+    bmk_nondim_bending_stiffness = 1.5e-3
+    bmk_nondim_mass_ratio = 1.5
+    bmk_froude = 0.5
+
+    @click.command()
+    @click.option(
+        "--sim_grid_size_x", default=256, help="Number of grid points in x direction."
     )
+    @click.option(
+        "--nondim_final_time",
+        default=75.0,
+        help="Non-dimensional final simulation time.",
+    )
+    @click.option("--reynolds", default=bmk_reynolds, help="Reynolds number.")
+    @click.option(
+        "--nondim_bending_stiffness",
+        default=bmk_nondim_bending_stiffness,
+        help="Non-dimensional bending stiffness",
+    )
+    @click.option(
+        "--nondim_mass_ratio",
+        default=bmk_nondim_mass_ratio,
+        help="Non-dimensional mass ratio.",
+    )
+    @click.option(
+        "--froude",
+        default=bmk_froude,
+        help="Froude number.",
+    )
+    def simulate_custom_flow_past_rod_case(
+        sim_grid_size_x,
+        nondim_final_time,
+        reynolds,
+        nondim_bending_stiffness,
+        nondim_mass_ratio,
+        froude,
+    ):
+        sim_grid_size_y = sim_grid_size_x // 2
+        sim_grid_size = (sim_grid_size_y, sim_grid_size_x)
+        # TODO: replace with mpi logger when available, for now its echoed on every rank
+        click.echo(f"Grid size: {sim_grid_size}")
+        click.echo(f"Reynolds number: {reynolds}")
+        click.echo(f"Non-dimensional bending stiffness: {nondim_bending_stiffness}")
+        click.echo(f"Non-dimensional mass ratio: {nondim_mass_ratio}")
+        click.echo(f"Froude number: {froude}")
+
+        flow_past_rod_case(
+            nondim_final_time=nondim_final_time,
+            grid_size=sim_grid_size,
+            reynolds=reynolds,
+            nondim_bending_stiffness=nondim_bending_stiffness,
+            nondim_mass_ratio=nondim_mass_ratio,
+            froude=froude,
+        )
+
+    simulate_custom_flow_past_rod_case()

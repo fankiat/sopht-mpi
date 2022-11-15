@@ -1,5 +1,5 @@
 import elastica as ea
-import matplotlib.pyplot as plt
+import click
 import numpy as np
 import os
 from sopht.utils.precision import get_real_t
@@ -8,7 +8,9 @@ from sopht_mpi.utils.mpi_utils_2d import MPIPlotter2D
 
 
 def flow_past_cylinder_boundary_forcing_case(
+    nondim_final_time,
     grid_size,
+    reynolds,
     coupling_stiffness=-5e4,
     coupling_damping=-20,
     rank_distribution=None,
@@ -24,12 +26,11 @@ def flow_past_cylinder_boundary_forcing_case(
     y_axis_idx = sps.VectorField.y_axis_idx()
 
     # Flow parameters
-    U_inf = 1.0
+    velocity_scale = 1.0
     velocity_free_stream = np.zeros(2)
-    velocity_free_stream[0] = U_inf
+    velocity_free_stream[0] = velocity_scale
     cyl_radius = 0.03
-    Re = 200
-    nu = cyl_radius * U_inf / Re
+    nu = cyl_radius * velocity_scale / reynolds
     x_range = 1.0
 
     flow_sim = sps.UnboundedFlowSimulator2D(
@@ -75,32 +76,31 @@ def flow_past_cylinder_boundary_forcing_case(
     # ==================FLOW-BODY COMMUNICATOR SETUP END======
 
     # iterate
-    timescale = cyl_radius / U_inf
-    t_end_hat = 200.0  # non-dimensional end time
-    t_end = t_end_hat * timescale  # dimensional end time
-    t = 0.0
+    timescale = cyl_radius / velocity_scale
+    final_time = nondim_final_time * timescale  # dimensional end time
+    time = 0.0
     foto_timer = 0.0
-    foto_timer_limit = t_end / 50
+    foto_timer_limit = final_time / 50
 
     data_timer = 0.0
     data_timer_limit = 0.25 * timescale
-    time = []
+    drag_coeffs_time = []
     drag_coeffs = []
 
     # Initialize field plotter
     mpi_plotter = MPIPlotter2D(
         flow_sim.mpi_construct,
         flow_sim.ghost_size,
-        title=f"Vorticity, time: {t / timescale:.2f}",
+        title=f"Vorticity, time: {time / timescale:.2f}",
         master_rank=master_rank,
     )
 
-    while t < t_end:
+    while time < final_time:
 
         # Plot solution
         if foto_timer >= foto_timer_limit or foto_timer == 0:
             foto_timer = 0.0
-            mpi_plotter.ax.set_title(f"Vorticity, time: {t / timescale:.2f}")
+            mpi_plotter.ax.set_title(f"Vorticity, time: {time / timescale:.2f}")
             mpi_plotter.contourf(
                 flow_sim.position_field[x_axis_idx],
                 flow_sim.position_field[y_axis_idx],
@@ -114,7 +114,9 @@ def flow_past_cylinder_boundary_forcing_case(
                 s=4,
                 color="k",
             )
-            mpi_plotter.savefig(file_name="snap_" + str("%0.4d" % (t * 100)) + ".png")
+            mpi_plotter.savefig(
+                file_name="snap_" + str("%0.4d" % (time * 100)) + ".png"
+            )
             mpi_plotter.clearfig()
 
             # Compute some diagnostics to log
@@ -125,7 +127,7 @@ def flow_past_cylinder_boundary_forcing_case(
             # TODO: implement using logger when available
             if flow_sim.mpi_construct.rank == master_rank:
                 print(
-                    f"time: {t:.2f} ({(t/t_end*100):2.1f}%), "
+                    f"time: {time:.2f} ({(time / final_time * 100):2.1f}%), "
                     f"max_vort: {max_vort:.4f}, "
                     f"grid deviation L2 error: {grid_dev_error_l2_norm:.8f}"
                 )
@@ -134,12 +136,14 @@ def flow_past_cylinder_boundary_forcing_case(
         if data_timer >= data_timer_limit or data_timer == 0:
             data_timer = 0.0
             if flow_sim.mpi_construct.rank == master_rank:
-                time.append(t / timescale)
+                drag_coeffs_time.append(time / timescale)
                 # calculate drag
                 F = np.sum(
-                    cylinder_flow_interactor.global_lag_grid_forcing_field[x_axis_idx, ...]
+                    cylinder_flow_interactor.global_lag_grid_forcing_field[
+                        x_axis_idx, ...
+                    ]
                 )
-                drag_coeff = np.fabs(F) / U_inf / U_inf / cyl_radius
+                drag_coeff = np.fabs(F) / velocity_scale / velocity_scale / cyl_radius
                 drag_coeffs.append(drag_coeff)
 
         dt = flow_sim.compute_stable_timestep()
@@ -151,14 +155,14 @@ def flow_past_cylinder_boundary_forcing_case(
         flow_sim.time_step(dt=dt, free_stream_velocity=velocity_free_stream)
 
         # update time
-        t = t + dt
+        time += dt
         foto_timer += dt
         data_timer += dt
 
     # Plot drag coefficients
     mpi_plotter.ax.set_aspect(aspect="auto")
     mpi_plotter.ax.set_title("Drag Coefficient, Cd")
-    mpi_plotter.plot(np.array(time), np.array(drag_coeffs))
+    mpi_plotter.plot(np.array(drag_coeffs_time), np.array(drag_coeffs))
     mpi_plotter.ax.set_ylim([0.7, 1.7])
     mpi_plotter.ax.set_xlabel("Non-dimensional time")
     mpi_plotter.ax.set_ylabel("Drag coefficient, Cd")
@@ -178,15 +182,37 @@ def flow_past_cylinder_boundary_forcing_case(
         if save_diagnostic:
             np.savetxt(
                 "drag_vs_time.csv",
-                np.c_[np.array(time), np.array(drag_coeffs)],
+                np.c_[np.array(drag_coeffs_time), np.array(drag_coeffs)],
                 delimiter=",",
             )
 
 
 if __name__ == "__main__":
-    grid_size_x = 512
-    grid_size_y = grid_size_x // 2
-    flow_past_cylinder_boundary_forcing_case(
-        grid_size=(grid_size_y, grid_size_x),
-        save_diagnostic=True,
+
+    @click.command()
+    @click.option(
+        "--sim_grid_size_x", default=256, help="Number of grid points in x direction."
     )
+    @click.option(
+        "--nondim_final_time",
+        default=200.0,
+        help="Non-dimensional final simulation time.",
+    )
+    @click.option("--reynolds", default=200.0, help="Reynolds number.")
+    def simulate_custom_flow_past_cylinder_case(
+        sim_grid_size_x, nondim_final_time, reynolds
+    ):
+        sim_grid_size_y = sim_grid_size_x // 2
+        sim_grid_size = (sim_grid_size_y, sim_grid_size_x)
+        # TODO: replace with mpi logger when available, for now its echoed on every rank
+        click.echo(f"Grid size: {sim_grid_size}")
+        click.echo(f"Reynolds number: {reynolds}")
+
+        flow_past_cylinder_boundary_forcing_case(
+            nondim_final_time=nondim_final_time,
+            grid_size=sim_grid_size,
+            reynolds=reynolds,
+            save_diagnostic=True,
+        )
+
+    simulate_custom_flow_past_cylinder_case()
