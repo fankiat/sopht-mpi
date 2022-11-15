@@ -28,7 +28,7 @@ def flow_past_cylinder_boundary_forcing_case(
     # Flow parameters
     velocity_scale = 1.0
     velocity_free_stream = np.zeros(2)
-    velocity_free_stream[0] = velocity_scale
+    velocity_free_stream[x_axis_idx] = velocity_scale
     cyl_radius = 0.03
     nu = cyl_radius * velocity_scale / reynolds
     x_range = 1.0
