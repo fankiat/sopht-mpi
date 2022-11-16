@@ -62,7 +62,11 @@ class MPIFileHandler(logging.FileHandler):
 
 class MPILogger:
     def __init__(
-        self, level=logging.INFO, echo_rank: list[int] = [], with_rank_id=True
+        self,
+        level=logging.INFO,
+        echo_rank: list[int] = [],
+        with_rank_id=False,
+        with_level_name=False,
     ):
         self.rank = MPI.COMM_WORLD.Get_rank()
 
@@ -84,9 +88,15 @@ class MPILogger:
 
         # Set formatter
         if with_rank_id:
-            format = "[ {levelname:<7} ] ({name:<7}) :: {message}"
+            if with_level_name:
+                format = "[ {levelname:<7} ] ({name:<7}) :: {message}"
+            else:
+                format = "({name:<7}) :: {message}"
         else:
-            format = "[ {levelname:<7} ]  {message}"
+            if with_level_name:
+                format = "[ {levelname:<7} ]  {message}"
+            else:
+                format = "{message}"
         self.formatter = logging.Formatter(format, style="{")
 
         # Get stream handler for output stream to console
@@ -145,4 +155,4 @@ class MPILogger:
 
 
 # Initialize a default logger here
-logger = MPILogger(echo_rank=[0], with_rank_id=False)
+logger = MPILogger(echo_rank=[0])
