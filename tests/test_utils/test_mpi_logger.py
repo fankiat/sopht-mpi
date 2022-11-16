@@ -29,6 +29,7 @@ def test_mpi_logger_init(echo_rank, level, filename_timestamp):
     mpi_logger.enable_write_to_logfile(timestamp=filename_timestamp)
     assert glob.glob("*.log")
 
+    # Release and close handlers so that next test case can start anew
     mpi_logger.remove_and_close_all_handlers()
     # remove any existing log files so as to not interfere with other test cases
     os.system("rm -rf *.log")
