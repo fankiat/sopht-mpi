@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 import sopht_mpi.sopht_mpi_simulator as sps
 from sopht.utils.precision import get_real_t
+from mpi4py import MPI
 
 
 class EmptyDerivedForcingGrid(sps.ImmersedBodyForcingGrid):
@@ -49,10 +50,12 @@ def test_immersed_body_forcing_grid(grid_dim, num_lag_nodes, precision, caplog):
     np.testing.assert_allclose(forcing_grid.velocity_field, correct_forcing_grid_field)
     if grid_dim == 2:
         warning_message = (
-            "=========================================================="
+            "WARNING  rank[0]:mpi_logger.py:146 =========================================================="
             "\n2D body forcing grid generated, this assumes the body"
             "\nmoves in XY plane! Please initialize your body such that"
             "\nensuing dynamics are constrained in XY plane!"
             "\n=========================================================="
         )
-        assert warning_message in caplog.text
+        # This is only written on the root process (i.e. echo_rank is 0 by default)
+        if MPI.COMM_WORLD.Get_rank() == 0:
+            assert warning_message in caplog.text

@@ -2,6 +2,7 @@ from mpi4py import MPI
 import numpy as np
 import matplotlib.pyplot as plt
 from sopht_mpi.utils.lab_cmap import lab_cmap
+from sopht_mpi.utils.mpi_logger import logger
 
 
 class MPIConstruct2D:
@@ -45,8 +46,8 @@ class MPIConstruct2D:
         # Check for proper domain distribution and assign local domain size
         self.global_grid_size = np.array((grid_size_y, grid_size_x))
         if np.any(self.global_grid_size % self.grid_topology):
-            print("Cannot divide grid evenly to processors in x and/or y directions!")
-            print(
+            logger.error(
+                "Cannot divide grid evenly to processors in x and/or y directions!\n"
                 f"{self.global_grid_size / self.grid_topology} x {self.grid_topology} "
                 f"!= {self.global_grid_size}"
             )
@@ -71,11 +72,12 @@ class MPIConstruct2D:
         self.size = self.grid.Get_size()
         self.rank = self.grid.Get_rank()
 
-        if self.rank == 0:
-            print(f"Initializing a {self.grid_dim}D simulation with")
-            print(f"global_grid_size : {self.global_grid_size.tolist()}")
-            print(f"processes : {self.grid_topology}")
-            print(f"local_grid_size : {self.local_grid_size.tolist()}")
+        logger.debug(
+            f"Initializing a {self.grid_dim}D simulation with\n"
+            f"global_grid_size : {self.global_grid_size.tolist()}\n"
+            f"processes : {self.grid_topology}\n"
+            f"local_grid_size : {self.local_grid_size.tolist()}\n"
+        )
 
 
 class MPIGhostCommunicator2D:
@@ -383,10 +385,9 @@ class MPILagrangianFieldCommunicator2D:
         if (np.any(eul_subblock_coords_x >= self.mpi_construct.grid_topology[1])) or (
             np.any(eul_subblock_coords_y >= self.mpi_construct.grid_topology[0])
         ):
-            # TODO: replace this with logger message
             # python error handling exception would not work here because it halts the
             # process before abort is called
-            print("Lagrangian node is found outside of Eulerian domain!")
+            logger.error("Lagrangian node is found outside of Eulerian domain!")
             self.mpi_construct.grid.Abort()
 
         lag_nodes_rank_address = self.rank_map[
@@ -397,10 +398,11 @@ class MPILagrangianFieldCommunicator2D:
     def map_lagrangian_nodes_based_on_position(self, global_lag_positions):
         if self.rank == self.master_rank:
             if global_lag_positions.shape[0] != self.grid_dim:
-                # TODO: replace this with logger message
                 # python error handling exception would not work here because it halts the
                 # process before abort is called
-                print(f"global_lag_positions needs to be shape ({self.grid_dim}, ...)")
+                logger.error(
+                    f"global_lag_positions needs to be shape ({self.grid_dim}, ...)"
+                )
                 self.mpi_construct.grid.Abort()
             rank_address = self._compute_lag_nodes_rank_address(global_lag_positions)
         else:

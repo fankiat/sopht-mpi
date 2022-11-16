@@ -7,6 +7,7 @@ from sopht_mpi.utils import MPIConstruct2D, MPIGhostCommunicator2D
 from tests.test_simulator.immersed_body.rigid_body.test_rigid_body_forcing_grids import (
     mock_2d_cylinder,
 )
+from mpi4py import MPI
 
 
 def mock_2d_cylinder_flow_interactor(
@@ -88,7 +89,9 @@ def test_mpi_immersed_body_interactor_warnings(num_forcing_points, master_rank, 
                 "Lagrangian grid is resolved almost the same as the Eulerian"
                 "\ngrid of the flow."
             )
-        assert warning_message in caplog.text
+        # This is only written on the root process (i.e. echo_rank is 0 by default)
+        if MPI.COMM_WORLD.Get_rank() == 0:
+            assert warning_message in caplog.text
 
 
 @pytest.mark.mpi(group="MPI_immersed_body_interaction", min_size=4)

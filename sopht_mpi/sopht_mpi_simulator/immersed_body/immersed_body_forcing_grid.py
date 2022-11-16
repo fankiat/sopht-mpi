@@ -2,6 +2,7 @@ __all__ = ["ImmersedBodyForcingGrid", "EmptyForcingGrid"]
 from abc import ABC, abstractmethod
 import logging
 import numpy as np
+from sopht_mpi.utils import logger
 
 
 class ImmersedBodyForcingGrid(ABC):
@@ -24,11 +25,9 @@ class ImmersedBodyForcingGrid(ABC):
             (self.grid_dim, self.num_lag_nodes), dtype=self.real_t
         )
         self.velocity_field = np.zeros_like(self.position_field)
-        # TODO: implement with logger when available
         # right now its printing on all ranks since it doesnt have mpi context!
         if grid_dim == 2:
-            log = logging.getLogger()
-            log.warning(
+            logger.warning(
                 "=========================================================="
                 "\n2D body forcing grid generated, this assumes the body"
                 "\nmoves in XY plane! Please initialize your body such that"

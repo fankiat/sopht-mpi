@@ -19,7 +19,6 @@ from mpi4py import MPI
 def test_mpi_field_gather_scatter(
     ghost_size, precision, rank_distribution, aspect_ratio, master_rank
 ):
-    print(ghost_size, precision, rank_distribution, aspect_ratio, master_rank)
     n_values = 32
     real_t = get_real_t(precision)
     mpi_construct = MPIConstruct2D(

@@ -5,6 +5,7 @@ import os
 from sopht.utils.precision import get_real_t
 import sopht_mpi.sopht_mpi_simulator as sps
 from sopht_mpi.utils.mpi_utils_2d import MPIPlotter2D
+from sopht_mpi.utils import logger
 
 
 def flow_past_rod_case(
@@ -190,13 +191,11 @@ def flow_past_rod_case(
                 cosserat_rod_flow_interactor.get_grid_deviation_error_l2_norm()
             )
             max_vort = flow_sim.get_max_vorticity()
-            # TODO: replace with logger when available
-            if flow_sim.mpi_construct.rank == master_rank:
-                print(
-                    f"time: {time:.2f} ({(time / final_time*100):2.1f}%), "
-                    f"max_vort: {max_vort:.4f}, "
-                    f"grid deviation L2 error: {grid_dev_error_l2_norm:.8f}"
-                )
+            logger.info(
+                f"time: {time:.2f} ({(time / final_time*100):2.1f}%), "
+                f"max_vort: {max_vort:.4f}, "
+                f"grid deviation L2 error: {grid_dev_error_l2_norm:.8f}"
+            )
 
         # save diagnostic data
         if data_timer >= data_timer_limit or data_timer == 0:
@@ -321,12 +320,11 @@ if __name__ == "__main__":
     ):
         sim_grid_size_y = sim_grid_size_x // 2
         sim_grid_size = (sim_grid_size_y, sim_grid_size_x)
-        # TODO: replace with mpi logger when available, for now its echoed on every rank
-        click.echo(f"Grid size: {sim_grid_size}")
-        click.echo(f"Reynolds number: {reynolds}")
-        click.echo(f"Non-dimensional bending stiffness: {nondim_bending_stiffness}")
-        click.echo(f"Non-dimensional mass ratio: {nondim_mass_ratio}")
-        click.echo(f"Froude number: {froude}")
+        logger.info(f"Grid size: {sim_grid_size}")
+        logger.info(f"Reynolds number: {reynolds}")
+        logger.info(f"Non-dimensional bending stiffness: {nondim_bending_stiffness}")
+        logger.info(f"Non-dimensional mass ratio: {nondim_mass_ratio}")
+        logger.info(f"Froude number: {froude}")
 
         flow_past_rod_case(
             nondim_final_time=nondim_final_time,

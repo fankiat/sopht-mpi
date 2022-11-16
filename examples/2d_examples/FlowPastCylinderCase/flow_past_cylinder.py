@@ -5,6 +5,7 @@ import os
 from sopht.utils.precision import get_real_t
 import sopht_mpi.sopht_mpi_simulator as sps
 from sopht_mpi.utils.mpi_utils_2d import MPIPlotter2D
+from sopht_mpi.utils import logger
 
 
 def flow_past_cylinder_boundary_forcing_case(
@@ -124,13 +125,11 @@ def flow_past_cylinder_boundary_forcing_case(
                 cylinder_flow_interactor.get_grid_deviation_error_l2_norm()
             )
             max_vort = flow_sim.get_max_vorticity()
-            # TODO: implement using logger when available
-            if flow_sim.mpi_construct.rank == master_rank:
-                print(
-                    f"time: {time:.2f} ({(time / final_time * 100):2.1f}%), "
-                    f"max_vort: {max_vort:.4f}, "
-                    f"grid deviation L2 error: {grid_dev_error_l2_norm:.8f}"
-                )
+            logger.info(
+                f"time: {time:.2f} ({(time / final_time * 100):2.1f}%), "
+                f"max_vort: {max_vort:.4f}, "
+                f"grid deviation L2 error: {grid_dev_error_l2_norm:.8f}"
+            )
 
         # track diagnostic data
         if data_timer >= data_timer_limit or data_timer == 0:
@@ -191,7 +190,7 @@ if __name__ == "__main__":
 
     @click.command()
     @click.option(
-        "--sim_grid_size_x", default=256, help="Number of grid points in x direction."
+        "--sim_grid_size_x", default=512, help="Number of grid points in x direction."
     )
     @click.option(
         "--nondim_final_time",
@@ -204,9 +203,8 @@ if __name__ == "__main__":
     ):
         sim_grid_size_y = sim_grid_size_x // 2
         sim_grid_size = (sim_grid_size_y, sim_grid_size_x)
-        # TODO: replace with mpi logger when available, for now its echoed on every rank
-        click.echo(f"Grid size: {sim_grid_size}")
-        click.echo(f"Reynolds number: {reynolds}")
+        logger.info(f"Grid size: {sim_grid_size}")
+        logger.info(f"Reynolds number: {reynolds}")
 
         flow_past_cylinder_boundary_forcing_case(
             nondim_final_time=nondim_final_time,
