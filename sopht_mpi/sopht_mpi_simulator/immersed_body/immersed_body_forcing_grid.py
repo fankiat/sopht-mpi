@@ -1,6 +1,5 @@
 __all__ = ["ImmersedBodyForcingGrid", "EmptyForcingGrid"]
 from abc import ABC, abstractmethod
-import logging
 import numpy as np
 from sopht_mpi.utils import logger
 
