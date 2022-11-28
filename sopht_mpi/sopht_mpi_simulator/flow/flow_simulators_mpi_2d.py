@@ -15,6 +15,7 @@ from sopht.numeric.eulerian_grid_ops import (
 )
 from sopht.utils.precision import get_test_tol
 from mpi4py import MPI
+from sopht_mpi.utils import logger
 
 
 class UnboundedFlowSimulator2D:
@@ -85,8 +86,8 @@ class UnboundedFlowSimulator2D:
         try:
             self.compile_kernels()
         except Exception as error:
-            print("Error with compiling kernels for simulator!")
-            print(f"{type(error).__name__}: " + str(error))
+            logger.error("Error with compiling kernels for simulator!")
+            logger.error(f"{type(error).__name__}: " + str(error))
         self.finalise_flow_timestep()
 
     def init_mpi(self):
@@ -128,16 +129,14 @@ class UnboundedFlowSimulator2D:
         self.position_field = np.flipud(np.meshgrid(local_y, local_x, indexing="ij"))
         self.local_grid_size_with_ghost = local_grid_size + 2 * self.ghost_size
 
-        # TODO: (logger) refactor this after implementing a mpi-supported logger
-        if self.mpi_construct.rank == 0:
-            print(
-                "==============================================="
-                f"\n{self.grid_dim}D flow domain initialized with:"
-                f"\nX axis from 0.0 to {self.x_range}"
-                f"\nY axis from 0.0 to {self.y_range}"
-                "\nPlease initialize bodies within these bounds!"
-                "\n==============================================="
-            )
+        logger.info(
+            "==============================================="
+            f"\n{self.grid_dim}D flow domain initialized with:"
+            f"\nX axis from 0.0 to {self.x_range}"
+            f"\nY axis from 0.0 to {self.y_range}"
+            "\nPlease initialize bodies within these bounds!"
+            "\n==============================================="
+        )
 
     def init_fields(self):
         """Initialize the necessary field arrays, i.e. vorticity, velocity, etc."""

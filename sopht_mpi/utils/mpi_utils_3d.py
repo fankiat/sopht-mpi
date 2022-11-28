@@ -1,5 +1,6 @@
 from mpi4py import MPI
 import numpy as np
+from sopht_mpi.utils.mpi_logger import logger
 
 
 class MPIConstruct3D:
@@ -43,10 +44,8 @@ class MPIConstruct3D:
         # Check for proper domain distribution and assign local domain size
         self.global_grid_size = np.array((grid_size_z, grid_size_y, grid_size_x))
         if np.any(self.global_grid_size % self.grid_topology):
-            print(
-                "Cannot divide grid evenly to processors in x, y and/or z directions!"
-            )
-            print(
+            logger.error(
+                "Cannot divide grid evenly to processors in x, y and/or z directions!\n"
                 f"{self.global_grid_size / self.grid_topology} x {self.grid_topology} "
                 f"!= {self.global_grid_size}"
             )
@@ -71,11 +70,12 @@ class MPIConstruct3D:
         self.size = self.grid.Get_size()
         self.rank = self.grid.Get_rank()
 
-        if self.rank == 0:
-            print(f"Initializing a {self.grid_dim}D simulation with")
-            print(f"global_grid_size : {self.global_grid_size.tolist()}")
-            print(f"processes : {self.grid_topology}")
-            print(f"local_grid_size : {self.local_grid_size.tolist()}")
+        logger.debug(
+            f"Initializing a {self.grid_dim}D simulation with\n"
+            f"global_grid_size : {self.global_grid_size.tolist()}\n"
+            f"processes : {self.grid_topology}\n"
+            f"local_grid_size : {self.local_grid_size.tolist()}\n"
+        )
 
 
 class MPIGhostCommunicator3D:

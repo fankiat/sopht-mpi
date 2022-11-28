@@ -1,11 +1,11 @@
 __all__ = ["ImmersedBodyFlowInteractionMPI"]
-import logging
 import numpy as np
 from sopht_mpi.numeric.immersed_boundary_ops import VirtualBoundaryForcingMPI
 from sopht_mpi.sopht_mpi_simulator.immersed_body.immersed_body_forcing_grid import (
     ImmersedBodyForcingGrid,
 )
 from mpi4py import MPI
+from sopht_mpi.utils import logger
 
 
 class ImmersedBodyFlowInteractionMPI(VirtualBoundaryForcingMPI):
@@ -45,43 +45,40 @@ class ImmersedBodyFlowInteractionMPI(VirtualBoundaryForcingMPI):
         self.eul_grid_velocity_field.flags.writeable = False
 
         # check relative resolutions of the Lagrangian and Eulerian grids
-        log = logging.getLogger()
         max_lag_grid_dx = self.forcing_grid.get_maximum_lagrangian_grid_spacing()
         max_lag_grid_dx = mpi_construct.grid.bcast(
             max_lag_grid_dx, root=self.master_rank
         )
         grid_type = type(self.forcing_grid).__name__
-        # TODO: implement with logger when available
-        if mpi_construct.rank == self.master_rank:
-            log.warning(
-                "==========================================================\n"
-                f"For {grid_type}:"
+        logger.warning(
+            "==========================================================\n"
+            f"For {grid_type}:"
+        )
+        if (
+            max_lag_grid_dx > 2 * dx
+        ):  # 2 here since the support of delta function is 2 grid points
+            logger.warning(
+                f"Eulerian grid spacing (dx): {dx}"
+                f"\nMax Lagrangian grid spacing: {max_lag_grid_dx} > 2 * dx"
+                "\nThe Lagrangian grid of the body is too coarse relative to"
+                "\nthe Eulerian grid of the flow, which can lead to unexpected"
+                "\nconvergence. Please make the Lagrangian grid finer."
             )
-            if (
-                max_lag_grid_dx > 2 * dx
-            ):  # 2 here since the support of delta function is 2 grid points
-                log.warning(
-                    f"Eulerian grid spacing (dx): {dx}"
-                    f"\nMax Lagrangian grid spacing: {max_lag_grid_dx} > 2 * dx"
-                    "\nThe Lagrangian grid of the body is too coarse relative to"
-                    "\nthe Eulerian grid of the flow, which can lead to unexpected"
-                    "\nconvergence. Please make the Lagrangian grid finer."
-                )
-            elif max_lag_grid_dx < 0.5 * dx:  # reverse case of the above condition
-                log.warning(
-                    "==========================================================\n"
-                    f"Eulerian grid spacing (dx): {dx}"
-                    f"\nMax Lagrangian grid spacing: {max_lag_grid_dx} < 0.5 * dx"
-                    "\nThe Lagrangian grid of the body is too fine relative to"
-                    "\nthe Eulerian grid of the flow, which corresponds to redundant"
-                    "\nforcing points. Please make the Lagrangian grid coarser."
-                )
-            else:
-                log.warning(
-                    "Lagrangian grid is resolved almost the same as the Eulerian"
-                    "\ngrid of the flow."
-                )
-            log.warning("==========================================================")
+        elif max_lag_grid_dx < 0.5 * dx:  # reverse case of the above condition
+            logger.warning(
+                "==========================================================\n"
+                f"Eulerian grid spacing (dx): {dx}"
+                f"\nMax Lagrangian grid spacing: {max_lag_grid_dx} < 0.5 * dx"
+                "\nThe Lagrangian grid of the body is too fine relative to"
+                "\nthe Eulerian grid of the flow, which corresponds to redundant"
+                "\nforcing points. Please make the Lagrangian grid coarser."
+            )
+        else:
+            logger.warning(
+                "Lagrangian grid is resolved almost the same as the Eulerian"
+                "\ngrid of the flow."
+            )
+        logger.warning("==========================================================")
 
         # rescale the virtual boundary coeffs by grid spacings
         # (based on previous penalty immersed boundary method works)

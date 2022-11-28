@@ -5,6 +5,7 @@ from sopht_mpi.utils.mpi_utils_2d import MPIPlotter2D
 from sopht.utils.precision import get_real_t
 from lamb_oseen_helpers import compute_lamb_oseen_velocity, compute_lamb_oseen_vorticity
 from mpi4py import MPI
+from sopht_mpi.utils import logger
 
 
 def lamb_oseen_vortex_flow_case(grid_size, precision="double", rank_distribution=None):
@@ -95,12 +96,10 @@ def lamb_oseen_vortex_flow_case(grid_size, precision="double", rank_distribution
             mpi_plotter.clearfig()
 
             max_vort = flow_sim.get_max_vorticity()
-            # TODO: (logger) refactor later
-            if flow_sim.mpi_construct.rank == 0:
-                print(
-                    f"time: {t:.2f} ({((t-t_start)/(t_end-t_start)*100):2.1f}%), "
-                    f"max_vort: {max_vort:.4f}"
-                )
+            logger.info(
+                f"time: {t:.2f} ({((t-t_start)/(t_end-t_start)*100):2.1f}%), "
+                f"max_vort: {max_vort:.4f}"
+            )
 
         dt = flow_sim.compute_stable_timestep()
         flow_sim.time_step(dt=dt, free_stream_velocity=velocity_free_stream)
@@ -146,11 +145,9 @@ def lamb_oseen_vortex_flow_case(grid_size, precision="double", rank_distribution
     l2_error = np.sqrt(l2_error)
     linf_error = np.amax(error_field)
     linf_error = flow_sim.mpi_construct.grid.allreduce(linf_error, op=MPI.MAX)
-    # TODO: (logger)
-    if flow_sim.mpi_construct.rank == 0:
-        print(f"Final vortex center location: ({x_cm_final}, {y_cm_final})")
-        print(f"vorticity L2 error: {l2_error}")
-        print(f"vorticity Linf error: {linf_error}")
+    logger.info(f"Final vortex center location: ({x_cm_final}, {y_cm_final})")
+    logger.info(f"vorticity L2 error: {l2_error}")
+    logger.info(f"vorticity Linf error: {linf_error}")
 
     # final velocity field and error
     final_analytical_velocity_field = compute_lamb_oseen_velocity(
@@ -178,10 +175,8 @@ def lamb_oseen_vortex_flow_case(grid_size, precision="double", rank_distribution
     l2_error = np.sqrt(l2_error)
     linf_error = np.amax(error_field)
     linf_error = flow_sim.mpi_construct.grid.allreduce(linf_error, op=MPI.MAX)
-    # TODO: (logger)
-    if flow_sim.mpi_construct.rank == 0:
-        print(f"velocity L2 error: {l2_error}")
-        print(f"velocity Linf error: {linf_error}")
+    logger.info(f"velocity L2 error: {l2_error}")
+    logger.info(f"velocity Linf error: {linf_error}")
 
 
 if __name__ == "__main__":
