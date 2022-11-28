@@ -2,7 +2,7 @@ import elastica as ea
 import click
 import numpy as np
 import os
-from sopht.utils.precision import get_real_t
+import sopht.utils as spu
 import sopht_mpi.sopht_mpi_simulator as sps
 from sopht_mpi.utils.mpi_utils_2d import MPIPlotter2D
 from sopht_mpi.utils import logger
@@ -22,9 +22,9 @@ def flow_past_cylinder_boundary_forcing_case(
     This example considers a simple flow past cylinder using immersed
     boundary forcing.
     """
-    real_t = get_real_t(precision)
-    x_axis_idx = sps.VectorField.x_axis_idx()
-    y_axis_idx = sps.VectorField.y_axis_idx()
+    real_t = spu.get_real_t(precision)
+    x_axis_idx = spu.VectorField.x_axis_idx()
+    y_axis_idx = spu.VectorField.y_axis_idx()
 
     # Flow parameters
     velocity_scale = 1.0

@@ -8,7 +8,7 @@ from sopht_mpi.numeric.eulerian_grid_ops import (
     UnboundedPoissonSolverMPI2D,
 )
 from sopht_mpi.utils import MPIConstruct2D, MPIGhostCommunicator2D
-from sopht_mpi.sopht_mpi_simulator.utils.grid_utils import VectorField
+from sopht.utils.field import VectorField
 from sopht.numeric.eulerian_grid_ops import (
     gen_add_fixed_val_pyst_kernel_2d,
     gen_set_fixed_val_pyst_kernel_2d,
