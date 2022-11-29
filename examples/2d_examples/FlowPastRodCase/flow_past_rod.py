@@ -3,7 +3,7 @@ import click
 import numpy as np
 import os
 import sopht.utils as spu
-import sopht_mpi.sopht_mpi_simulator as sps
+import sopht_mpi.simulator as sps
 from sopht_mpi.utils.mpi_utils_2d import MPIPlotter2D
 from sopht_mpi.utils import logger
 

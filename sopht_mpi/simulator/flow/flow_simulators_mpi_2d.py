@@ -7,7 +7,7 @@ from sopht_mpi.numeric.eulerian_grid_ops import (
     gen_update_vorticity_from_velocity_forcing_pyst_mpi_kernel_2d,
     UnboundedPoissonSolverMPI2D,
 )
-from sopht_mpi.utils import MPIConstruct2D, MPIGhostCommunicator2D
+from sopht_mpi.utils import MPIConstruct2D, MPIGhostCommunicator2D, logger
 from sopht.utils.field import VectorField
 from sopht.numeric.eulerian_grid_ops import (
     gen_add_fixed_val_pyst_kernel_2d,
@@ -15,7 +15,6 @@ from sopht.numeric.eulerian_grid_ops import (
 )
 from sopht.utils.precision import get_test_tol
 from mpi4py import MPI
-from sopht_mpi.utils import logger
 
 
 class UnboundedFlowSimulator2D:

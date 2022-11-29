@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-import sopht_mpi.sopht_mpi_simulator as sps
+import sopht_mpi.simulator as sps
 from sopht.utils.precision import get_real_t
 from tests.test_simulator.immersed_body.cosserat_rod.test_cosserat_rod_forcing_grids import (
     mock_straight_rod,

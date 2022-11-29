@@ -1,7 +1,7 @@
 __all__ = ["CosseratRodElementCentricForcingGrid"]
 from elastica.rod.cosserat_rod import CosseratRod
 import numpy as np
-from sopht_mpi.sopht_mpi_simulator.immersed_body import ImmersedBodyForcingGrid
+from sopht_mpi.simulator.immersed_body import ImmersedBodyForcingGrid
 from elastica.interaction import node_to_element_velocity
 
 

@@ -1,4 +1,4 @@
-from sopht_mpi.sopht_mpi_simulator.immersed_body import ImmersedBodyFlowInteractionMPI
+from sopht_mpi.simulator.immersed_body import ImmersedBodyFlowInteractionMPI
 from elastica import CosseratRod, NoForces, RigidBodyBase
 from typing import Union
 

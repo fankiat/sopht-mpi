@@ -2,7 +2,7 @@ import logging
 import numpy as np
 import pytest
 from sopht.utils.precision import get_real_t
-import sopht_mpi.sopht_mpi_simulator as sps
+import sopht_mpi.simulator as sps
 from sopht_mpi.utils import MPIConstruct2D, MPIGhostCommunicator2D
 from tests.test_simulator.immersed_body.rigid_body.test_rigid_body_forcing_grids import (
     mock_2d_cylinder,

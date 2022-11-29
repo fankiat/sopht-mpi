@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import sopht.utils as spu
-import sopht_mpi.sopht_mpi_simulator as sps
+import sopht_mpi.simulator as sps
 from sopht_mpi.utils.mpi_utils_2d import MPIPlotter2D
 from lamb_oseen_helpers import compute_lamb_oseen_velocity, compute_lamb_oseen_vorticity
 from mpi4py import MPI

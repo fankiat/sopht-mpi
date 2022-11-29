@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 import pytest
-import sopht_mpi.sopht_mpi_simulator as sps
+import sopht_mpi.simulator as sps
 from sopht.utils.precision import get_real_t
 from mpi4py import MPI
 

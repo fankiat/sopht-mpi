@@ -1,5 +1,5 @@
 import numpy as np
-import sopht_mpi.sopht_mpi_simulator as sps
+import sopht_mpi.simulator as sps
 
 
 class MockBodyFlowInteractor:
