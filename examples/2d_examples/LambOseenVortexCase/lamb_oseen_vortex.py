@@ -1,8 +1,8 @@
 import numpy as np
 import os
-import sopht_mpi.sopht_mpi_simulator as sps
+import sopht.utils as spu
+import sopht_mpi.simulator as sps
 from sopht_mpi.utils.mpi_utils_2d import MPIPlotter2D
-from sopht.utils.precision import get_real_t
 from lamb_oseen_helpers import compute_lamb_oseen_velocity, compute_lamb_oseen_vorticity
 from mpi4py import MPI
 from sopht_mpi.utils import logger
@@ -14,9 +14,9 @@ def lamb_oseen_vortex_flow_case(grid_size, precision="double", rank_distribution
     constant velocity in 2D, while it diffuses in time, and involves solving
     the Navier-Stokes equation.
     """
-    real_t = get_real_t(precision)
-    x_axis_idx = sps.VectorField.x_axis_idx()
-    y_axis_idx = sps.VectorField.y_axis_idx()
+    real_t = spu.get_real_t(precision)
+    x_axis_idx = spu.VectorField.x_axis_idx()
+    y_axis_idx = spu.VectorField.y_axis_idx()
 
     # Consider a 1 by 1 2D domain
     x_range = 1.0

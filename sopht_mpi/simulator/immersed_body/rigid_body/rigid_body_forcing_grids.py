@@ -5,7 +5,7 @@ __all__ = [
 
 from elastica import Cylinder
 import numpy as np
-from sopht_mpi.sopht_mpi_simulator.immersed_body import ImmersedBodyForcingGrid
+from sopht_mpi.simulator.immersed_body import ImmersedBodyForcingGrid
 
 
 class TwoDimensionalCylinderForcingGrid(ImmersedBodyForcingGrid):

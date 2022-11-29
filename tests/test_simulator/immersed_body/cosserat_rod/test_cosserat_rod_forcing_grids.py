@@ -1,7 +1,7 @@
 import elastica as ea
 import numpy as np
 import pytest
-import sopht_mpi.sopht_mpi_simulator as sps
+import sopht_mpi.simulator as sps
 from elastica.interaction import node_to_element_velocity
 
 
