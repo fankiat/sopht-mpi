@@ -19,7 +19,7 @@ from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_2d import (
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
-def test_mpi_advection_flux_conservative_eno3(
+def test_mpi_advection_flux_conservative_eno3_2d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
     n_values = 32
@@ -59,7 +59,9 @@ def test_mpi_advection_flux_conservative_eno3(
             n_values * aspect_ratio[0], n_values * aspect_ratio[1]
         ).astype(real_t)
         ref_velocity = np.random.rand(
-            2, n_values * aspect_ratio[0], n_values * aspect_ratio[1]
+            mpi_construct.grid_dim,
+            n_values * aspect_ratio[0],
+            n_values * aspect_ratio[1],
         ).astype(real_t)
         inv_dx = real_t(0.1)
     else:
@@ -77,7 +79,7 @@ def test_mpi_advection_flux_conservative_eno3(
 
     local_velocity = np.zeros(
         (
-            2,
+            mpi_construct.grid_dim,
             mpi_construct.local_grid_size[0] + 2 * ghost_size,
             mpi_construct.local_grid_size[1] + 2 * ghost_size,
         )
@@ -125,7 +127,7 @@ def test_mpi_advection_flux_conservative_eno3(
         # check kernel_support for the diffusion kernel
         assert kernel_support == 2, "Incorrect kernel support!"
         # check field correctness
-        inner_idx = (slice(kernel_support, -kernel_support),) * 2
+        inner_idx = (slice(kernel_support, -kernel_support),) * mpi_construct.grid_dim
         np.testing.assert_allclose(
             ref_advection_flux[inner_idx],
             global_advection_flux[inner_idx],
