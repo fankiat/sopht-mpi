@@ -4,7 +4,6 @@ from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_2d.diffusion_flux_mpi_2d im
 )
 from sopht.numeric.eulerian_grid_ops.stencil_ops_2d.elementwise_ops_2d import (
     gen_elementwise_sum_pyst_kernel_2d,
-    gen_set_fixed_val_pyst_kernel_2d,
 )
 from sopht_mpi.utils.mpi_utils import check_valid_ghost_size_and_kernel_support
 
@@ -16,7 +15,6 @@ def gen_diffusion_timestep_euler_forward_pyst_mpi_kernel_2d(
 ):
     """MPI-supported 2D diffusion euler forward timestep generator"""
     elementwise_sum_pyst_kernel_2d = gen_elementwise_sum_pyst_kernel_2d(real_t=real_t)
-    set_fixed_val_pyst_kernel_2d = gen_set_fixed_val_pyst_kernel_2d(real_t=real_t)
     diffusion_flux_mpi_kernel_2d = gen_diffusion_flux_pyst_mpi_kernel_2d(
         real_t=real_t,
         mpi_construct=mpi_construct,
@@ -48,7 +46,6 @@ def gen_diffusion_timestep_euler_forward_pyst_mpi_kernel_2d(
         diffusion_timestep_euler_forward_pyst_mpi_kernel_2d.kernel_support = (
             gen_diffusion_flux_pyst_mpi_kernel_2d.kernel_support
         )
-        set_fixed_val_pyst_kernel_2d(field=diffusion_flux, fixed_val=0)
         diffusion_flux_mpi_kernel_2d(
             diffusion_flux=diffusion_flux,
             field=field,

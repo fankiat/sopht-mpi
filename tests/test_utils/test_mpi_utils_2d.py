@@ -72,7 +72,6 @@ def test_mpi_ghost_communication(
         rank_distribution=rank_distribution,
     )
     # extra width needed for kernel computation
-    ghost_size = 1
     mpi_ghost_exchange_communicator = MPIGhostCommunicator2D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
