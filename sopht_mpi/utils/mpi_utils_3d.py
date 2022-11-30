@@ -21,6 +21,7 @@ class MPIConstruct3D:
     ):
         # grid/problem dimensions
         self.grid_dim = 3
+        self.real_t = real_t
         # Set the MPI dtype generator based on precision
         self.dtype_generator = MPI.FLOAT if real_t == np.float32 else MPI.DOUBLE
         # Setup MPI environment
@@ -276,7 +277,7 @@ class MPIFieldCommunicator3D:
     metadata we determine the properties here.
     """
 
-    def __init__(self, ghost_size, mpi_construct):
+    def __init__(self, ghost_size, mpi_construct, master_rank=0):
         # Use ghost_size to define indices for inner cell (actual data without
         # halo)
         if ghost_size < 0 and not isinstance(ghost_size, int):
@@ -293,8 +294,10 @@ class MPIFieldCommunicator3D:
             ) * mpi_construct.grid_dim
         # Datatypes for subdomain used in gather and scatter
         field_sub_size = mpi_construct.local_grid_size
-        # Rank 0 uses datatype for receiving sub arrays in full array
-        if mpi_construct.rank == 0:
+        # master rank uses datatype for receiving sub arrays in full array
+        self.master_rank = master_rank
+        self.slave_ranks = set(np.arange(mpi_construct.size)) - set([self.master_rank])
+        if mpi_construct.rank == self.master_rank:
             field_size = mpi_construct.global_grid_size
             self.sub_array_type = mpi_construct.dtype_generator.Create_subarray(
                 sizes=field_size,
@@ -315,15 +318,26 @@ class MPIFieldCommunicator3D:
         """
         Gather local fields from all ranks and return a global field in rank 0
         """
-        if mpi_construct.rank == 0:
-            # Fill in field values for rank 0 on the edge
-            global_field[
-                : mpi_construct.local_grid_size[0],
-                : mpi_construct.local_grid_size[1],
-                : mpi_construct.local_grid_size[2],
-            ] = local_field[self.inner_idx]
+        if mpi_construct.rank == self.master_rank:
+            # Fill in field values for master rank
+            coords = mpi_construct.grid.Get_coords(self.master_rank)
+            local_chunk_idx = (
+                slice(
+                    coords[0] * mpi_construct.local_grid_size[0],
+                    (coords[0] + 1) * mpi_construct.local_grid_size[0],
+                ),
+                slice(
+                    coords[1] * mpi_construct.local_grid_size[1],
+                    (coords[1] + 1) * mpi_construct.local_grid_size[1],
+                ),
+                slice(
+                    coords[2] * mpi_construct.local_grid_size[2],
+                    (coords[2] + 1) * mpi_construct.local_grid_size[2],
+                ),
+            )
+            global_field[local_chunk_idx] = local_field[self.inner_idx]
             # Receiving from other ranks as contiguous array
-            for rank_idx in range(1, mpi_construct.size):
+            for rank_idx in self.slave_ranks:
                 coords = mpi_construct.grid.Get_coords(rank_idx)
                 idx = np.ravel_multi_index(
                     coords * mpi_construct.local_grid_size,
@@ -335,22 +349,35 @@ class MPIFieldCommunicator3D:
                 )
         else:
             # Sending as contiguous chunks
-            mpi_construct.grid.Send((local_field, 1, self.sub_array_type), dest=0)
+            mpi_construct.grid.Send(
+                (local_field, 1, self.sub_array_type), dest=self.master_rank
+            )
 
     def scatter_global_field(self, local_field, global_field, mpi_construct):
         """
         Scatter a global field in rank 0 to corresponding ranks into local
         fields
         """
-        # Fill in field values for rank 0 on the edge
-        if mpi_construct.rank == 0:
-            local_field[self.inner_idx] = global_field[
-                : mpi_construct.local_grid_size[0],
-                : mpi_construct.local_grid_size[1],
-                : mpi_construct.local_grid_size[2],
-            ]
+        # Fill in field values for master rank on the edge
+        if mpi_construct.rank == self.master_rank:
+            coords = mpi_construct.grid.Get_coords(self.master_rank)
+            local_chunk_idx = (
+                slice(
+                    coords[0] * mpi_construct.local_grid_size[0],
+                    (coords[0] + 1) * mpi_construct.local_grid_size[0],
+                ),
+                slice(
+                    coords[1] * mpi_construct.local_grid_size[1],
+                    (coords[1] + 1) * mpi_construct.local_grid_size[1],
+                ),
+                slice(
+                    coords[2] * mpi_construct.local_grid_size[2],
+                    (coords[2] + 1) * mpi_construct.local_grid_size[2],
+                ),
+            )
+            local_field[self.inner_idx] = global_field[local_chunk_idx]
             # Sending to other ranks as contiguous array
-            for rank_idx in range(1, mpi_construct.size):
+            for rank_idx in self.slave_ranks:
                 coords = mpi_construct.grid.Get_coords(rank_idx)
                 idx = np.ravel_multi_index(
                     coords * mpi_construct.local_grid_size,
@@ -362,4 +389,6 @@ class MPIFieldCommunicator3D:
                 )
         else:
             # Receiving from rank 0 as contiguous array
-            mpi_construct.grid.Recv((local_field, 1, self.sub_array_type), source=0)
+            mpi_construct.grid.Recv(
+                (local_field, 1, self.sub_array_type), source=self.master_rank
+            )
