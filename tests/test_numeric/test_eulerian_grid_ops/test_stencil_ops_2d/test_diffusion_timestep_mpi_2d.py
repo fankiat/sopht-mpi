@@ -99,13 +99,14 @@ def test_mpi_diffusion_timestep_2d(
             field=ref_field,
             nu_dt_by_dx2=nu_dt_by_dx2,
         )
-        kernel_support = diffusion_timestep_euler_forward_pyst_mpi_kernel.kernel_support
+
         # check kernel_support for the diffusion kernel
-        assert kernel_support == 1, "Incorrect kernel support!"
+        assert (
+            diffusion_timestep_euler_forward_pyst_mpi_kernel.kernel_support == 1
+        ), "Incorrect kernel support!"
         # check field correctness
-        inner_idx = (slice(kernel_support, -kernel_support),) * 2
         np.testing.assert_allclose(
-            ref_field[inner_idx],
-            global_field[inner_idx],
+            ref_field,
+            global_field,
             atol=get_test_tol(precision),
         )

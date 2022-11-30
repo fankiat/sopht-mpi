@@ -1,8 +1,10 @@
 """MPI-supported kernels for computing diffusion flux in 2D."""
 from sopht.numeric.eulerian_grid_ops.stencil_ops_2d import (
     gen_diffusion_flux_pyst_kernel_2d,
+    gen_set_fixed_val_pyst_kernel_2d,
 )
 from sopht_mpi.utils.mpi_utils import check_valid_ghost_size_and_kernel_support
+from mpi4py import MPI
 
 
 def gen_diffusion_flux_pyst_mpi_kernel_2d(
@@ -22,6 +24,11 @@ def gen_diffusion_flux_pyst_mpi_kernel_2d(
         ghost_size=ghost_exchange_communicator.ghost_size,
         kernel_support=gen_diffusion_flux_pyst_mpi_kernel_2d.kernel_support,
     )
+
+    # for setting values at physical domain boundary
+    y_next, x_next = mpi_construct.next_grid_along
+    y_previous, x_previous = mpi_construct.previous_grid_along
+    set_fixed_val_kernel_2d = gen_set_fixed_val_pyst_kernel_2d(real_t=real_t)
 
     def diffusion_flux_pyst_mpi_kernel_2d(
         diffusion_flux,
@@ -108,5 +115,28 @@ def gen_diffusion_flux_pyst_mpi_kernel_2d(
             ],
             prefactor=prefactor,
         )
+
+        # Set physical domain boundary diffusion flus to zero based on neighboring block
+        boundary_width = 1
+        if x_previous == MPI.PROC_NULL:
+            set_fixed_val_kernel_2d(
+                field=diffusion_flux[:, : ghost_size + boundary_width],
+                fixed_val=0.0,
+            )
+        if x_next == MPI.PROC_NULL:
+            set_fixed_val_kernel_2d(
+                field=diffusion_flux[:, -ghost_size - boundary_width :],
+                fixed_val=0.0,
+            )
+        if y_previous == MPI.PROC_NULL:
+            set_fixed_val_kernel_2d(
+                field=diffusion_flux[: ghost_size + boundary_width, :],
+                fixed_val=0.0,
+            )
+        if y_next == MPI.PROC_NULL:
+            set_fixed_val_kernel_2d(
+                field=diffusion_flux[-ghost_size - boundary_width :, :],
+                fixed_val=0.0,
+            )
 
     return diffusion_flux_pyst_mpi_kernel_2d
