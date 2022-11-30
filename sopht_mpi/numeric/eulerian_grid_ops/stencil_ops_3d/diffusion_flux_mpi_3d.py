@@ -1,4 +1,4 @@
-"""MPI-supported kernels for computing diffusion flux in 2D."""
+"""MPI-supported kernels for computing diffusion flux in 3D."""
 from sopht.numeric.eulerian_grid_ops.stencil_ops_3d import (
     gen_diffusion_flux_pyst_kernel_3d,
     gen_set_fixed_val_pyst_kernel_3d,
