@@ -10,6 +10,8 @@ from mpi4py import MPI
 def gen_diffusion_flux_pyst_mpi_kernel_3d(
     real_t, mpi_construct, ghost_exchange_communicator, field_type="scalar"
 ):
+    if field_type != "scalar" and field_type != "vector":
+        raise ValueError("Invalid field type")
     # Note currently I'm generating these for arbit size arrays, we can optimise this
     # more by generating fixed size for the interior stencil and arbit size for
     # boundary crunching
