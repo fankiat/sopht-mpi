@@ -124,7 +124,7 @@ def test_mpi_advection_flux_conservative_eno3_2d(
         kernel_support = (
             advection_flux_conservative_eno3_pyst_mpi_kernel_2d.kernel_support
         )
-        # check kernel_support for the diffusion kernel
+        # check kernel_support for the advection flux kernel
         assert kernel_support == 2, "Incorrect kernel support!"
         # check field correctness
         inner_idx = (slice(kernel_support, -kernel_support),) * mpi_construct.grid_dim
