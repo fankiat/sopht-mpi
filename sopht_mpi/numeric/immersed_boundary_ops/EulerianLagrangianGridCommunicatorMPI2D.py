@@ -222,7 +222,7 @@ def generate_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
                 * interp_weights[..., i]
             ) * (dx**grid_dim)
 
-    @njit(cache=True, fastmath=True)
+    @njit(cache=True)
     def vector_field_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
         lag_grid_field,
         eul_grid_field,
