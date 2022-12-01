@@ -189,7 +189,7 @@ def generate_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
     # grid/problem dimensions
     grid_dim = 2
 
-    @njit(cache=True, fastmath=True)
+    @njit(cache=True)
     def eulerian_to_lagrangian_grid_interpolation_kernel_2d(
         lag_grid_field,
         eul_grid_field,
