@@ -84,16 +84,7 @@ formatting: format-codestyle
 
 .PHONY: test
 test:
-	poetry run mpiexec -n 4 pytest --with-mpi -k "_2d"
-	poetry run mpiexec -n 4 pytest --with-mpi -k "_3d"
-
-.PHONY: test-2d
-test-2d:
-	poetry run mpiexec -n 4 pytest --with-mpi -k "_2d"
-
-.PHONY: test-3d
-test-3d:
-	poetry run mpiexec -n 4 pytest --with-mpi -k "_3d"
+	poetry run mpiexec -n 4 pytest --with-mpi
 
 .PHONY: update-dev-deps
 update-dev-deps:

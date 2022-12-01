@@ -81,12 +81,6 @@ jobs:
         run: |
           poetry run mpiexec -n 4 python -m mpi4py.bench helloworld
       # Test sopht-mpi using pytest
-      # - name: Run tests
-      #   run: |
-      #     make test
-      - name: Run 2d tests
+      - name: Run tests
         run: |
-          make test-2d
-      - name: Run 3d tests
-        run: |
-          make test-3d
+          make test
