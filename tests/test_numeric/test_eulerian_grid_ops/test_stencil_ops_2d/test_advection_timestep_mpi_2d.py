@@ -19,7 +19,7 @@ from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_2d import (
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
-def test_mpi_euler_forward_conservative_eno3_2d(
+def test_mpi_advection_timestep_eno3_euler_forward_2d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
     n_values = 32
@@ -90,7 +90,7 @@ def test_mpi_euler_forward_conservative_eno3_2d(
     local_velocity[0] = local_velocity_x
     local_velocity[1] = local_velocity_y
 
-    # compute the diffusion timestep
+    # compute the advection timestep
     advection_timestep_euler_forward_conservative_eno3_pyst_mpi_kernel_2d = (
         gen_advection_timestep_euler_forward_conservative_eno3_pyst_mpi_kernel_2d(
             real_t=real_t,
@@ -106,7 +106,7 @@ def test_mpi_euler_forward_conservative_eno3_2d(
         dt_by_dx=dt_by_dx,
     )
 
-    # gather back the field globally after diffusion timestep
+    # gather back the field globally after advection timestep
     global_field = np.zeros_like(ref_field)
     gather_local_field(global_field, local_field, mpi_construct)
 
@@ -127,7 +127,7 @@ def test_mpi_euler_forward_conservative_eno3_2d(
         kernel_support = (
             advection_timestep_euler_forward_conservative_eno3_pyst_mpi_kernel_2d.kernel_support
         )
-        # check kernel_support for the diffusion kernel
+        # check kernel_support for the advection kernel
         assert kernel_support == 2, "Incorrect kernel support!"
         # check field correctness
         inner_idx = (slice(kernel_support, -kernel_support),) * 2
