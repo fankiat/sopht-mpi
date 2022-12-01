@@ -83,4 +83,5 @@ jobs:
       # Test sopht-mpi using pytest
       - name: Run tests
         run: |
-          make test
+          make test-2d
+          make test-3d
