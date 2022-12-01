@@ -28,7 +28,7 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
       - name: Setup MPI
         uses: mpi4py/setup-mpi@v1
         with:
@@ -81,7 +81,12 @@ jobs:
         run: |
           poetry run mpiexec -n 4 python -m mpi4py.bench helloworld
       # Test sopht-mpi using pytest
-      - name: Run tests
+      # - name: Run tests
+      #   run: |
+      #     make test
+      - name: Run 2d tests
         run: |
           make test-2d
+      - name: Run 3d tests
+        run: |
           make test-3d
