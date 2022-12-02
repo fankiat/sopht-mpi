@@ -9,6 +9,13 @@ from sopht_mpi.utils import (
     MPILagrangianFieldCommunicator2D,
 )
 from sopht.utils.precision import get_real_t, get_test_tol
+import os
+
+
+def clear_numba_cache(mpi_construct):
+    mpi_construct.grid.barrier()
+    if mpi_construct.rank == 0:
+        os.system("rm -rf __pycache__")
 
 
 class MockEulLagGridCommSolution:
@@ -179,6 +186,8 @@ def test_mpi_local_eulerian_grid_support_of_lagrangian_grid_2d(
         real_t=mock_soln.real_t,
         rank_distribution=rank_distribution,
     )
+    # Clear any exising cache from previous numba tests
+    clear_numba_cache(mpi_construct)
 
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0
@@ -273,6 +282,8 @@ def test_mpi_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
         real_t=mock_soln.real_t,
         rank_distribution=rank_distribution,
     )
+    # Clear any exising cache from previous numba tests
+    clear_numba_cache(mpi_construct)
 
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0
@@ -355,6 +366,8 @@ def test_mpi_vector_field_eul_to_lag_grid_interpolation_kernel_2d(
         real_t=mock_soln.real_t,
         rank_distribution=rank_distribution,
     )
+    # Clear any exising cache from previous numba tests
+    clear_numba_cache(mpi_construct)
 
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0
@@ -448,6 +461,8 @@ def test_mpi_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
         real_t=mock_soln.real_t,
         rank_distribution=rank_distribution,
     )
+    # Clear any exising cache from previous numba tests
+    clear_numba_cache(mpi_construct)
 
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0
@@ -538,6 +553,8 @@ def test_mpi_vector_field_lag_to_eul_grid_interpolation_kernel_2d(
         real_t=mock_soln.real_t,
         rank_distribution=rank_distribution,
     )
+    # Clear any exising cache from previous numba tests
+    clear_numba_cache(mpi_construct)
 
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0
@@ -646,6 +663,8 @@ def test_mpi_interpolation_weights_kernel_on_nodes_2d(
         real_t=mock_soln.real_t,
         rank_distribution=rank_distribution,
     )
+    # Clear any exising cache from previous numba tests
+    clear_numba_cache(mpi_construct)
 
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0

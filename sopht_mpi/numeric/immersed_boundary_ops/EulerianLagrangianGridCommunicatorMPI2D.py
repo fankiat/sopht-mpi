@@ -191,7 +191,7 @@ def generate_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
 
     if n_components == 1:
 
-        @njit(fastmath=True)
+        @njit(cache=True, fastmath=True)
         def eulerian_to_lagrangian_grid_interpolation_kernel_2d(
             lag_grid_field,
             eul_grid_field,
@@ -228,7 +228,7 @@ def generate_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
 
     else:
 
-        @njit(fastmath=True)
+        @njit(cache=True, fastmath=True)
         def vector_field_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
             lag_grid_field,
             eul_grid_field,
@@ -299,7 +299,7 @@ def generate_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
 
     if n_components == 1:
 
-        @njit(fastmath=True)
+        @njit(cache=True, fastmath=True)
         def lagrangian_to_eulerian_grid_interpolation_kernel_2d(
             eul_grid_field,
             lag_grid_field,
@@ -334,7 +334,7 @@ def generate_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
         return lagrangian_to_eulerian_grid_interpolation_kernel_2d
     else:
 
-        @njit(fastmath=True)
+        @njit(cache=True, fastmath=True)
         def vector_field_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
             eul_grid_field,
             lag_grid_field,
@@ -399,7 +399,7 @@ def generate_cosine_interpolation_weights_kernel_2d(dx, interp_kernel_width, rea
         interp_kernel_width == 2
     ), "Interpolation kernel inconsistent with interpolation kernel width!"
 
-    @njit(fastmath=True)
+    @njit(cache=True, fastmath=True)
     def cosine_interpolation_weights_kernel_2d(
         interp_weights, local_eul_grid_support_of_lag_grid
     ):
@@ -441,7 +441,7 @@ def generate_peskin_interpolation_weights_kernel_2d(dx, interp_kernel_width, rea
         interp_kernel_width == 2
     ), "Interpolation kernel inconsistent with interpolation kernel width!"
 
-    @njit(fastmath=True)
+    @njit(cache=True, fastmath=True)
     def peskin_interpolation_weights_kernel_2d(
         interp_weights, local_eul_grid_support_of_lag_grid
     ):
