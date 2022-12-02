@@ -136,7 +136,7 @@ def generate_local_eulerian_grid_support_of_lagrangian_grid_kernel_2d(
     # Another workaround for this is to make this as a variable in the kernel below, and
     # caching wont be a problem anymore since the variable is passed in when kernel is
     # called (i.e. not a constant, at least in the numba kernel)
-    @njit
+    @njit(fastmath=True)
     def local_eulerian_grid_support_of_lagrangian_grid_kernel_2d(
         local_eul_grid_support_of_lag_grid,
         nearest_eul_grid_index_to_lag_grid,
@@ -189,7 +189,7 @@ def generate_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
     # grid/problem dimensions
     grid_dim = 2
 
-    @njit(cache=True)
+    @njit(cache=True, fastmath=True)
     def eulerian_to_lagrangian_grid_interpolation_kernel_2d(
         lag_grid_field,
         eul_grid_field,
@@ -222,7 +222,7 @@ def generate_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
                 * interp_weights[..., i]
             ) * (dx**grid_dim)
 
-    @njit(cache=True)
+    @njit(cache=True, fastmath=True)
     def vector_field_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
         lag_grid_field,
         eul_grid_field,
@@ -291,7 +291,7 @@ def generate_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
 
     """
 
-    @njit(cache=True)
+    @njit(cache=True, fastmath=True)
     def lagrangian_to_eulerian_grid_interpolation_kernel_2d(
         eul_grid_field,
         lag_grid_field,
@@ -323,7 +323,7 @@ def generate_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
                 lag_grid_field[..., i] * interp_weights[..., i]
             )
 
-    @njit(cache=True)
+    @njit(cache=True, fastmath=True)
     def vector_field_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
         eul_grid_field,
         lag_grid_field,
@@ -391,7 +391,7 @@ def generate_cosine_interpolation_weights_kernel_2d(dx, interp_kernel_width, rea
         interp_kernel_width == 2
     ), "Interpolation kernel inconsistent with interpolation kernel width!"
 
-    @njit(cache=True)
+    @njit(cache=True, fastmath=True)
     def cosine_interpolation_weights_kernel_2d(
         interp_weights, local_eul_grid_support_of_lag_grid
     ):
@@ -433,7 +433,7 @@ def generate_peskin_interpolation_weights_kernel_2d(dx, interp_kernel_width, rea
         interp_kernel_width == 2
     ), "Interpolation kernel inconsistent with interpolation kernel width!"
 
-    @njit(cache=True)
+    @njit(cache=True, fastmath=True)
     def peskin_interpolation_weights_kernel_2d(
         interp_weights, local_eul_grid_support_of_lag_grid
     ):
