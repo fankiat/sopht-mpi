@@ -10,13 +10,6 @@ from sopht_mpi.utils import (
     MPIFieldCommunicator2D,
 )
 from sopht.utils.precision import get_real_t, get_test_tol
-import os
-
-
-def clear_numba_cache(mpi_construct):
-    mpi_construct.grid.barrier()
-    if mpi_construct.rank == 0:
-        os.system("rm -rf __pycache__")
 
 
 class ReferenceVirtualBoundaryForcing(VirtualBoundaryForcing):
@@ -138,9 +131,6 @@ def test_mpi_virtual_boundary_forcing_init(
         real_t=ref_virtual_boundary_forcing.real_t,
         rank_distribution=rank_distribution,
     )
-    # Clear any exising cache from previous numba tests
-    clear_numba_cache(mpi_construct)
-
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
@@ -250,8 +240,6 @@ def test_mpi_compute_lag_grid_velocity_mismatch_field(
         real_t=ref_virtual_boundary_forcing.real_t,
         rank_distribution=rank_distribution,
     )
-    # Clear any exising cache from previous numba tests
-    clear_numba_cache(mpi_construct)
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
@@ -355,8 +343,6 @@ def test_mpi_update_lag_grid_position_mismatch_field_via_euler_forward(
         real_t=ref_virtual_boundary_forcing.real_t,
         rank_distribution=rank_distribution,
     )
-    # Clear any exising cache from previous numba tests
-    clear_numba_cache(mpi_construct)
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
@@ -461,8 +447,6 @@ def test_mpi_compute_lag_grid_forcing_field(
         real_t=ref_virtual_boundary_forcing.real_t,
         rank_distribution=rank_distribution,
     )
-    # Clear any exising cache from previous numba tests
-    clear_numba_cache(mpi_construct)
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
@@ -570,8 +554,6 @@ def test_mpi_compute_interaction_force_on_lag_grid(
         real_t=ref_virtual_boundary_forcing.real_t,
         rank_distribution=rank_distribution,
     )
-    # Clear any exising cache from previous numba tests
-    clear_numba_cache(mpi_construct)
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
@@ -720,8 +702,6 @@ def test_mpi_compute_interaction_force_on_eul_and_lag_grid(
         real_t=ref_virtual_boundary_forcing.real_t,
         rank_distribution=rank_distribution,
     )
-    # Clear any exising cache from previous numba tests
-    clear_numba_cache(mpi_construct)
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
@@ -886,8 +866,6 @@ def test_mpi_virtual_boundary_forcing_time_step(
         real_t=ref_virtual_boundary_forcing.real_t,
         rank_distribution=rank_distribution,
     )
-    # Clear any exising cache from previous numba tests
-    clear_numba_cache(mpi_construct)
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0
     mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(

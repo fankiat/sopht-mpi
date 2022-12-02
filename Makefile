@@ -84,7 +84,9 @@ formatting: format-codestyle
 
 .PHONY: test
 test:
-	poetry run mpiexec -n 4 pytest --with-mpi
+	ls -a
+	ls .pytest_cache
+	poetry run mpiexec -n 4 pytest --cache-clear --with-mpi tests/test_numeric/test_immersed_boundary_ops/
 
 .PHONY: update-dev-deps
 update-dev-deps:
