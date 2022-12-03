@@ -510,6 +510,18 @@ python-versions = "*"
 pytest = "*"
 
 [[package]]
+name = "pytest-rerunfailures"
+version = "10.3"
+description = "pytest plugin to re-run tests to eliminate flaky failures"
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+packaging = ">=17.1"
+pytest = ">=5.3"
+
+[[package]]
 name = "python-dateutil"
 version = "2.8.2"
 description = "Extensions to the standard Python datetime module"
@@ -611,7 +623,7 @@ examples = ["click[examples] (>=8.1,<9.0)", "coomm[examples] (>=0.0.1.post2)", "
 type = "git"
 url = "https://github.com/SophT-Team/SophT-Simulator.git"
 reference = "main"
-resolved_reference = "aa6880cf646af00cf381228c128a974c352b344c"
+resolved_reference = "a281b4b75716c641020af3fe64b7c7ab2e5072b8"
 
 [[package]]
 name = "sympy"
@@ -685,7 +697,7 @@ testing = ["coverage (>=6.2)", "coverage-enable-subprocess (>=1)", "flaky (>=3.7
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.11"
-content-hash = "71ea652c53e472f80d594a06207b5ff8defcfa42ff033419e1401b45c092f232"
+content-hash = "5e148f404fcc0696f0f3bae1a6dffdb3295215c70f2420f396e2c14363396ef0"
 
 [metadata.files]
 appdirs = [
@@ -1241,6 +1253,10 @@ pytest = [
 pytest-mpi = [
     {file = "pytest-mpi-0.6.tar.gz", hash = "sha256:09b3cd3511f8f3cd4d205f54d4a7223724fed0ab68b872ed1123d312152325a9"},
     {file = "pytest_mpi-0.6-py2.py3-none-any.whl", hash = "sha256:1b7e193fb3be31d08c8e4dd7435e8e13e14b17ead6a6fc6aa07a6d3c7145590b"},
+]
+pytest-rerunfailures = [
+    {file = "pytest-rerunfailures-10.3.tar.gz", hash = "sha256:d8244d799f89a6edb5e57301ddaeb3b6f10d6691638d51e80b371311592e28c6"},
+    {file = "pytest_rerunfailures-10.3-py3-none-any.whl", hash = "sha256:6be6f96510bf94b54198bf15bc5568fe2cdff88e83875912e22d29810acf65ff"},
 ]
 python-dateutil = [
     {file = "python-dateutil-2.8.2.tar.gz", hash = "sha256:0123cacc1627ae19ddf3c27a5de5bd67ee4586fbdd6440d9748f8abb483d3e86"},
