@@ -28,6 +28,12 @@ class EulerianLagrangianGridCommunicatorMPI2D:
         if n_components != 1 and n_components != 2:
             raise ValueError("invalid number of components for eul-lag interpolation!")
 
+        # Check that ghost size is enough for interp_kernel_width
+        if ghost_size < interp_kernel_width:
+            raise ValueError(
+                f"ghost size ({ghost_size}) needs to be >= interp kernel width "
+                f"({interp_kernel_width})"
+            )
         # MPI-related variables
         self.mpi_construct = mpi_construct
         self.mpi_ghost_sum_comm = MPIGhostSumCommunicator2D(
