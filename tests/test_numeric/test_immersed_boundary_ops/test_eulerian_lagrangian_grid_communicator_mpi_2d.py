@@ -9,7 +9,6 @@ from sopht_mpi.utils import (
     MPILagrangianFieldCommunicator2D,
 )
 from sopht.utils.precision import get_real_t, get_test_tol
-from mpi4py import MPI
 
 
 class MockEulLagGridCommSolution:
@@ -240,32 +239,16 @@ def test_mpi_local_eulerian_grid_support_of_lagrangian_grid_2d(
     ).astype(int)
 
     # 4. Test and compare values
-    local_allclose_nearest_eul_grid_index_to_lag_grid = np.allclose(
+    np.testing.assert_allclose(
         mock_soln.nearest_eul_grid_index_to_lag_grid[..., mask],
         mpi_local_nearest_eul_grid_index_to_lag_grid,
         atol=get_test_tol(precision),
     )
-    # reduce to make sure each chunk of data in each rank is passing
-    allclose_nearest_eul_grid_index_to_lag_grid = mpi_construct.grid.allreduce(
-        local_allclose_nearest_eul_grid_index_to_lag_grid, op=MPI.LAND
-    )
-    local_allclose_local_eul_grid_support_of_lag_grid = np.allclose(
+    np.testing.assert_allclose(
         mock_soln.local_eul_grid_support_of_lag_grid[..., mask],
         mpi_local_local_eul_grid_support_of_lag_grid,
         atol=get_test_tol(precision),
     )
-    # reduce to make sure each chunk of data in each rank is passing
-    allclose_local_eul_grid_support_of_lag_grid = mpi_construct.grid.allreduce(
-        local_allclose_local_eul_grid_support_of_lag_grid, op=MPI.LAND
-    )
-    # asserting this way ensures that if one rank fails (perhaps due to flaky test),
-    # all ranks fail, and pytest can perform rerun without running into deadlock
-    assert (
-        allclose_local_eul_grid_support_of_lag_grid
-    ), f"rank {mpi_construct.rank} failed the test."
-    assert (
-        allclose_nearest_eul_grid_index_to_lag_grid
-    ), f"rank {mpi_construct.rank} failed the test."
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
@@ -343,19 +326,11 @@ def test_mpi_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
         mpi_local_nearest_eul_grid_index_to_lag_grid,
     )
 
-    # 4. Test and compare
-    local_allclose_lag_grid_field = np.allclose(
+    np.testing.assert_allclose(
         mock_soln.lag_grid_field[..., mask],
         mpi_local_lag_grid_field,
         atol=get_test_tol(precision),
     )
-    # reduce to make sure each chunk of data in each rank is passing
-    allclose_lag_grid_field = mpi_construct.grid.allreduce(
-        local_allclose_lag_grid_field, op=MPI.LAND
-    )
-    # asserting this way ensures that if one rank fails (perhaps due to flaky test),
-    # all ranks fail, and pytest can perform rerun without running into deadlock
-    assert allclose_lag_grid_field, f"rank {mpi_construct.rank} failed the test."
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
@@ -441,19 +416,11 @@ def test_mpi_vector_field_eul_to_lag_grid_interpolation_kernel_2d(
         mpi_local_nearest_eul_grid_index_to_lag_grid,
     )
 
-    # 4. Test and compare
-    local_allclose_lag_grid_field = np.allclose(
+    np.testing.assert_allclose(
         mock_soln.lag_grid_field[..., mask],
         mpi_local_lag_grid_field,
         atol=get_test_tol(precision),
     )
-    # reduce to make sure each chunk of data in each rank is passing
-    allclose_lag_grid_field = mpi_construct.grid.allreduce(
-        local_allclose_lag_grid_field, op=MPI.LAND
-    )
-    # asserting this way ensures that if one rank fails (perhaps due to flaky test),
-    # all ranks fail, and pytest can perform rerun without running into deadlock
-    assert allclose_lag_grid_field, f"rank {mpi_construct.rank} failed the test."
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
@@ -539,19 +506,11 @@ def test_mpi_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
         slice(mpi_substart_idx[0], mpi_substart_idx[0] + local_grid_size_x),
     )
 
-    # 4. Test and compare
-    local_allclose_eul_grid_field = np.allclose(
+    np.testing.assert_allclose(
         mock_soln.eul_grid_field[mpi_local_sol_idx],
         mpi_local_eul_grid_field[ghost_size:-ghost_size, ghost_size:-ghost_size],
         atol=get_test_tol(precision),
     )
-    # reduce to make sure each chunk of data in each rank is passing
-    allclose_eul_grid_field = mpi_construct.grid.allreduce(
-        local_allclose_eul_grid_field, op=MPI.LAND
-    )
-    # asserting this way ensures that if one rank fails (perhaps due to flaky test),
-    # all ranks fail, and pytest can perform rerun without running into deadlock
-    assert allclose_eul_grid_field, f"rank {mpi_construct.rank} failed the test."
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
@@ -650,19 +609,11 @@ def test_mpi_vector_field_lag_to_eul_grid_interpolation_kernel_2d(
         ),
     )
 
-    # 4. Test and compare
-    local_allclose_eul_grid_field = np.allclose(
+    np.testing.assert_allclose(
         mock_soln.eul_grid_field[mpi_local_sol_idx],
         mpi_local_eul_grid_field[:, ghost_size:-ghost_size, ghost_size:-ghost_size],
         atol=get_test_tol(precision),
     )
-    # reduce to make sure each chunk of data in each rank is passing
-    allclose_eul_grid_field = mpi_construct.grid.allreduce(
-        local_allclose_eul_grid_field, op=MPI.LAND
-    )
-    # asserting this way ensures that if one rank fails (perhaps due to flaky test),
-    # all ranks fail, and pytest can perform rerun without running into deadlock
-    assert allclose_eul_grid_field, f"rank {mpi_construct.rank} failed the test."
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
@@ -743,15 +694,8 @@ def test_mpi_interpolation_weights_kernel_on_nodes_2d(
         interp_weights=mpi_local_interp_weights,
         local_eul_grid_support_of_lag_grid=mpi_local_local_eul_grid_support_of_lag_grid,
     )
-    local_allclose_interp_weights = np.allclose(
+    np.testing.assert_allclose(
         mock_soln.interp_weights[..., mask],
         mpi_local_interp_weights,
         atol=get_test_tol(precision),
     )
-    # reduce to make sure each chunk of data in each rank is passing
-    allclose_interp_weights = mpi_construct.grid.allreduce(
-        local_allclose_interp_weights, op=MPI.LAND
-    )
-    # asserting this way ensures that if one rank fails (perhaps due to flaky test),
-    # all ranks fail, and pytest can perform rerun without running into deadlock
-    assert allclose_interp_weights, f"rank {mpi_construct.rank} failed the test."

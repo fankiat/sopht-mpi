@@ -10,7 +10,6 @@ from sopht_mpi.utils import (
     MPIFieldCommunicator2D,
 )
 from sopht.utils.precision import get_real_t, get_test_tol
-from mpi4py import MPI
 
 
 class ReferenceVirtualBoundaryForcing(VirtualBoundaryForcing):
@@ -81,35 +80,28 @@ class ReferenceVirtualBoundaryForcing(VirtualBoundaryForcing):
             + mpi_substart_idx.reshape(virtual_boundary_forcing.grid_dim, 1)
         )
         # Check nearest eul grid index
-        local_allclose_local_nearest_eul_grid_index_to_lag_grid = np.allclose(
+        np.testing.assert_allclose(
             mpi_global_nearest_eul_grid_index_to_lag_grid,
             self.nearest_eul_grid_index_to_lag_grid[..., mask],
             atol=self.test_tol,
         )
         # Check lag grid flow velocity field
-        local_allclose_lag_grid_flow_velocity_field = np.allclose(
+        np.testing.assert_allclose(
             virtual_boundary_forcing.local_lag_grid_flow_velocity_field,
             self.lag_grid_flow_velocity_field[..., mask],
             atol=self.test_tol,
         )
         # Check lag grid velocity mismatch field
-        local_allclose_lag_grid_velocity_mismatch_field = np.allclose(
+        np.testing.assert_allclose(
             virtual_boundary_forcing.local_lag_grid_velocity_mismatch_field,
             self.lag_grid_velocity_mismatch_field[..., mask],
             atol=self.test_tol,
         )
         # Check lag grid forcing field
-        local_allclose_lag_grid_forcing_field = np.allclose(
+        np.testing.assert_allclose(
             virtual_boundary_forcing.local_lag_grid_forcing_field,
             self.lag_grid_forcing_field[..., mask],
             atol=self.test_tol,
-        )
-
-        return (
-            local_allclose_local_nearest_eul_grid_index_to_lag_grid,
-            local_allclose_lag_grid_flow_velocity_field,
-            local_allclose_lag_grid_velocity_mismatch_field,
-            local_allclose_lag_grid_forcing_field,
         )
 
 
@@ -318,20 +310,11 @@ def test_mpi_compute_lag_grid_velocity_mismatch_field(
         lag_grid_body_velocity_field=mpi_virtual_boundary_forcing.local_lag_grid_velocity_field,
     )
     # Compare and test solution field
-    local_allclose_lag_grid_velocity_mismatch_field = np.allclose(
+    np.testing.assert_allclose(
         ref_lag_grid_velocity_mismatch_field[..., mask],
         mpi_virtual_boundary_forcing.local_lag_grid_velocity_mismatch_field,
         atol=get_test_tol(precision),
     )
-    # reduce to make sure each chunk of data in each rank is passing
-    allclose_lag_grid_velocity_mismatch_field = mpi_construct.grid.allreduce(
-        local_allclose_lag_grid_velocity_mismatch_field, op=MPI.LAND
-    )
-    # asserting this way ensures that if one rank fails (perhaps due to flaky test),
-    # all ranks fail, and pytest can perform rerun without running into deadlock
-    assert (
-        allclose_lag_grid_velocity_mismatch_field
-    ), f"lag grid velocity mismatch field failed [rank {mpi_construct.rank}]"
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
@@ -431,20 +414,11 @@ def test_mpi_update_lag_grid_position_mismatch_field_via_euler_forward(
         dt=dt,
     )
     # Compare and test solution field
-    local_allclose_lag_grid_position_mismatch_field = np.allclose(
+    np.testing.assert_allclose(
         ref_lag_grid_position_mismatch_field[..., mask],
         mpi_virtual_boundary_forcing.local_lag_grid_position_mismatch_field,
         atol=get_test_tol(precision),
     )
-    # reduce to make sure each chunk of data in each rank is passing
-    allclose_lag_grid_position_mismatch_field = mpi_construct.grid.allreduce(
-        local_allclose_lag_grid_position_mismatch_field, op=MPI.LAND
-    )
-    # asserting this way ensures that if one rank fails (perhaps due to flaky test),
-    # all ranks fail, and pytest can perform rerun without running into deadlock
-    assert (
-        allclose_lag_grid_position_mismatch_field
-    ), f"lag grid position mismatch field failed [rank {mpi_construct.rank}]"
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
@@ -547,20 +521,11 @@ def test_mpi_compute_lag_grid_forcing_field(
         virtual_boundary_damping_coeff=mpi_virtual_boundary_forcing.virtual_boundary_damping_coeff,
     )
     # Compare and test solution field
-    local_allclose_lag_grid_forcing_field = np.allclose(
+    np.testing.assert_allclose(
         ref_lag_grid_forcing_field[..., mask],
         mpi_virtual_boundary_forcing.local_lag_grid_forcing_field,
         atol=get_test_tol(precision),
     )
-    # reduce to make sure each chunk of data in each rank is passing
-    allclose_lag_grid_forcing_field = mpi_construct.grid.allreduce(
-        local_allclose_lag_grid_forcing_field, op=MPI.LAND
-    )
-    # asserting this way ensures that if one rank fails (perhaps due to flaky test),
-    # all ranks fail, and pytest can perform rerun without running into deadlock
-    assert (
-        allclose_lag_grid_forcing_field
-    ), f"lag grid forcing field failed [rank {mpi_construct.rank}]"
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
@@ -699,42 +664,9 @@ def test_mpi_compute_interaction_force_on_lag_grid(
         global_lag_grid_velocity_field=global_ref_lag_grid_velocity_field,
     )
 
-    # Compare and test solution field
-    (
-        local_allclose_local_nearest_eul_grid_index_to_lag_grid,
-        local_allclose_lag_grid_flow_velocity_field,
-        local_allclose_lag_grid_velocity_mismatch_field,
-        local_allclose_lag_grid_forcing_field,
-    ) = ref_virtual_boundary_forcing.check_lag_grid_interaction_solution(
+    ref_virtual_boundary_forcing.check_lag_grid_interaction_solution(
         virtual_boundary_forcing=mpi_virtual_boundary_forcing, mask=mask
     )
-    # reduce to make sure each chunk of data in each rank is passing
-    allclose_local_nearest_eul_grid_index_to_lag_grid = mpi_construct.grid.allreduce(
-        local_allclose_local_nearest_eul_grid_index_to_lag_grid, op=MPI.LAND
-    )
-    allclose_lag_grid_flow_velocity_field = mpi_construct.grid.allreduce(
-        local_allclose_lag_grid_flow_velocity_field, op=MPI.LAND
-    )
-    allclose_lag_grid_velocity_mismatch_field = mpi_construct.grid.allreduce(
-        local_allclose_lag_grid_velocity_mismatch_field, op=MPI.LAND
-    )
-    allclose_lag_grid_forcing_field = mpi_construct.grid.allreduce(
-        local_allclose_lag_grid_forcing_field, op=MPI.LAND
-    )
-    # asserting this way ensures that if one rank fails (perhaps due to flaky test),
-    # all ranks fail, and pytest can perform rerun without running into deadlock
-    assert (
-        allclose_local_nearest_eul_grid_index_to_lag_grid
-    ), f"local nearest eul grid index to lag grid failed [rank {mpi_construct.rank}]"
-    assert (
-        allclose_lag_grid_flow_velocity_field
-    ), f"lag grid flow velocity field failed [rank {mpi_construct.rank}]"
-    assert (
-        allclose_lag_grid_velocity_mismatch_field
-    ), f"lag grid velocity mismatch field failed [rank {mpi_construct.rank}]"
-    assert (
-        allclose_lag_grid_forcing_field
-    ), f"lag grid forcing field failed [rank {mpi_construct.rank}]"
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
@@ -884,44 +816,11 @@ def test_mpi_compute_interaction_force_on_eul_and_lag_grid(
         global_lag_grid_velocity_field=global_ref_lag_grid_velocity_field,
     )
 
-    # Compare and test solution field
     # Check lag grid solution
-    (
-        local_allclose_local_nearest_eul_grid_index_to_lag_grid,
-        local_allclose_lag_grid_flow_velocity_field,
-        local_allclose_lag_grid_velocity_mismatch_field,
-        local_allclose_lag_grid_forcing_field,
-    ) = ref_virtual_boundary_forcing.check_lag_grid_interaction_solution(
-        virtual_boundary_forcing=mpi_virtual_boundary_forcing, mask=mask
+    ref_virtual_boundary_forcing.check_lag_grid_interaction_solution(
+        virtual_boundary_forcing=mpi_virtual_boundary_forcing,
+        mask=mask,
     )
-    # reduce to make sure each chunk of data in each rank is passing
-    allclose_local_nearest_eul_grid_index_to_lag_grid = mpi_construct.grid.allreduce(
-        local_allclose_local_nearest_eul_grid_index_to_lag_grid, op=MPI.LAND
-    )
-    allclose_lag_grid_flow_velocity_field = mpi_construct.grid.allreduce(
-        local_allclose_lag_grid_flow_velocity_field, op=MPI.LAND
-    )
-    allclose_lag_grid_velocity_mismatch_field = mpi_construct.grid.allreduce(
-        local_allclose_lag_grid_velocity_mismatch_field, op=MPI.LAND
-    )
-    allclose_lag_grid_forcing_field = mpi_construct.grid.allreduce(
-        local_allclose_lag_grid_forcing_field, op=MPI.LAND
-    )
-    # asserting this way ensures that if one rank fails (perhaps due to flaky test),
-    # all ranks fail, and pytest can perform rerun without running into deadlock
-    assert (
-        allclose_local_nearest_eul_grid_index_to_lag_grid
-    ), f"local nearest eul grid index to lag grid failed [rank {mpi_construct.rank}]"
-    assert (
-        allclose_lag_grid_flow_velocity_field
-    ), f"lag grid flow velocity field failed [rank {mpi_construct.rank}]"
-    assert (
-        allclose_lag_grid_velocity_mismatch_field
-    ), f"lag grid velocity mismatch field failed [rank {mpi_construct.rank}]"
-    assert (
-        allclose_lag_grid_forcing_field
-    ), f"lag grid forcing field failed [rank {mpi_construct.rank}]"
-    # Check eul grid solution
     # Get corresponding local eul grid chunk of ref solution
     local_grid_size_y, local_grid_size_x = mpi_construct.local_grid_size
     mpi_substart_idx = mpi_construct.grid.coords * mpi_construct.local_grid_size
@@ -931,19 +830,13 @@ def test_mpi_compute_interaction_force_on_eul_and_lag_grid(
         slice(mpi_substart_idx[1], mpi_substart_idx[1] + local_grid_size_x),
     )
     # Check eul grid solution
-    local_allclose_eul_grid_forcing_field = np.allclose(
+    np.testing.assert_allclose(
         ref_eul_grid_forcing_field[mpi_local_sol_idx],
         mpi_local_eul_grid_forcing_field[
             :, ghost_size:-ghost_size, ghost_size:-ghost_size
         ],
         atol=get_test_tol(precision),
     )
-    allclose_eul_grid_forcing_field = mpi_construct.grid.allreduce(
-        local_allclose_eul_grid_forcing_field, op=MPI.LAND
-    )
-    assert (
-        allclose_eul_grid_forcing_field
-    ), f"eul grid forcing field failed [rank {mpi_construct.rank}]"
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
@@ -1041,21 +934,13 @@ def test_mpi_virtual_boundary_forcing_time_step(
     )
     mpi_virtual_boundary_forcing.time_step(dt=dt)
     # Compare and test solution fields
-    local_allclose_lag_grid_position_mismatch_field = np.allclose(
+    np.testing.assert_allclose(
         ref_virtual_boundary_forcing.lag_grid_position_mismatch_field[..., mask],
         mpi_virtual_boundary_forcing.local_lag_grid_position_mismatch_field,
         atol=get_test_tol(precision),
     )
-    local_allclose_time = np.allclose(
+    np.testing.assert_allclose(
         ref_virtual_boundary_forcing.time,
         mpi_virtual_boundary_forcing.time,
         atol=get_test_tol(precision),
     )
-    allclose_lag_grid_position_mismatch_field = mpi_construct.grid.allreduce(
-        local_allclose_lag_grid_position_mismatch_field, op=MPI.LAND
-    )
-    allclose_time = mpi_construct.grid.allreduce(local_allclose_time, op=MPI.LAND)
-    assert (
-        allclose_lag_grid_position_mismatch_field
-    ), f"lag grid position mismatch field failed [rank {mpi_construct.rank}]"
-    assert allclose_time, f"time failed [rank {mpi_construct.rank}]"
