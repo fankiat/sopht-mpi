@@ -1,36 +1,43 @@
 import numpy as np
 import pytest
 from sopht.utils.precision import get_real_t, get_test_tol
-from sopht.numeric.eulerian_grid_ops.stencil_ops_2d import (
-    gen_brinkmann_penalise_pyst_kernel_2d,
+from sopht.numeric.eulerian_grid_ops.stencil_ops_3d import (
+    gen_brinkmann_penalise_pyst_kernel_3d,
 )
-from sopht_mpi.utils import MPIConstruct2D, MPIFieldCommunicator2D
-from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_2d import (
-    gen_brinkmann_penalise_pyst_mpi_kernel_2d,
+from sopht_mpi.utils import MPIConstruct3D, MPIFieldCommunicator3D
+from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_3d import (
+    gen_brinkmann_penalise_pyst_mpi_kernel_3d,
 )
 
 
-@pytest.mark.mpi(group="MPI_stencil_ops_2d", min_size=2)
+@pytest.mark.mpi(group="MPI_stencil_ops_3d", min_size=4)
 @pytest.mark.parametrize("ghost_size", [0, 1, 2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
-@pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
-def test_mpi_brinkmann_penalise_scalar_field_2d(
+@pytest.mark.parametrize(
+    "rank_distribution",
+    [(0, 1, 1), (1, 0, 1), (1, 1, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)],
+)
+@pytest.mark.parametrize(
+    "aspect_ratio",
+    [(1, 1, 1), (1, 1, 2), (1, 2, 1), (2, 1, 1), (1, 2, 2), (2, 1, 2), (2, 2, 1)],
+)
+def test_mpi_brinkmann_penalise_scalar_field_3d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    n_values = 32
+    n_values = 8
     real_t = get_real_t(precision)
     # Generate the MPI topology minimal object
-    mpi_construct = MPIConstruct2D(
-        grid_size_y=n_values * aspect_ratio[0],
-        grid_size_x=n_values * aspect_ratio[1],
+    mpi_construct = MPIConstruct3D(
+        grid_size_z=n_values * aspect_ratio[0],
+        grid_size_y=n_values * aspect_ratio[1],
+        grid_size_x=n_values * aspect_ratio[2],
         real_t=real_t,
         rank_distribution=rank_distribution,
     )
 
     # Initialize field communicator
     # No need for ghost communicator, since no ghost exchange is needed
-    mpi_field_communicator = MPIFieldCommunicator2D(
+    mpi_field_communicator = MPIFieldCommunicator3D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
     gather_local_field = mpi_field_communicator.gather_local_field
@@ -41,6 +48,7 @@ def test_mpi_brinkmann_penalise_scalar_field_2d(
         (
             mpi_construct.local_grid_size[0] + 2 * ghost_size,
             mpi_construct.local_grid_size[1] + 2 * ghost_size,
+            mpi_construct.local_grid_size[2] + 2 * ghost_size,
         )
     ).astype(real_t)
     local_penalty_field = np.zeros_like(local_field)
@@ -50,13 +58,19 @@ def test_mpi_brinkmann_penalise_scalar_field_2d(
     # Initialize and broadcast solution for comparison later
     if mpi_construct.rank == 0:
         ref_field = np.random.rand(
-            n_values * aspect_ratio[0], n_values * aspect_ratio[1]
+            n_values * aspect_ratio[0],
+            n_values * aspect_ratio[1],
+            n_values * aspect_ratio[2],
         ).astype(real_t)
         ref_penalty_field = np.random.rand(
-            n_values * aspect_ratio[0], n_values * aspect_ratio[1]
+            n_values * aspect_ratio[0],
+            n_values * aspect_ratio[1],
+            n_values * aspect_ratio[2],
         ).astype(real_t)
         ref_char_field = np.random.rand(
-            n_values * aspect_ratio[0], n_values * aspect_ratio[1]
+            n_values * aspect_ratio[0],
+            n_values * aspect_ratio[1],
+            n_values * aspect_ratio[2],
         ).astype(real_t)
         penalty_factor = real_t(0.1)
     else:
@@ -76,7 +90,7 @@ def test_mpi_brinkmann_penalise_scalar_field_2d(
 
     # compute the brinkmann penalisation
     brinkmann_penalise_scalar_field_pyst_mpi_kernel = (
-        gen_brinkmann_penalise_pyst_mpi_kernel_2d(real_t=real_t, field_type="scalar")
+        gen_brinkmann_penalise_pyst_mpi_kernel_3d(real_t=real_t, field_type="scalar")
     )
 
     brinkmann_penalise_scalar_field_pyst_mpi_kernel(
@@ -93,7 +107,7 @@ def test_mpi_brinkmann_penalise_scalar_field_2d(
 
     # assert correct
     if mpi_construct.rank == 0:
-        brinkmann_penalise_pyst_kernel = gen_brinkmann_penalise_pyst_kernel_2d(
+        brinkmann_penalise_pyst_kernel = gen_brinkmann_penalise_pyst_kernel_3d(
             real_t=real_t, field_type="scalar"
         )
         ref_penalised_field = np.ones_like(ref_field)
@@ -115,27 +129,34 @@ def test_mpi_brinkmann_penalise_scalar_field_2d(
         )
 
 
-@pytest.mark.mpi(group="MPI_stencil_ops_2d", min_size=2)
+@pytest.mark.mpi(group="MPI_stencil_ops_3d", min_size=4)
 @pytest.mark.parametrize("ghost_size", [0, 1, 2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
-@pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
-def test_mpi_brinkmann_penalise_vector_field_2d(
+@pytest.mark.parametrize(
+    "rank_distribution",
+    [(0, 1, 1), (1, 0, 1), (1, 1, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)],
+)
+@pytest.mark.parametrize(
+    "aspect_ratio",
+    [(1, 1, 1), (1, 1, 2), (1, 2, 1), (2, 1, 1), (1, 2, 2), (2, 1, 2), (2, 2, 1)],
+)
+def test_mpi_brinkmann_penalise_vector_field_3d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    n_values = 32
+    n_values = 8
     real_t = get_real_t(precision)
     # Generate the MPI topology minimal object
-    mpi_construct = MPIConstruct2D(
-        grid_size_y=n_values * aspect_ratio[0],
-        grid_size_x=n_values * aspect_ratio[1],
+    mpi_construct = MPIConstruct3D(
+        grid_size_z=n_values * aspect_ratio[0],
+        grid_size_y=n_values * aspect_ratio[1],
+        grid_size_x=n_values * aspect_ratio[2],
         real_t=real_t,
         rank_distribution=rank_distribution,
     )
 
     # Initialize field communicator
     # No need for ghost communicator, since no ghost exchange is needed
-    mpi_field_communicator = MPIFieldCommunicator2D(
+    mpi_field_communicator = MPIFieldCommunicator3D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
     gather_local_field = mpi_field_communicator.gather_local_field
@@ -147,6 +168,7 @@ def test_mpi_brinkmann_penalise_vector_field_2d(
             mpi_construct.grid_dim,
             mpi_construct.local_grid_size[0] + 2 * ghost_size,
             mpi_construct.local_grid_size[1] + 2 * ghost_size,
+            mpi_construct.local_grid_size[2] + 2 * ghost_size,
         )
     ).astype(real_t)
     local_penalty_vector_field = np.zeros_like(local_vector_field)
@@ -159,14 +181,18 @@ def test_mpi_brinkmann_penalise_vector_field_2d(
             mpi_construct.grid_dim,
             n_values * aspect_ratio[0],
             n_values * aspect_ratio[1],
+            n_values * aspect_ratio[2],
         ).astype(real_t)
         ref_penalty_vector_field = np.random.rand(
             mpi_construct.grid_dim,
             n_values * aspect_ratio[0],
             n_values * aspect_ratio[1],
+            n_values * aspect_ratio[2],
         ).astype(real_t)
         ref_char_field = np.random.rand(
-            n_values * aspect_ratio[0], n_values * aspect_ratio[1]
+            n_values * aspect_ratio[0],
+            n_values * aspect_ratio[1],
+            n_values * aspect_ratio[2],
         ).astype(real_t)
         penalty_factor = real_t(0.1)
     else:
@@ -184,17 +210,21 @@ def test_mpi_brinkmann_penalise_vector_field_2d(
     # scatter global field
     scatter_global_field(local_vector_field[0], ref_vector_field[0], mpi_construct)
     scatter_global_field(local_vector_field[1], ref_vector_field[1], mpi_construct)
+    scatter_global_field(local_vector_field[2], ref_vector_field[2], mpi_construct)
     scatter_global_field(
         local_penalty_vector_field[0], ref_penalty_vector_field[0], mpi_construct
     )
     scatter_global_field(
         local_penalty_vector_field[1], ref_penalty_vector_field[1], mpi_construct
     )
+    scatter_global_field(
+        local_penalty_vector_field[2], ref_penalty_vector_field[2], mpi_construct
+    )
     scatter_global_field(local_char_field, ref_char_field, mpi_construct)
 
     # compute the brinkmann penalisation
     brinkmann_penalise_vector_field_pyst_mpi_kernel = (
-        gen_brinkmann_penalise_pyst_mpi_kernel_2d(real_t=real_t, field_type="vector")
+        gen_brinkmann_penalise_pyst_mpi_kernel_3d(real_t=real_t, field_type="vector")
     )
 
     brinkmann_penalise_vector_field_pyst_mpi_kernel(
@@ -213,10 +243,13 @@ def test_mpi_brinkmann_penalise_vector_field_2d(
     gather_local_field(
         global_penalised_vector_field[1], local_penalised_vector_field[1], mpi_construct
     )
+    gather_local_field(
+        global_penalised_vector_field[2], local_penalised_vector_field[2], mpi_construct
+    )
 
     # assert correct
     if mpi_construct.rank == 0:
-        brinkmann_penalise_pyst_kernel = gen_brinkmann_penalise_pyst_kernel_2d(
+        brinkmann_penalise_pyst_kernel = gen_brinkmann_penalise_pyst_kernel_3d(
             real_t=real_t, field_type="vector"
         )
         ref_penalised_vector_field = np.ones_like(ref_vector_field)
