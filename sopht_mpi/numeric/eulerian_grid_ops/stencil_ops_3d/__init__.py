@@ -9,4 +9,7 @@ from .advection_timestep_mpi_3d import (
     gen_advection_timestep_euler_forward_conservative_eno3_pyst_mpi_kernel_3d,
 )
 from .divergence_mpi_3d import gen_divergence_pyst_mpi_kernel_3d
+from .char_func_from_level_set_mpi_3d import (
+    gen_char_func_from_level_set_via_sine_heaviside_pyst_mpi_kernel_3d,
+)
 from .brinkmann_penalise_mpi_3d import gen_brinkmann_penalise_pyst_mpi_kernel_3d
