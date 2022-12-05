@@ -11,7 +11,7 @@ from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_3d import (
 
 
 @pytest.mark.mpi(group="MPI_stencil_ops_3d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [0, 1, 2, 3])
+@pytest.mark.parametrize("ghost_size", [1, 2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize(
     "rank_distribution",
@@ -19,18 +19,21 @@ from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_3d import (
 )
 @pytest.mark.parametrize(
     "aspect_ratio",
-    [(1, 1, 1), (1, 1, 2), (1, 2, 1), (2, 1, 1), (1, 2, 2), (2, 1, 2), (2, 2, 1)],
+    [(1, 1, 1), (1, 1.5, 2)],
 )
-def test_mpi_brinkmann_penalise_scalar_field_3d(
+def test_mpi_char_func_from_level_set_3d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
     n_values = 8
+    grid_size_z, grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(
+        int
+    )
     real_t = get_real_t(precision)
     # Generate the MPI topology minimal object
     mpi_construct = MPIConstruct3D(
-        grid_size_z=n_values * aspect_ratio[0],
-        grid_size_y=n_values * aspect_ratio[1],
-        grid_size_x=n_values * aspect_ratio[2],
+        grid_size_z=grid_size_z,
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
         real_t=real_t,
         rank_distribution=rank_distribution,
     )
@@ -56,9 +59,7 @@ def test_mpi_brinkmann_penalise_scalar_field_3d(
     # Initialize and broadcast solution for comparison later
     if mpi_construct.rank == 0:
         ref_level_set_field = np.random.rand(
-            n_values * aspect_ratio[0],
-            n_values * aspect_ratio[1],
-            n_values * aspect_ratio[2],
+            grid_size_z, grid_size_y, grid_size_x
         ).astype(real_t)
         blend_width = real_t(0.2)
     else:

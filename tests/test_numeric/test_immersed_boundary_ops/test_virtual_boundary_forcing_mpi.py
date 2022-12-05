@@ -105,7 +105,7 @@ class ReferenceVirtualBoundaryForcing(VirtualBoundaryForcing):
         )
 
 
-@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
+@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=8)
 @pytest.mark.parametrize("grid_dim", [2])
 @pytest.mark.parametrize("ghost_size", [2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
@@ -214,7 +214,7 @@ def test_mpi_virtual_boundary_forcing_init(
     )
 
 
-@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
+@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=8)
 @pytest.mark.parametrize("grid_dim", [2])
 @pytest.mark.parametrize("ghost_size", [2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
@@ -317,7 +317,7 @@ def test_mpi_compute_lag_grid_velocity_mismatch_field(
     )
 
 
-@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
+@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=8)
 @pytest.mark.parametrize("grid_dim", [2])
 @pytest.mark.parametrize("ghost_size", [2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
@@ -421,7 +421,7 @@ def test_mpi_update_lag_grid_position_mismatch_field_via_euler_forward(
     )
 
 
-@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
+@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=8)
 @pytest.mark.parametrize("grid_dim", [2])
 @pytest.mark.parametrize("ghost_size", [2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
@@ -528,7 +528,7 @@ def test_mpi_compute_lag_grid_forcing_field(
     )
 
 
-@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
+@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=8)
 @pytest.mark.parametrize("grid_dim", [2])
 @pytest.mark.parametrize("ghost_size", [2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
@@ -669,7 +669,7 @@ def test_mpi_compute_interaction_force_on_lag_grid(
     )
 
 
-@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
+@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=8)
 @pytest.mark.parametrize("grid_dim", [2])
 @pytest.mark.parametrize("ghost_size", [2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
@@ -839,7 +839,7 @@ def test_mpi_compute_interaction_force_on_eul_and_lag_grid(
     )
 
 
-@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
+@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=8)
 @pytest.mark.parametrize("grid_dim", [2])
 @pytest.mark.parametrize("ghost_size", [2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])

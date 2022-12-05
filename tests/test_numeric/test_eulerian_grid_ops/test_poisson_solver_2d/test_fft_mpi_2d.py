@@ -10,20 +10,21 @@ from scipy.fft import rfftn
 
 
 @pytest.mark.mpi(group="MPI_Poisson_solver_2d", min_size=2)
-@pytest.mark.parametrize("ghost_size", [1, 2, 3])
+@pytest.mark.parametrize("ghost_size", [1, 2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
+@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1.5, 1)])
 def test_mpi_fft_slab(ghost_size, precision, rank_distribution, aspect_ratio):
     """
     Test parallel FFT on slab distributed along x and y
     """
-    n_values = 32
+    n_values = 8
+    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
     real_t = get_real_t(precision)
     # Generate the MPI topology minimal object
     mpi_construct = MPIConstruct2D(
-        grid_size_y=n_values * aspect_ratio[0],
-        grid_size_x=n_values * aspect_ratio[1],
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
         real_t=real_t,
         rank_distribution=rank_distribution,
     )
@@ -46,9 +47,7 @@ def test_mpi_fft_slab(ghost_size, precision, rank_distribution, aspect_ratio):
 
     # Generate solution and broadcast solution from rank 0 to all ranks
     if mpi_construct.rank == 0:
-        ref_field = np.random.randn(
-            n_values * aspect_ratio[0], n_values * aspect_ratio[1]
-        ).astype(real_t)
+        ref_field = np.random.randn(grid_size_y, grid_size_x).astype(real_t)
     else:
         ref_field = None
     ref_field = mpi_construct.grid.bcast(ref_field, root=0)
