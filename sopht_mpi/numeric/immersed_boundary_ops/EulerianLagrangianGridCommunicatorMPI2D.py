@@ -152,9 +152,9 @@ def generate_local_eulerian_grid_support_of_lagrangian_grid_kernel_2d(
 
         """
         # dtype of nearest_grid_index takes care of type casting to int
-        nearest_eul_grid_index_to_lag_grid[...] = (
-            lag_positions - eul_grid_coord_shift.reshape(grid_dim, -1)
-        ) // dx
+        nearest_eul_grid_index_to_lag_grid[...] = np.rint(
+            (lag_positions - eul_grid_coord_shift.reshape(grid_dim, -1)) / dx
+        )
 
         # reshape done to broadcast
         local_eul_grid_support_of_lag_grid[...] = (
