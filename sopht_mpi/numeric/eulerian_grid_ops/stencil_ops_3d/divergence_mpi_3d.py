@@ -1,6 +1,4 @@
 """MPI-supported kernels for computing divergence in 3D."""
-import pystencils as ps
-import sympy as sp
 from sopht.numeric.eulerian_grid_ops.stencil_ops_3d import (
     gen_divergence_pyst_kernel_3d,
     gen_set_fixed_val_pyst_kernel_3d,
