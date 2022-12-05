@@ -8,3 +8,4 @@ from .advection_flux_mpi_3d import (
 from .advection_timestep_mpi_3d import (
     gen_advection_timestep_euler_forward_conservative_eno3_pyst_mpi_kernel_3d,
 )
+from .divergence_mpi_3d import gen_divergence_pyst_mpi_kernel_3d
