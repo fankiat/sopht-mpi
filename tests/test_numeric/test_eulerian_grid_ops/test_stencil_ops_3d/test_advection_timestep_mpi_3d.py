@@ -151,7 +151,7 @@ def test_mpi_advection_timestep_eno3_euler_forward_3d(
         )
 
 
-@pytest.mark.mpi(group="MPI_stencil_ops_3d", min_size=2)
+@pytest.mark.mpi(group="MPI_stencil_ops_3d", min_size=4)
 @pytest.mark.parametrize("ghost_size", [pytest.param(1, marks=pytest.mark.xfail), 2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize(

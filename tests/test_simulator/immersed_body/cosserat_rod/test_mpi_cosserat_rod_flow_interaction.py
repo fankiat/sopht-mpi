@@ -8,7 +8,7 @@ from tests.test_simulator.immersed_body.cosserat_rod.test_cosserat_rod_forcing_g
 from sopht_mpi.utils import MPIConstruct2D, MPIGhostCommunicator2D
 
 
-@pytest.mark.mpi(group="MPI_cosserat_rod_flow_interaction", min_size=2)
+@pytest.mark.mpi(group="MPI_cosserat_rod_flow_interaction", min_size=4)
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("master_rank", [0, 1])
 @pytest.mark.parametrize("n_elems", [8, 16])

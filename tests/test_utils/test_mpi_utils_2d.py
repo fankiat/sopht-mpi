@@ -10,7 +10,7 @@ from sopht_mpi.utils import (
 from mpi4py import MPI
 
 
-@pytest.mark.mpi(group="MPI_utils", min_size=2)
+@pytest.mark.mpi(group="MPI_utils", min_size=4)
 @pytest.mark.parametrize("ghost_size", [1, 2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
@@ -54,7 +54,7 @@ def test_mpi_field_gather_scatter(
         np.testing.assert_allclose(ref_global_field, global_field)
 
 
-@pytest.mark.mpi(group="MPI_utils", min_size=2)
+@pytest.mark.mpi(group="MPI_utils", min_size=4)
 @pytest.mark.parametrize("ghost_size", [1, 2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
@@ -105,7 +105,7 @@ def test_mpi_ghost_communication(
     )
 
 
-@pytest.mark.mpi(group="MPI_utils", min_size=2)
+@pytest.mark.mpi(group="MPI_utils", min_size=4)
 @pytest.mark.parametrize("ghost_size", [1, 2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
@@ -186,7 +186,7 @@ def test_mpi_lagrangian_field_map(
     assert global_num_lag_nodes == global_lagrangian_positions.shape[1]
 
 
-@pytest.mark.mpi(group="MPI_utils", min_size=2)
+@pytest.mark.mpi(group="MPI_utils", min_size=4)
 @pytest.mark.parametrize("ghost_size", [1, 2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])

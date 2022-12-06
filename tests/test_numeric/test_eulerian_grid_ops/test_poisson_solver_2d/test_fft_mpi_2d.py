@@ -9,7 +9,7 @@ from sopht.utils.precision import get_real_t, get_test_tol
 from scipy.fft import rfftn
 
 
-@pytest.mark.mpi(group="MPI_Poisson_solver_2d", min_size=2)
+@pytest.mark.mpi(group="MPI_Poisson_solver_2d", min_size=4)
 @pytest.mark.parametrize("ghost_size", [1, 2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])

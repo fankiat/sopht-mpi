@@ -10,7 +10,7 @@ from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_2d import (
 )
 
 
-@pytest.mark.mpi(group="MPI_stencil_ops_2d", min_size=2)
+@pytest.mark.mpi(group="MPI_stencil_ops_2d", min_size=4)
 @pytest.mark.parametrize("ghost_size", [1, 2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
