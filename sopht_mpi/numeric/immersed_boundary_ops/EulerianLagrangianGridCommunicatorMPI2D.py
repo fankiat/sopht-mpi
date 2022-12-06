@@ -28,6 +28,12 @@ class EulerianLagrangianGridCommunicatorMPI2D:
         if n_components != 1 and n_components != 2:
             raise ValueError("invalid number of components for eul-lag interpolation!")
 
+        # Check that ghost size is enough for interp_kernel_width
+        if ghost_size < interp_kernel_width:
+            raise ValueError(
+                f"ghost size ({ghost_size}) needs to be >= interp kernel width "
+                f"({interp_kernel_width})"
+            )
         # MPI-related variables
         self.mpi_construct = mpi_construct
         self.mpi_ghost_sum_comm = MPIGhostSumCommunicator2D(
@@ -127,15 +133,6 @@ def generate_local_eulerian_grid_support_of_lagrangian_grid_kernel_2d(
     x_grid, y_grid = np.meshgrid(x, x)
     local_eul_grid_support_idx = np.stack((x_grid, y_grid))
 
-    # Note: Here we don't set cache=True for the numba kernel since it uses the varibale
-    # `eul_grid_coord_shift`, which varies between ranks, and each rank seems to
-    # contaminate the cached kernel, where each rank overwrites the numba cache and it
-    # causes a race condition. Consequently, since constants are not rebinded, we end up
-    # using wrong value at some of the ranks. This is mentioned in the limitations
-    # section found in https://numba.pydata.org/numba-doc/latest/developer/caching.html
-    # Another workaround for this is to make this as a variable in the kernel below, and
-    # caching wont be a problem anymore since the variable is passed in when kernel is
-    # called (i.e. not a constant, at least in the numba kernel)
     @njit(fastmath=True)
     def local_eulerian_grid_support_of_lagrangian_grid_kernel_2d(
         local_eul_grid_support_of_lag_grid,
@@ -189,94 +186,96 @@ def generate_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
     # grid/problem dimensions
     grid_dim = 2
 
-    @njit(cache=True, fastmath=True)
-    def eulerian_to_lagrangian_grid_interpolation_kernel_2d(
-        lag_grid_field,
-        eul_grid_field,
-        interp_weights,
-        nearest_eul_grid_index_to_lag_grid,
-    ):
-        """Interpolate an Eulerian field onto a Lagrangian field.
-
-        Inputs:
-        the nearest_eul_grid_index_to_lag_grid(grid_dim, num_lag_nodes) and
-        interpolation weights interp_weights of
-        shape (2 * interp_kernel_width, 2 * interp_kernel_width, num_lag_nodes)
-
-        """
-        num_lag_nodes = lag_grid_field.shape[-1]
-        for i in range(0, num_lag_nodes):
-            lag_grid_field[i] = np.sum(
-                eul_grid_field[
-                    nearest_eul_grid_index_to_lag_grid[1, i]
-                    - interp_kernel_width
-                    + 1 : nearest_eul_grid_index_to_lag_grid[1, i]
-                    + interp_kernel_width
-                    + 1,
-                    nearest_eul_grid_index_to_lag_grid[0, i]
-                    - interp_kernel_width
-                    + 1 : nearest_eul_grid_index_to_lag_grid[0, i]
-                    + interp_kernel_width
-                    + 1,
-                ]
-                * interp_weights[..., i]
-            ) * (dx**grid_dim)
-
-    @njit(cache=True, fastmath=True)
-    def vector_field_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
-        lag_grid_field,
-        eul_grid_field,
-        interp_weights,
-        nearest_eul_grid_index_to_lag_grid,
-    ):
-        """Interpolate an Eulerian vector field onto a Lagrangian vector field.
-
-        Inputs:
-        the nearest_eul_grid_index_to_lag_grid(grid_dim, num_lag_nodes) and
-        interpolation weights interp_weights of
-        shape (2 * interp_kernel_width, 2 * interp_kernel_width, num_lag_nodes)
-
-        """
-        num_lag_nodes = lag_grid_field.shape[-1]
-        for i in range(0, num_lag_nodes):
-            # numba doesnt allow multiple axes for np.sum :/,
-            # hence needs to be done serially
-            lag_grid_field[0, i] = np.sum(
-                eul_grid_field[
-                    0,
-                    nearest_eul_grid_index_to_lag_grid[1, i]
-                    - interp_kernel_width
-                    + 1 : nearest_eul_grid_index_to_lag_grid[1, i]
-                    + interp_kernel_width
-                    + 1,
-                    nearest_eul_grid_index_to_lag_grid[0, i]
-                    - interp_kernel_width
-                    + 1 : nearest_eul_grid_index_to_lag_grid[0, i]
-                    + interp_kernel_width
-                    + 1,
-                ]
-                * interp_weights[..., i]
-            ) * (dx**grid_dim)
-            lag_grid_field[1, i] = np.sum(
-                eul_grid_field[
-                    1,
-                    nearest_eul_grid_index_to_lag_grid[1, i]
-                    - interp_kernel_width
-                    + 1 : nearest_eul_grid_index_to_lag_grid[1, i]
-                    + interp_kernel_width
-                    + 1,
-                    nearest_eul_grid_index_to_lag_grid[0, i]
-                    - interp_kernel_width
-                    + 1 : nearest_eul_grid_index_to_lag_grid[0, i]
-                    + interp_kernel_width
-                    + 1,
-                ]
-                * interp_weights[..., i]
-            ) * (dx**grid_dim)
-
     if n_components == 1:
+
+        @njit(fastmath=True)
+        def eulerian_to_lagrangian_grid_interpolation_kernel_2d(
+            lag_grid_field,
+            eul_grid_field,
+            interp_weights,
+            nearest_eul_grid_index_to_lag_grid,
+        ):
+            """Interpolate an Eulerian field onto a Lagrangian field.
+
+            Inputs:
+            the nearest_eul_grid_index_to_lag_grid(grid_dim, num_lag_nodes) and
+            interpolation weights interp_weights of
+            shape (2 * interp_kernel_width, 2 * interp_kernel_width, num_lag_nodes)
+
+            """
+            num_lag_nodes = lag_grid_field.shape[-1]
+            for i in range(0, num_lag_nodes):
+                lag_grid_field[i] = np.sum(
+                    eul_grid_field[
+                        nearest_eul_grid_index_to_lag_grid[1, i]
+                        - interp_kernel_width
+                        + 1 : nearest_eul_grid_index_to_lag_grid[1, i]
+                        + interp_kernel_width
+                        + 1,
+                        nearest_eul_grid_index_to_lag_grid[0, i]
+                        - interp_kernel_width
+                        + 1 : nearest_eul_grid_index_to_lag_grid[0, i]
+                        + interp_kernel_width
+                        + 1,
+                    ]
+                    * interp_weights[..., i]
+                ) * (dx**grid_dim)
+
         return eulerian_to_lagrangian_grid_interpolation_kernel_2d
     else:
+
+        @njit(fastmath=True)
+        def vector_field_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
+            lag_grid_field,
+            eul_grid_field,
+            interp_weights,
+            nearest_eul_grid_index_to_lag_grid,
+        ):
+            """Interpolate an Eulerian vector field onto a Lagrangian vector field.
+
+            Inputs:
+            the nearest_eul_grid_index_to_lag_grid(grid_dim, num_lag_nodes) and
+            interpolation weights interp_weights of
+            shape (2 * interp_kernel_width, 2 * interp_kernel_width, num_lag_nodes)
+
+            """
+            num_lag_nodes = lag_grid_field.shape[-1]
+            for i in range(0, num_lag_nodes):
+                # numba doesnt allow multiple axes for np.sum :/,
+                # hence needs to be done serially
+                lag_grid_field[0, i] = np.sum(
+                    eul_grid_field[
+                        0,
+                        nearest_eul_grid_index_to_lag_grid[1, i]
+                        - interp_kernel_width
+                        + 1 : nearest_eul_grid_index_to_lag_grid[1, i]
+                        + interp_kernel_width
+                        + 1,
+                        nearest_eul_grid_index_to_lag_grid[0, i]
+                        - interp_kernel_width
+                        + 1 : nearest_eul_grid_index_to_lag_grid[0, i]
+                        + interp_kernel_width
+                        + 1,
+                    ]
+                    * interp_weights[..., i]
+                ) * (dx**grid_dim)
+                lag_grid_field[1, i] = np.sum(
+                    eul_grid_field[
+                        1,
+                        nearest_eul_grid_index_to_lag_grid[1, i]
+                        - interp_kernel_width
+                        + 1 : nearest_eul_grid_index_to_lag_grid[1, i]
+                        + interp_kernel_width
+                        + 1,
+                        nearest_eul_grid_index_to_lag_grid[0, i]
+                        - interp_kernel_width
+                        + 1 : nearest_eul_grid_index_to_lag_grid[0, i]
+                        + interp_kernel_width
+                        + 1,
+                    ]
+                    * interp_weights[..., i]
+                ) * (dx**grid_dim)
+
         return vector_field_eulerian_to_lagrangian_grid_interpolation_kernel_2d
 
 
@@ -290,78 +289,83 @@ def generate_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
     n_components : number of components in Lagrangian field
 
     """
-
-    @njit(cache=True, fastmath=True)
-    def lagrangian_to_eulerian_grid_interpolation_kernel_2d(
-        eul_grid_field,
-        lag_grid_field,
-        interp_weights,
-        nearest_eul_grid_index_to_lag_grid,
-    ):
-        """Interpolate a Lagrangian field onto an Eulerian field.
-
-        Inputs:
-        the nearest_eul_grid_index_to_lag_grid(grid_dim, num_lag_nodes) and
-        interpolation weights interp_weights of
-        shape (2 * interp_kernel_width, 2 * interp_kernel_width, num_lag_nodes)
-
-        """
-        num_lag_nodes = lag_grid_field.shape[-1]
-        for i in range(0, num_lag_nodes):
-            eul_grid_field[
-                nearest_eul_grid_index_to_lag_grid[1, i]
-                - interp_kernel_width
-                + 1 : nearest_eul_grid_index_to_lag_grid[1, i]
-                + interp_kernel_width
-                + 1,
-                nearest_eul_grid_index_to_lag_grid[0, i]
-                - interp_kernel_width
-                + 1 : nearest_eul_grid_index_to_lag_grid[0, i]
-                + interp_kernel_width
-                + 1,
-            ] += (
-                lag_grid_field[..., i] * interp_weights[..., i]
-            )
-
-    @njit(cache=True, fastmath=True)
-    def vector_field_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
-        eul_grid_field,
-        lag_grid_field,
-        interp_weights,
-        nearest_eul_grid_index_to_lag_grid,
-    ):
-        """Interpolate a Lagrangian vector field onto an Eulerian field.
-
-        Inputs:
-        the nearest_eul_grid_index_to_lag_grid(grid_dim, num_lag_nodes) and
-        interpolation weights interp_weights of
-        shape (2 * interp_kernel_width, 2 * interp_kernel_width, num_lag_nodes)
-
-        """
-        # TODO We need to add boundary exception handling! where the Lagrangian
-        #  node goes in `interp_kernel_width` boundary zone of the Eulerian grid
-        num_lag_nodes = lag_grid_field.shape[-1]
-        for i in range(0, num_lag_nodes):
-            eul_grid_field[
-                ...,
-                nearest_eul_grid_index_to_lag_grid[1, i]
-                - interp_kernel_width
-                + 1 : nearest_eul_grid_index_to_lag_grid[1, i]
-                + interp_kernel_width
-                + 1,
-                nearest_eul_grid_index_to_lag_grid[0, i]
-                - interp_kernel_width
-                + 1 : nearest_eul_grid_index_to_lag_grid[0, i]
-                + interp_kernel_width
-                + 1,
-            ] += (
-                np.ascontiguousarray(lag_grid_field[..., i]).reshape(-1, 1, 1)
-                * interp_weights[..., i]
-            )
+    assert (
+        n_components == 1 or n_components == 2
+    ), "invalid number of components for interpolation!"
 
     if n_components == 1:
+
+        @njit(fastmath=True)
+        def lagrangian_to_eulerian_grid_interpolation_kernel_2d(
+            eul_grid_field,
+            lag_grid_field,
+            interp_weights,
+            nearest_eul_grid_index_to_lag_grid,
+        ):
+            """Interpolate a Lagrangian field onto an Eulerian field.
+
+            Inputs:
+            the nearest_eul_grid_index_to_lag_grid(grid_dim, num_lag_nodes) and
+            interpolation weights interp_weights of
+            shape (2 * interp_kernel_width, 2 * interp_kernel_width, num_lag_nodes)
+
+            """
+            num_lag_nodes = lag_grid_field.shape[-1]
+            for i in range(0, num_lag_nodes):
+                eul_grid_field[
+                    nearest_eul_grid_index_to_lag_grid[1, i]
+                    - interp_kernel_width
+                    + 1 : nearest_eul_grid_index_to_lag_grid[1, i]
+                    + interp_kernel_width
+                    + 1,
+                    nearest_eul_grid_index_to_lag_grid[0, i]
+                    - interp_kernel_width
+                    + 1 : nearest_eul_grid_index_to_lag_grid[0, i]
+                    + interp_kernel_width
+                    + 1,
+                ] += (
+                    lag_grid_field[..., i] * interp_weights[..., i]
+                )
+
         return lagrangian_to_eulerian_grid_interpolation_kernel_2d
     else:
+
+        @njit(fastmath=True)
+        def vector_field_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
+            eul_grid_field,
+            lag_grid_field,
+            interp_weights,
+            nearest_eul_grid_index_to_lag_grid,
+        ):
+            """Interpolate a Lagrangian vector field onto an Eulerian field.
+
+            Inputs:
+            the nearest_eul_grid_index_to_lag_grid(grid_dim, num_lag_nodes) and
+            interpolation weights interp_weights of
+            shape (2 * interp_kernel_width, 2 * interp_kernel_width, num_lag_nodes)
+
+            """
+            # TODO We need to add boundary exception handling! where the Lagrangian
+            #  node goes in `interp_kernel_width` boundary zone of the Eulerian grid
+            num_lag_nodes = lag_grid_field.shape[-1]
+            for i in range(0, num_lag_nodes):
+                eul_grid_field[
+                    ...,
+                    nearest_eul_grid_index_to_lag_grid[1, i]
+                    - interp_kernel_width
+                    + 1 : nearest_eul_grid_index_to_lag_grid[1, i]
+                    + interp_kernel_width
+                    + 1,
+                    nearest_eul_grid_index_to_lag_grid[0, i]
+                    - interp_kernel_width
+                    + 1 : nearest_eul_grid_index_to_lag_grid[0, i]
+                    + interp_kernel_width
+                    + 1,
+                ] += (
+                    np.ascontiguousarray(lag_grid_field[..., i]).reshape(-1, 1, 1)
+                    * interp_weights[..., i]
+                )
+
         return vector_field_lagrangian_to_eulerian_grid_interpolation_kernel_2d
 
 
@@ -391,7 +395,7 @@ def generate_cosine_interpolation_weights_kernel_2d(dx, interp_kernel_width, rea
         interp_kernel_width == 2
     ), "Interpolation kernel inconsistent with interpolation kernel width!"
 
-    @njit(cache=True, fastmath=True)
+    @njit(fastmath=True)
     def cosine_interpolation_weights_kernel_2d(
         interp_weights, local_eul_grid_support_of_lag_grid
     ):
@@ -433,7 +437,7 @@ def generate_peskin_interpolation_weights_kernel_2d(dx, interp_kernel_width, rea
         interp_kernel_width == 2
     ), "Interpolation kernel inconsistent with interpolation kernel width!"
 
-    @njit(cache=True, fastmath=True)
+    @njit(fastmath=True)
     def peskin_interpolation_weights_kernel_2d(
         interp_weights, local_eul_grid_support_of_lag_grid
     ):

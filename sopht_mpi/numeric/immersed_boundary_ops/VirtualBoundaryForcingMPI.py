@@ -244,7 +244,7 @@ class VirtualBoundaryForcingMPI:
             )
 
     @staticmethod
-    @njit(cache=True, fastmath=True)
+    @njit(fastmath=True)
     def compute_lag_grid_velocity_mismatch_field(
         lag_grid_velocity_mismatch_field,
         lag_grid_flow_velocity_field,
@@ -261,7 +261,7 @@ class VirtualBoundaryForcingMPI:
         )
 
     @staticmethod
-    @njit(cache=True, fastmath=True)
+    @njit(fastmath=True)
     def update_lag_grid_position_mismatch_field_via_euler_forward(
         lag_grid_position_mismatch_field,
         lag_grid_velocity_mismatch_field,
@@ -278,7 +278,7 @@ class VirtualBoundaryForcingMPI:
         )
 
     @staticmethod
-    @njit(cache=True, fastmath=True)
+    @njit(fastmath=True)
     def compute_lag_grid_forcing_field(
         lag_grid_forcing_field,
         lag_grid_position_mismatch_field,
