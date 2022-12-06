@@ -14,8 +14,8 @@ from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_3d import (
 )
 
 
-@pytest.mark.mpi(group="MPI_stencil_ops_3d", min_size=2)
-@pytest.mark.parametrize("ghost_size", [1, 2, 3])
+@pytest.mark.mpi(group="MPI_stencil_ops_3d", min_size=4)
+@pytest.mark.parametrize("ghost_size", [1, 2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize(
     "rank_distribution",
@@ -23,16 +23,19 @@ from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_3d import (
 )
 @pytest.mark.parametrize(
     "aspect_ratio",
-    [(1, 1, 1), (1, 1, 2), (1, 2, 1), (2, 1, 1), (1, 2, 2), (2, 1, 2), (2, 2, 1)],
+    [(1, 1, 1), (1, 1.5, 2)],
 )
 def test_mpi_diffusion_flux_3d(ghost_size, precision, rank_distribution, aspect_ratio):
     n_values = 8
+    grid_size_z, grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(
+        int
+    )
     real_t = get_real_t(precision)
     # Generate the MPI topology minimal object
     mpi_construct = MPIConstruct3D(
-        grid_size_z=n_values * aspect_ratio[0],
-        grid_size_y=n_values * aspect_ratio[1],
-        grid_size_x=n_values * aspect_ratio[2],
+        grid_size_z=grid_size_z,
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
         real_t=real_t,
         rank_distribution=rank_distribution,
     )
@@ -59,11 +62,7 @@ def test_mpi_diffusion_flux_3d(ghost_size, precision, rank_distribution, aspect_
 
     # Initialize and broadcast solution for comparison later
     if mpi_construct.rank == 0:
-        ref_field = np.random.rand(
-            n_values * aspect_ratio[0],
-            n_values * aspect_ratio[1],
-            n_values * aspect_ratio[2],
-        ).astype(real_t)
+        ref_field = np.random.rand(grid_size_z, grid_size_y, grid_size_x).astype(real_t)
         prefactor = real_t(0.1)
     else:
         ref_field = None
@@ -115,8 +114,8 @@ def test_mpi_diffusion_flux_3d(ghost_size, precision, rank_distribution, aspect_
         )
 
 
-@pytest.mark.mpi(group="MPI_stencil_ops_3d", min_size=2)
-@pytest.mark.parametrize("ghost_size", [1, 2, 3])
+@pytest.mark.mpi(group="MPI_stencil_ops_3d", min_size=4)
+@pytest.mark.parametrize("ghost_size", [1, 2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize(
     "rank_distribution",
@@ -124,18 +123,21 @@ def test_mpi_diffusion_flux_3d(ghost_size, precision, rank_distribution, aspect_
 )
 @pytest.mark.parametrize(
     "aspect_ratio",
-    [(1, 1, 1), (1, 1, 2), (1, 2, 1), (2, 1, 1), (1, 2, 2), (2, 1, 2), (2, 2, 1)],
+    [(1, 1, 1), (1, 1.5, 2)],
 )
 def test_mpi_vector_field_diffusion_flux_3d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
     n_values = 8
+    grid_size_z, grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(
+        int
+    )
     real_t = get_real_t(precision)
     # Generate the MPI topology minimal object
     mpi_construct = MPIConstruct3D(
-        grid_size_z=n_values * aspect_ratio[0],
-        grid_size_y=n_values * aspect_ratio[1],
-        grid_size_x=n_values * aspect_ratio[2],
+        grid_size_z=grid_size_z,
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
         real_t=real_t,
         rank_distribution=rank_distribution,
     )
@@ -164,10 +166,7 @@ def test_mpi_vector_field_diffusion_flux_3d(
     # Initialize and broadcast solution for comparison later
     if mpi_construct.rank == 0:
         ref_vector_field = np.random.rand(
-            mpi_construct.grid_dim,
-            n_values * aspect_ratio[0],
-            n_values * aspect_ratio[1],
-            n_values * aspect_ratio[2],
+            mpi_construct.grid_dim, grid_size_z, grid_size_y, grid_size_x
         ).astype(real_t)
         prefactor = real_t(0.1)
     else:

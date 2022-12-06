@@ -8,7 +8,7 @@ from tests.test_simulator.immersed_body.rigid_body.test_rigid_body_forcing_grids
 from sopht_mpi.utils import MPIConstruct2D, MPIGhostCommunicator2D
 
 
-@pytest.mark.mpi(group="MPI_rigid_body_flow_interaction", min_size=2)
+@pytest.mark.mpi(group="MPI_rigid_body_flow_interaction", min_size=4)
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("master_rank", [0, 1])
 def test_mpi_rigid_body_flow_interaction(precision, master_rank):

@@ -8,7 +8,7 @@ from sopht_mpi.utils import (
 )
 
 
-@pytest.mark.mpi(group="MPI_utils", min_size=2)
+@pytest.mark.mpi(group="MPI_utils", min_size=4)
 @pytest.mark.parametrize("ghost_size", [1, 2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize(
@@ -64,7 +64,7 @@ def test_mpi_field_gather_scatter(
         np.testing.assert_allclose(ref_global_field, global_field)
 
 
-@pytest.mark.mpi(group="MPI_utils", min_size=2)
+@pytest.mark.mpi(group="MPI_utils", min_size=4)
 @pytest.mark.parametrize("ghost_size", [1, 2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize(
