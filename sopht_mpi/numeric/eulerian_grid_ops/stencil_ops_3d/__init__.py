@@ -13,3 +13,4 @@ from .char_func_from_level_set_mpi_3d import (
     gen_char_func_from_level_set_via_sine_heaviside_pyst_mpi_kernel_3d,
 )
 from .brinkmann_penalise_mpi_3d import gen_brinkmann_penalise_pyst_mpi_kernel_3d
+from .curl_mpi_3d import gen_curl_pyst_mpi_kernel_3d
