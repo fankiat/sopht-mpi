@@ -20,16 +20,16 @@ class MockEulLagGridCommSolution:
 
     def __init__(
         self,
-        n_values,
-        aspect_ratio,
-        precision,
+        grid_size_y,
+        grid_size_x,
+        real_t,
         interp_kernel_type="cosine",
         n_components=1,
     ):
-        self.real_t = get_real_t(precision)
+        self.real_t = real_t
         self.grid_dim = 2
-        self.eul_grid_size_y = n_values * aspect_ratio[0]
-        self.eul_grid_size_x = n_values * aspect_ratio[1]
+        self.eul_grid_size_y = grid_size_y
+        self.eul_grid_size_x = grid_size_x
         self.eul_grid_size = self.eul_grid_size_x
         self.eul_domain_size = self.real_t(1.0)
         self.eul_grid_dx = self.real_t(self.eul_domain_size / self.eul_grid_size)
@@ -159,17 +159,20 @@ class MockEulLagGridCommSolution:
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [pytest.param(1, marks=pytest.mark.xfail), 2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
+@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
 def test_mpi_local_eulerian_grid_support_of_lagrangian_grid_2d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
+    n_values = 16
+    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    real_t = get_real_t(precision)
     # 1. Generate reference solution (the solution is in the global domain, and each of
     # the ranks has the same reference copy)
     mock_soln = MockEulLagGridCommSolution(
-        n_values=32, aspect_ratio=aspect_ratio, precision=precision
+        grid_size_y=grid_size_y, grid_size_x=grid_size_x, real_t=real_t
     )
 
     # 2. Initialize MPI related stuff
@@ -269,17 +272,20 @@ def test_mpi_local_eulerian_grid_support_of_lagrangian_grid_2d(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [pytest.param(1, marks=pytest.mark.xfail), 2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
+@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
 def test_mpi_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
+    n_values = 16
+    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    real_t = get_real_t(precision)
     # 1. Generate reference solution (the solution is in the global domain, and each of
     # the ranks has the same reference copy)
     mock_soln = MockEulLagGridCommSolution(
-        n_values=32, aspect_ratio=aspect_ratio, precision=precision
+        grid_size_y=grid_size_y, grid_size_x=grid_size_x, real_t=real_t
     )
 
     # 2. Initialize MPI related stuff
@@ -359,17 +365,20 @@ def test_mpi_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [pytest.param(1, marks=pytest.mark.xfail), 2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
+@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
 def test_mpi_vector_field_eul_to_lag_grid_interpolation_kernel_2d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
+    n_values = 16
+    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    real_t = get_real_t(precision)
     # 1. Generate reference solution (the solution is in the global domain, and each of
     # the ranks has the same reference copy)
     mock_soln = MockEulLagGridCommSolution(
-        n_values=32, aspect_ratio=aspect_ratio, precision=precision, n_components=2
+        grid_size_y=grid_size_y, grid_size_x=grid_size_x, real_t=real_t, n_components=2
     )
 
     # 2. Initialize MPI related stuff
@@ -457,20 +466,20 @@ def test_mpi_vector_field_eul_to_lag_grid_interpolation_kernel_2d(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [pytest.param(1, marks=pytest.mark.xfail), 2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
+@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
 def test_mpi_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
-    ghost_size,
-    precision,
-    rank_distribution,
-    aspect_ratio,
+    ghost_size, precision, rank_distribution, aspect_ratio
 ):
+    n_values = 16
+    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    real_t = get_real_t(precision)
     # 1. Generate reference solution (the solution is in the global domain, and each of
     # the ranks has the same reference copy)
     mock_soln = MockEulLagGridCommSolution(
-        n_values=32, aspect_ratio=aspect_ratio, precision=precision
+        grid_size_y=grid_size_y, grid_size_x=grid_size_x, real_t=real_t
     )
 
     # 2. Initialize MPI related stuff
@@ -555,20 +564,20 @@ def test_mpi_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [pytest.param(1, marks=pytest.mark.xfail), 2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
+@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
 def test_mpi_vector_field_lag_to_eul_grid_interpolation_kernel_2d(
-    ghost_size,
-    precision,
-    rank_distribution,
-    aspect_ratio,
+    ghost_size, precision, rank_distribution, aspect_ratio
 ):
+    n_values = 16
+    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    real_t = get_real_t(precision)
     # 1. Generate reference solution (the solution is in the global domain, and each of
     # the ranks has the same reference copy)
     mock_soln = MockEulLagGridCommSolution(
-        n_values=32, aspect_ratio=aspect_ratio, precision=precision, n_components=2
+        grid_size_y=grid_size_y, grid_size_x=grid_size_x, real_t=real_t, n_components=2
     )
 
     # 2. Initialize MPI related stuff
@@ -666,24 +675,23 @@ def test_mpi_vector_field_lag_to_eul_grid_interpolation_kernel_2d(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [pytest.param(1, marks=pytest.mark.xfail), 2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
+@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
 @pytest.mark.parametrize("interp_kernel_type", ["cosine", "peskin"])
 def test_mpi_interpolation_weights_kernel_on_nodes_2d(
-    ghost_size,
-    precision,
-    rank_distribution,
-    aspect_ratio,
-    interp_kernel_type,
+    ghost_size, precision, rank_distribution, aspect_ratio, interp_kernel_type
 ):
+    n_values = 16
+    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    real_t = get_real_t(precision)
     # 1. Generate reference solution (the solution is in the global domain, and each of
     # the ranks has the same reference copy)
     mock_soln = MockEulLagGridCommSolution(
-        n_values=32,
-        aspect_ratio=aspect_ratio,
-        precision=precision,
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
+        real_t=real_t,
         interp_kernel_type=interp_kernel_type,
     )
 

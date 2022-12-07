@@ -1,4 +1,3 @@
-# TODO: Add tests for with grid dim parameter
 import numpy as np
 import pytest
 from sopht.numeric.immersed_boundary_ops import VirtualBoundaryForcing
@@ -18,20 +17,18 @@ class ReferenceVirtualBoundaryForcing(VirtualBoundaryForcing):
 
     def __init__(
         self,
-        n_values,
-        aspect_ratio,
+        grid_size_y,
+        grid_size_x,
+        real_t,
         grid_dim=2,
-        precision="single",
         enable_eul_grid_forcing_reset=True,
     ):
         """Class initialiser."""
-        real_t = get_real_t(precision)
-        self.test_tol = get_test_tol(precision)
         self.real_t = real_t
         self.virtual_boundary_stiffness_coeff = real_t(1e3)
         self.virtual_boundary_damping_coeff = real_t(1e1)
-        self.grid_size_y = n_values * aspect_ratio[0]
-        self.grid_size_x = n_values * aspect_ratio[1]
+        self.grid_size_y = grid_size_y
+        self.grid_size_x = grid_size_x
         self.domain_size = self.real_t(1.0)
         self.dx = self.real_t(self.domain_size / self.grid_size_x)
         self.eul_grid_coord_shift = real_t(self.dx / 2)
@@ -68,7 +65,7 @@ class ReferenceVirtualBoundaryForcing(VirtualBoundaryForcing):
             + self.eul_grid_coord_shift
         ).astype(self.real_t)
 
-    def check_lag_grid_interaction_solution(self, virtual_boundary_forcing, mask):
+    def check_lag_grid_interaction_solution(self, virtual_boundary_forcing, mask, atol):
         """Check solution for lag grid forcing in the interaction step."""
         # Adjust nearest eul grid index to mpi global index frame
         mpi_substart_idx = (
@@ -84,25 +81,25 @@ class ReferenceVirtualBoundaryForcing(VirtualBoundaryForcing):
         local_allclose_local_nearest_eul_grid_index_to_lag_grid = np.allclose(
             mpi_global_nearest_eul_grid_index_to_lag_grid,
             self.nearest_eul_grid_index_to_lag_grid[..., mask],
-            atol=self.test_tol,
+            atol=atol,
         )
         # Check lag grid flow velocity field
         local_allclose_lag_grid_flow_velocity_field = np.allclose(
             virtual_boundary_forcing.local_lag_grid_flow_velocity_field,
             self.lag_grid_flow_velocity_field[..., mask],
-            atol=self.test_tol,
+            atol=atol,
         )
         # Check lag grid velocity mismatch field
         local_allclose_lag_grid_velocity_mismatch_field = np.allclose(
             virtual_boundary_forcing.local_lag_grid_velocity_mismatch_field,
             self.lag_grid_velocity_mismatch_field[..., mask],
-            atol=self.test_tol,
+            atol=atol,
         )
         # Check lag grid forcing field
         local_allclose_lag_grid_forcing_field = np.allclose(
             virtual_boundary_forcing.local_lag_grid_forcing_field,
             self.lag_grid_forcing_field[..., mask],
-            atol=self.test_tol,
+            atol=atol,
         )
 
         return (
@@ -114,21 +111,23 @@ class ReferenceVirtualBoundaryForcing(VirtualBoundaryForcing):
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("grid_dim", [2])
-@pytest.mark.parametrize("ghost_size", [2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
-def test_mpi_virtual_boundary_forcing_init(
-    grid_dim, ghost_size, precision, rank_distribution, aspect_ratio
+@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
+def test_mpi_virtual_boundary_forcing_init_2d(
+    ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    n_values = 32
+    grid_dim = 2
+    n_values = 16
+    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    real_t = get_real_t(precision)
     # 1. Generate reference solution
     ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing(
-        n_values=n_values,
-        aspect_ratio=aspect_ratio,
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
         grid_dim=grid_dim,
-        precision=precision,
+        real_t=real_t,
     )
 
     # 2. Initialize MPI related stuff to distribute lag nodes to corresponding ranks
@@ -223,21 +222,23 @@ def test_mpi_virtual_boundary_forcing_init(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("grid_dim", [2])
-@pytest.mark.parametrize("ghost_size", [2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
-def test_mpi_compute_lag_grid_velocity_mismatch_field(
-    grid_dim, ghost_size, precision, rank_distribution, aspect_ratio
+@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
+def test_mpi_compute_lag_grid_velocity_mismatch_field_2d(
+    ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    n_values = 32
+    grid_dim = 2
+    n_values = 16
+    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    real_t = get_real_t(precision)
     # 1. Generate reference solution
     ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing(
-        n_values=n_values,
-        aspect_ratio=aspect_ratio,
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
         grid_dim=grid_dim,
-        precision=precision,
+        real_t=real_t,
     )
 
     # 2. Initialize MPI related stuff to distribute lag nodes to corresponding ranks
@@ -335,21 +336,23 @@ def test_mpi_compute_lag_grid_velocity_mismatch_field(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("grid_dim", [2])
-@pytest.mark.parametrize("ghost_size", [2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
-def test_mpi_update_lag_grid_position_mismatch_field_via_euler_forward(
-    grid_dim, ghost_size, precision, rank_distribution, aspect_ratio
+@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
+def test_mpi_update_lag_grid_position_mismatch_field_via_euler_forward_2d(
+    ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    n_values = 32
+    grid_dim = 2
+    n_values = 16
+    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    real_t = get_real_t(precision)
     # 1. Generate reference solution
     ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing(
-        n_values=n_values,
-        aspect_ratio=aspect_ratio,
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
         grid_dim=grid_dim,
-        precision=precision,
+        real_t=real_t,
     )
 
     # 2. Initialize MPI related stuff to distribute lag nodes to corresponding ranks
@@ -448,21 +451,23 @@ def test_mpi_update_lag_grid_position_mismatch_field_via_euler_forward(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("grid_dim", [2])
-@pytest.mark.parametrize("ghost_size", [2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
-def test_mpi_compute_lag_grid_forcing_field(
-    grid_dim, ghost_size, precision, rank_distribution, aspect_ratio
+@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
+def test_mpi_compute_lag_grid_forcing_field_2d(
+    ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    n_values = 32
+    grid_dim = 2
+    n_values = 16
+    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    real_t = get_real_t(precision)
     # 1. Generate reference solution
     ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing(
-        n_values=n_values,
-        aspect_ratio=aspect_ratio,
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
         grid_dim=grid_dim,
-        precision=precision,
+        real_t=real_t,
     )
 
     # 2. Initialize MPI related stuff to distribute lag nodes to corresponding ranks
@@ -564,21 +569,23 @@ def test_mpi_compute_lag_grid_forcing_field(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("grid_dim", [2])
-@pytest.mark.parametrize("ghost_size", [2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
-def test_mpi_compute_interaction_force_on_lag_grid(
-    grid_dim, ghost_size, precision, rank_distribution, aspect_ratio
+@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
+def test_mpi_compute_interaction_force_on_lag_grid_2d(
+    ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    n_values = 32
+    grid_dim = 2
+    n_values = 16
+    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    real_t = get_real_t(precision)
     # 1. Generate reference solution
     ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing(
-        n_values=n_values,
-        aspect_ratio=aspect_ratio,
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
         grid_dim=grid_dim,
-        precision=precision,
+        real_t=real_t,
     )
 
     # 2. Initialize MPI related stuff to distribute lag nodes to corresponding ranks
@@ -706,7 +713,9 @@ def test_mpi_compute_interaction_force_on_lag_grid(
         local_allclose_lag_grid_velocity_mismatch_field,
         local_allclose_lag_grid_forcing_field,
     ) = ref_virtual_boundary_forcing.check_lag_grid_interaction_solution(
-        virtual_boundary_forcing=mpi_virtual_boundary_forcing, mask=mask
+        virtual_boundary_forcing=mpi_virtual_boundary_forcing,
+        mask=mask,
+        atol=get_test_tol(precision),
     )
     # reduce to make sure each chunk of data in each rank is passing
     allclose_local_nearest_eul_grid_index_to_lag_grid = mpi_construct.grid.allreduce(
@@ -738,27 +747,28 @@ def test_mpi_compute_interaction_force_on_lag_grid(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("grid_dim", [2])
-@pytest.mark.parametrize("ghost_size", [2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
+@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
 @pytest.mark.parametrize("enable_eul_grid_forcing_reset", [True, False])
-def test_mpi_compute_interaction_force_on_eul_and_lag_grid(
-    grid_dim,
+def test_mpi_compute_interaction_force_on_eul_and_lag_grid_2d(
     ghost_size,
     precision,
     rank_distribution,
     aspect_ratio,
     enable_eul_grid_forcing_reset,
 ):
-    n_values = 32
+    grid_dim = 2
+    n_values = 16
+    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    real_t = get_real_t(precision)
     # 1. Generate reference solution
     ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing(
-        n_values=n_values,
-        aspect_ratio=aspect_ratio,
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
         grid_dim=grid_dim,
-        precision=precision,
+        real_t=real_t,
         enable_eul_grid_forcing_reset=enable_eul_grid_forcing_reset,
     )
 
@@ -892,7 +902,9 @@ def test_mpi_compute_interaction_force_on_eul_and_lag_grid(
         local_allclose_lag_grid_velocity_mismatch_field,
         local_allclose_lag_grid_forcing_field,
     ) = ref_virtual_boundary_forcing.check_lag_grid_interaction_solution(
-        virtual_boundary_forcing=mpi_virtual_boundary_forcing, mask=mask
+        virtual_boundary_forcing=mpi_virtual_boundary_forcing,
+        mask=mask,
+        atol=get_test_tol(precision),
     )
     # reduce to make sure each chunk of data in each rank is passing
     allclose_local_nearest_eul_grid_index_to_lag_grid = mpi_construct.grid.allreduce(
@@ -947,22 +959,23 @@ def test_mpi_compute_interaction_force_on_eul_and_lag_grid(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("grid_dim", [2])
 @pytest.mark.parametrize("ghost_size", [2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
-def test_mpi_virtual_boundary_forcing_time_step(
-    grid_dim, ghost_size, precision, rank_distribution, aspect_ratio
+@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
+def test_mpi_virtual_boundary_forcing_time_step_2d(
+    ghost_size, precision, rank_distribution, aspect_ratio
 ):
-
-    n_values = 32
+    grid_dim = 2
+    n_values = 16
+    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    real_t = get_real_t(precision)
     # 1. Generate reference solution
     ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing(
-        n_values=n_values,
-        aspect_ratio=aspect_ratio,
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
         grid_dim=grid_dim,
-        precision=precision,
+        real_t=real_t,
     )
 
     # 2. Initialize MPI related stuff to distribute lag nodes to corresponding ranks
