@@ -73,7 +73,7 @@ def test_mpi_curl_3d(ghost_size, precision, rank_distribution, aspect_ratio):
     scatter_global_field(local_vector_field[1], ref_vector_field[1], mpi_construct)
     scatter_global_field(local_vector_field[2], ref_vector_field[2], mpi_construct)
 
-    # compute the diffusion flux
+    # compute the curl
     curl_pyst_mpi_kernel_3d = gen_curl_pyst_mpi_kernel_3d(
         real_t=real_t,
         mpi_construct=mpi_construct,
@@ -86,7 +86,7 @@ def test_mpi_curl_3d(ghost_size, precision, rank_distribution, aspect_ratio):
         prefactor=prefactor,
     )
 
-    # gather back the diffusion flux globally
+    # gather back the curl globally
     global_curl = np.zeros(
         (mpi_construct.grid_dim, grid_size_z, grid_size_y, grid_size_x)
     ).astype(real_t)
