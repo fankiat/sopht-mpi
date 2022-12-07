@@ -159,7 +159,7 @@ class MockEulLagGridCommSolution:
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
@@ -272,7 +272,7 @@ def test_mpi_local_eulerian_grid_support_of_lagrangian_grid_2d(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
@@ -365,7 +365,7 @@ def test_mpi_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
@@ -466,7 +466,7 @@ def test_mpi_vector_field_eul_to_lag_grid_interpolation_kernel_2d(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
@@ -564,7 +564,7 @@ def test_mpi_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
@@ -675,7 +675,7 @@ def test_mpi_vector_field_lag_to_eul_grid_interpolation_kernel_2d(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])

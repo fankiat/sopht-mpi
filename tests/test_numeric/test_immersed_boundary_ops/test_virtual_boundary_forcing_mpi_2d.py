@@ -1,4 +1,3 @@
-# TODO: Add tests for with grid dim parameter
 import numpy as np
 import pytest
 from sopht.numeric.immersed_boundary_ops import VirtualBoundaryForcing
@@ -112,7 +111,7 @@ class ReferenceVirtualBoundaryForcing(VirtualBoundaryForcing):
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
@@ -223,7 +222,7 @@ def test_mpi_virtual_boundary_forcing_init_2d(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
@@ -337,7 +336,7 @@ def test_mpi_compute_lag_grid_velocity_mismatch_field_2d(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
@@ -452,7 +451,7 @@ def test_mpi_update_lag_grid_position_mismatch_field_via_euler_forward_2d(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
@@ -570,7 +569,7 @@ def test_mpi_compute_lag_grid_forcing_field_2d(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
@@ -748,7 +747,7 @@ def test_mpi_compute_interaction_force_on_lag_grid_2d(
 
 
 @pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
-@pytest.mark.parametrize("ghost_size", [2, 3])
+@pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
