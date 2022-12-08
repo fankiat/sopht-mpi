@@ -43,17 +43,18 @@ class EulerianLagrangianGridCommunicatorMPI2D:
         self.mpi_substart_idx = np.flip(
             mpi_construct.grid.coords * mpi_construct.local_grid_size
         )
-        self.mpi_local_eul_grid_coord_shift = (
-            eul_grid_coord_shift + dx * (self.mpi_substart_idx - ghost_size)
-        ).astype(real_t)
+        # store local index shift due to subdomain grid shift and ghost cell in ints
+        # for offsetting the local nearest eul grid index to lag grid accordingly later
+        self.mpi_local_substart_coord_shift = self.mpi_substart_idx - ghost_size
 
         # Kernel generation
         # Local eulerian grid support (nearest indices)
         self.local_eulerian_grid_support_of_lagrangian_grid_kernel = (
             generate_local_eulerian_grid_support_of_lagrangian_grid_kernel_2d(
                 dx=dx,
-                eul_grid_coord_shift=self.mpi_local_eul_grid_coord_shift,
+                eul_grid_coord_shift=eul_grid_coord_shift,
                 interp_kernel_width=interp_kernel_width,
+                mpi_local_substart_coord_shift=self.mpi_local_substart_coord_shift,
             )
         )
 
@@ -115,7 +116,7 @@ class EulerianLagrangianGridCommunicatorMPI2D:
 
 
 def generate_local_eulerian_grid_support_of_lagrangian_grid_kernel_2d(
-    dx, eul_grid_coord_shift, interp_kernel_width
+    dx, eul_grid_coord_shift, interp_kernel_width, mpi_local_substart_coord_shift
 ):
     """
     Generate kernel that computes local Eulerian support of Lagrangian grid.
@@ -149,9 +150,14 @@ def generate_local_eulerian_grid_support_of_lagrangian_grid_kernel_2d(
 
         """
         # dtype of nearest_grid_index takes care of type casting to int
+        # The approach for nearest eul grid index:
+        # (1) Compute the nearest eul grid index as done in `sopht`, thus
+        # achieving the precision in computed index.
+        # (2) Offset the computed index with the MPI related coords (i.e. local domain
+        # index and ghost cells)
         nearest_eul_grid_index_to_lag_grid[...] = (
-            lag_positions - eul_grid_coord_shift.reshape(grid_dim, -1)
-        ) // dx
+            lag_positions - eul_grid_coord_shift
+        ) // dx - mpi_local_substart_coord_shift.reshape(grid_dim, 1)
 
         # reshape done to broadcast
         local_eul_grid_support_of_lag_grid[...] = (
@@ -160,9 +166,10 @@ def generate_local_eulerian_grid_support_of_lagrangian_grid_kernel_2d(
                 + local_eul_grid_support_idx.reshape(
                     grid_dim, 2 * interp_kernel_width, 2 * interp_kernel_width, 1
                 )
+                + mpi_local_substart_coord_shift.reshape(grid_dim, 1, 1, -1)
             )
             * dx
-            + eul_grid_coord_shift.reshape(grid_dim, 1, 1, 1)
+            + eul_grid_coord_shift
             - lag_positions.reshape(grid_dim, 1, 1, -1)
         )
 
