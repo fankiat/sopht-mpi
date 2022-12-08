@@ -13,6 +13,10 @@ from .char_func_from_level_set_mpi_3d import (
     gen_char_func_from_level_set_via_sine_heaviside_pyst_mpi_kernel_3d,
 )
 from .brinkmann_penalise_mpi_3d import gen_brinkmann_penalise_pyst_mpi_kernel_3d
+from .update_vorticity_from_velocity_forcing_mpi_3d import (
+    gen_update_vorticity_from_velocity_forcing_pyst_mpi_kernel_3d,
+    gen_update_vorticity_from_penalised_velocity_pyst_mpi_kernel_3d,
+)
 from .penalise_field_boundary_mpi_3d import (
     gen_penalise_field_boundary_pyst_mpi_kernel_3d,
 )
