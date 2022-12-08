@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 from sopht.utils.precision import get_real_t, get_test_tol
+from sopht.utils.field import VectorField
 from sopht.numeric.eulerian_grid_ops.stencil_ops_2d import (
     gen_penalise_field_boundary_pyst_kernel_2d,
 )
@@ -50,8 +51,13 @@ def test_mpi_penalise_field_boundary_pyst_2d(
             mpi_construct.local_grid_size[1] + 2 * ghost_size,
         )
     ).astype(real_t)
-    local_x_grid_field = np.zeros_like(local_field)
-    local_y_grid_field = np.zeros_like(local_field)
+    local_grid_field = np.zeros(
+        (
+            mpi_construct.grid_dim,
+            mpi_construct.local_grid_size[0] + 2 * ghost_size,
+            mpi_construct.local_grid_size[1] + 2 * ghost_size,
+        )
+    ).astype(real_t)
 
     # Initialize and broadcast solution for comparison later
     if mpi_construct.rank == 0:
@@ -65,28 +71,35 @@ def test_mpi_penalise_field_boundary_pyst_2d(
         y = np.linspace(grid_coord_shift, 1 - grid_coord_shift, grid_size_y).astype(
             real_t
         )
-        ref_x_grid_field, ref_y_grid_field = np.meshgrid(x, y)
+        ref_grid_field = np.flipud(np.meshgrid(y, x, indexing="ij"))
     else:
         ref_field = None
         width = None
         dx = None
-        ref_x_grid_field = None
-        ref_y_grid_field = None
+        ref_grid_field = (None, None)
     dx = mpi_construct.grid.bcast(dx, root=0)
     width = mpi_construct.grid.bcast(width, root=0)
 
     # scatter global field
     scatter_global_field(local_field, ref_field, mpi_construct)
-    scatter_global_field(local_x_grid_field, ref_x_grid_field, mpi_construct)
-    scatter_global_field(local_y_grid_field, ref_y_grid_field, mpi_construct)
+    scatter_global_field(
+        local_grid_field[VectorField.x_axis_idx()],
+        ref_grid_field[VectorField.x_axis_idx()],
+        mpi_construct,
+    )
+    scatter_global_field(
+        local_grid_field[VectorField.y_axis_idx()],
+        ref_grid_field[VectorField.y_axis_idx()],
+        mpi_construct,
+    )
 
     # compute the field boundary penalisation
     penalise_field_boundary_pyst_mpi_kernel = (
         gen_penalise_field_boundary_pyst_mpi_kernel_2d(
             width=width,
             dx=dx,
-            x_grid_field=local_x_grid_field,
-            y_grid_field=local_y_grid_field,
+            x_grid_field=local_grid_field[VectorField.x_axis_idx()],
+            y_grid_field=local_grid_field[VectorField.y_axis_idx()],
             real_t=real_t,
             mpi_construct=mpi_construct,
             ghost_exchange_communicator=mpi_ghost_exchange_communicator,
@@ -105,8 +118,8 @@ def test_mpi_penalise_field_boundary_pyst_2d(
             gen_penalise_field_boundary_pyst_kernel_2d(
                 width=width,
                 dx=dx,
-                x_grid_field=ref_x_grid_field,
-                y_grid_field=ref_y_grid_field,
+                x_grid_field=ref_grid_field[VectorField.x_axis_idx()],
+                y_grid_field=ref_grid_field[VectorField.y_axis_idx()],
                 real_t=real_t,
             )
         )

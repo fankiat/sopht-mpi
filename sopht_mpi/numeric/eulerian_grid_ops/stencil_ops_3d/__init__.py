@@ -17,3 +17,7 @@ from .update_vorticity_from_velocity_forcing_mpi_3d import (
     gen_update_vorticity_from_velocity_forcing_pyst_mpi_kernel_3d,
     gen_update_vorticity_from_penalised_velocity_pyst_mpi_kernel_3d,
 )
+from .penalise_field_boundary_mpi_3d import (
+    gen_penalise_field_boundary_pyst_mpi_kernel_3d,
+)
+from .curl_mpi_3d import gen_curl_pyst_mpi_kernel_3d
