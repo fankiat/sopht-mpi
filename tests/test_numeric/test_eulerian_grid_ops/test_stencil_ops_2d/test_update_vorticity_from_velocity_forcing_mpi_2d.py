@@ -52,7 +52,7 @@ def test_mpi_update_vorticity_from_velocity_forcing_2d(
     ).astype(real_t)
     local_velocity_forcing_field = np.zeros(
         (
-            2,
+            mpi_construct.grid_dim,
             mpi_construct.local_grid_size[0] + 2 * ghost_size,
             mpi_construct.local_grid_size[1] + 2 * ghost_size,
         )
