@@ -84,8 +84,17 @@ def test_mpi_fft_slab(ghost_size, precision, rank_distribution, aspect_ratio):
     )
     # # 5. Assert correct
     if mpi_construct.rank == 0:
-        # flip FFT axes for ref solution, to match mpi4py-fft distribution
-        solution_fft_axes = (1, 0) if rank_distribution == (1, 0) else None
+        # unpack fft axes from mpi4py-fft, and use for scipy axes
+        solution_fft_axes = []
+        for ax in mpi_fft.fft.axes:
+            # It can either be a sequence of ints, or sequence of sequence of ints
+            # i.e. (1, 2, 3) or ((1,), (2,), (3,))
+            if isinstance(ax, (int, np.integer)):
+                solution_fft_axes.append(ax)
+            else:
+                ax = list(ax)
+                for a in ax:
+                    solution_fft_axes.append(a)
         correct_fourier_field = rfftn(ref_field, axes=solution_fft_axes)
         np.testing.assert_allclose(
             ref_field,
