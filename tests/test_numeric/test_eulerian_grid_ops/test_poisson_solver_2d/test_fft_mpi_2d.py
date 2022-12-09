@@ -16,7 +16,7 @@ from scipy.fft import rfftn
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1.5, 1)])
 def test_mpi_fft_slab(ghost_size, precision, rank_distribution, aspect_ratio):
     """
-    Test parallel FFT on slab distributed along x and y
+    Test parallel FFT on (slab) distributed 2d array
     """
     n_values = 8
     grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
