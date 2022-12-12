@@ -53,7 +53,6 @@ def test_mpi_char_func_from_level_set_2d(
     else:
         ref_level_set_field = None
         blend_width = None
-    ref_level_set_field = mpi_construct.grid.bcast(ref_level_set_field, root=0)
     blend_width = mpi_construct.grid.bcast(blend_width, root=0)
 
     # scatter global field
