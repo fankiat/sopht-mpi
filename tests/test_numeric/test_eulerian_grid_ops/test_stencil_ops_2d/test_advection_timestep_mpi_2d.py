@@ -65,11 +65,9 @@ def test_mpi_advection_timestep_eno3_euler_forward_2d(
         dt = real_t(0.1)
     else:
         ref_field = None
-        ref_velocity = None
+        ref_velocity = (None,) * mpi_construct.grid_dim
         inv_dx = None
         dt = None
-    ref_field = mpi_construct.grid.bcast(ref_field, root=0)
-    ref_velocity = mpi_construct.grid.bcast(ref_velocity, root=0)
     inv_dx = mpi_construct.grid.bcast(inv_dx, root=0)
     dt = mpi_construct.grid.bcast(dt, root=0)
     dt_by_dx = real_t(dt * inv_dx)

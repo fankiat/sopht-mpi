@@ -57,7 +57,6 @@ def test_mpi_diffusion_flux_2d(ghost_size, precision, rank_distribution, aspect_
     else:
         ref_field = None
         prefactor = None
-    ref_field = mpi_construct.grid.bcast(ref_field, root=0)
     prefactor = mpi_construct.grid.bcast(prefactor, root=0)
 
     # scatter global field

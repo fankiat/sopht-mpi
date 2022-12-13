@@ -63,9 +63,8 @@ def test_mpi_curl_3d(ghost_size, precision, rank_distribution, aspect_ratio):
         ).astype(real_t)
         prefactor = real_t(0.1)
     else:
-        ref_vector_field = None
+        ref_vector_field = (None,) * mpi_construct.grid_dim
         prefactor = None
-    ref_vector_field = mpi_construct.grid.bcast(ref_vector_field, root=0)
     prefactor = mpi_construct.grid.bcast(prefactor, root=0)
 
     # scatter global field

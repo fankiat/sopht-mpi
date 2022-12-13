@@ -60,7 +60,6 @@ def test_mpi_diffusion_timestep_2d(
     else:
         ref_field = None
         nu_dt_by_dx2 = None
-    ref_field = mpi_construct.grid.bcast(ref_field, root=0)
     nu_dt_by_dx2 = mpi_construct.grid.bcast(nu_dt_by_dx2, root=0)
 
     # scatter global field
