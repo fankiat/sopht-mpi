@@ -50,7 +50,6 @@ def test_mpi_fft_2d(ghost_size, precision, rank_distribution, aspect_ratio):
         ref_field = np.random.randn(grid_size_y, grid_size_x).astype(real_t)
     else:
         ref_field = None
-    ref_field = mpi_construct.grid.bcast(ref_field, root=0)
 
     # 1. Scatter initial local field from solution ref field
     local_field = np.zeros(mpi_construct.local_grid_size + 2 * ghost_size).astype(

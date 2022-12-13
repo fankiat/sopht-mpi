@@ -65,7 +65,6 @@ def test_mpi_outplane_field_curl_2d(
     else:
         ref_field = None
         prefactor = None
-    ref_field = mpi_construct.grid.bcast(ref_field, root=0)
     prefactor = mpi_construct.grid.bcast(prefactor, root=0)
 
     # scatter global field

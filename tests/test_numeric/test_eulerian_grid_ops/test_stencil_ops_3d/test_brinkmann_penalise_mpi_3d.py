@@ -17,10 +17,7 @@ from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_3d import (
     "rank_distribution",
     [(0, 1, 1), (1, 0, 1), (1, 1, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)],
 )
-@pytest.mark.parametrize(
-    "aspect_ratio",
-    [(1, 1, 1), (1, 1.5, 2)],
-)
+@pytest.mark.parametrize("aspect_ratio", [(1, 1, 1), (1, 1.5, 2)])
 def test_mpi_brinkmann_penalise_scalar_field_3d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
@@ -73,9 +70,6 @@ def test_mpi_brinkmann_penalise_scalar_field_3d(
         ref_penalty_field = None
         ref_char_field = None
         penalty_factor = None
-    ref_field = mpi_construct.grid.bcast(ref_field, root=0)
-    ref_penalty_field = mpi_construct.grid.bcast(ref_penalty_field, root=0)
-    ref_char_field = mpi_construct.grid.bcast(ref_char_field, root=0)
     penalty_factor = mpi_construct.grid.bcast(penalty_factor, root=0)
 
     # scatter global field
@@ -131,10 +125,7 @@ def test_mpi_brinkmann_penalise_scalar_field_3d(
     "rank_distribution",
     [(0, 1, 1), (1, 0, 1), (1, 1, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)],
 )
-@pytest.mark.parametrize(
-    "aspect_ratio",
-    [(1, 1, 1), (1, 1.5, 2)],
-)
+@pytest.mark.parametrize("aspect_ratio", [(1, 1, 1), (1, 1.5, 2)])
 def test_mpi_brinkmann_penalise_vector_field_3d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
@@ -186,8 +177,8 @@ def test_mpi_brinkmann_penalise_vector_field_3d(
         )
         penalty_factor = real_t(0.1)
     else:
-        ref_vector_field = None
-        ref_penalty_vector_field = None
+        ref_vector_field = (None,) * mpi_construct.grid_dim
+        ref_penalty_vector_field = (None,) * mpi_construct.grid_dim
         ref_char_field = None
         penalty_factor = None
     ref_vector_field = mpi_construct.grid.bcast(ref_vector_field, root=0)
