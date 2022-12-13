@@ -39,6 +39,7 @@ def lamb_oseen_vortex_flow_case(grid_size, precision="double", rank_distribution
         with_free_stream_flow=True,
         real_t=real_t,
         rank_distribution=rank_distribution,
+        time=t_start,
     )
 
     # Initialize vorticity, velocity fields and velocity free stream magnitudes
@@ -65,7 +66,6 @@ def lamb_oseen_vortex_flow_case(grid_size, precision="double", rank_distribution
     )
 
     # iterate
-    t = t_start
     foto_timer = 0.0
     foto_timer_limit = (t_end - t_start) / 25
 
@@ -73,18 +73,18 @@ def lamb_oseen_vortex_flow_case(grid_size, precision="double", rank_distribution
     mpi_plotter = MPIPlotter2D(
         flow_sim.mpi_construct,
         flow_sim.ghost_size,
-        title=f"Vorticity, time: {t:.2f}",
+        title=f"Vorticity, time: {flow_sim.time:.2f}",
         master_rank=0,
     )
 
-    while t < t_end:
+    while flow_sim.time < t_end:
 
         # Plot solution
         if foto_timer >= foto_timer_limit or foto_timer == 0:
             foto_timer = 0.0
 
             # mpi_plotter will take care of gathering field to rank 0 and save
-            mpi_plotter.ax.set_title(f"Vorticity, time: {t:.2f}")
+            mpi_plotter.ax.set_title(f"Vorticity, time: {flow_sim.time:.2f}")
             mpi_plotter.contourf(
                 flow_sim.position_field[x_axis_idx],
                 flow_sim.position_field[y_axis_idx],
@@ -92,20 +92,21 @@ def lamb_oseen_vortex_flow_case(grid_size, precision="double", rank_distribution
                 extend="both",
                 levels=100,
             )
-            mpi_plotter.savefig(file_name="snap_" + str("%0.4d" % (t * 100)) + ".png")
+            mpi_plotter.savefig(
+                file_name="snap_" + str("%0.4d" % (flow_sim.time * 100)) + ".png"
+            )
             mpi_plotter.clearfig()
 
             max_vort = flow_sim.get_max_vorticity()
             logger.info(
-                f"time: {t:.2f} ({((t-t_start)/(t_end-t_start)*100):2.1f}%), "
+                f"time: {flow_sim.time:.2f} ({((flow_sim.time-t_start)/(t_end-t_start)*100):2.1f}%), "
                 f"max_vort: {max_vort:.4f}"
             )
 
         dt = flow_sim.compute_stable_timestep()
         flow_sim.time_step(dt=dt, free_stream_velocity=velocity_free_stream)
 
-        # update time
-        t = t + dt
+        # update timer
         foto_timer += dt
 
     # compile video
@@ -119,7 +120,7 @@ def lamb_oseen_vortex_flow_case(grid_size, precision="double", rank_distribution
         os.system("rm -f snap*.png")
 
     # final vortex field and error
-    t_end = t
+    t_end = flow_sim.time
     x_cm_final = x_cm_start + velocity_free_stream[x_axis_idx] * (t_end - t_start)
     y_cm_final = y_cm_start + velocity_free_stream[y_axis_idx] * (t_end - t_start)
     final_analytical_vorticity_field = compute_lamb_oseen_vorticity(
