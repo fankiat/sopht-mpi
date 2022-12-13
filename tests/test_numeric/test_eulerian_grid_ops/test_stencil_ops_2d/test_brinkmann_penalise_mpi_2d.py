@@ -59,9 +59,6 @@ def test_mpi_brinkmann_penalise_scalar_field_2d(
         ref_penalty_field = None
         ref_char_field = None
         penalty_factor = None
-    ref_field = mpi_construct.grid.bcast(ref_field, root=0)
-    ref_penalty_field = mpi_construct.grid.bcast(ref_penalty_field, root=0)
-    ref_char_field = mpi_construct.grid.bcast(ref_char_field, root=0)
     penalty_factor = mpi_construct.grid.bcast(penalty_factor, root=0)
 
     # scatter global field
@@ -160,15 +157,10 @@ def test_mpi_brinkmann_penalise_vector_field_2d(
         ref_char_field = np.random.rand(grid_size_y, grid_size_x).astype(real_t)
         penalty_factor = real_t(0.1)
     else:
-        ref_vector_field = None
-        ref_penalty_vector_field = None
+        ref_vector_field = (None,) * mpi_construct.grid_dim
+        ref_penalty_vector_field = (None,) * mpi_construct.grid_dim
         ref_char_field = None
         penalty_factor = None
-    ref_vector_field = mpi_construct.grid.bcast(ref_vector_field, root=0)
-    ref_penalty_vector_field = mpi_construct.grid.bcast(
-        ref_penalty_vector_field, root=0
-    )
-    ref_char_field = mpi_construct.grid.bcast(ref_char_field, root=0)
     penalty_factor = mpi_construct.grid.bcast(penalty_factor, root=0)
 
     # scatter global field

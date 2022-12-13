@@ -67,12 +67,8 @@ def test_mpi_update_vorticity_from_velocity_forcing_2d(
         prefactor = real_t(0.1)
     else:
         ref_vorticity_field = None
-        ref_velocity_forcing_field = None
+        ref_velocity_forcing_field = (None,) * mpi_construct.grid_dim
         prefactor = None
-    ref_vorticity_field = mpi_construct.grid.bcast(ref_vorticity_field, root=0)
-    ref_velocity_forcing_field = mpi_construct.grid.bcast(
-        ref_velocity_forcing_field, root=0
-    )
     prefactor = mpi_construct.grid.bcast(prefactor, root=0)
 
     # scatter global field

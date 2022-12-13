@@ -73,8 +73,8 @@ def test_mpi_update_vorticity_from_velocity_forcing_3d(
         ).astype(real_t)
         prefactor = real_t(0.1)
     else:
-        ref_vorticity_field = (None, None, None)
-        ref_velocity_forcing_field = (None, None, None)
+        ref_vorticity_field = (None,) * mpi_construct.grid_dim
+        ref_velocity_forcing_field = (None,) * mpi_construct.grid_dim
         prefactor = None
     prefactor = mpi_construct.grid.bcast(prefactor, root=0)
 
@@ -233,9 +233,9 @@ def test_mpi_update_vorticity_from_penalised_velocity_3d(
         ).astype(real_t)
         prefactor = real_t(0.1)
     else:
-        ref_vorticity_field = (None, None, None)
-        ref_velocity_field = (None, None, None)
-        ref_penalised_velocity_field = (None, None, None)
+        ref_vorticity_field = (None,) * mpi_construct.grid_dim
+        ref_velocity_field = (None,) * mpi_construct.grid_dim
+        ref_penalised_velocity_field = (None,) * mpi_construct.grid_dim
         prefactor = None
     prefactor = mpi_construct.grid.bcast(prefactor, root=0)
 

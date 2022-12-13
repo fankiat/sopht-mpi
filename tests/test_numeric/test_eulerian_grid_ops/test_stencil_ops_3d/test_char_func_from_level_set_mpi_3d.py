@@ -17,10 +17,7 @@ from sopht_mpi.numeric.eulerian_grid_ops.stencil_ops_3d import (
     "rank_distribution",
     [(0, 1, 1), (1, 0, 1), (1, 1, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)],
 )
-@pytest.mark.parametrize(
-    "aspect_ratio",
-    [(1, 1, 1), (1, 1.5, 2)],
-)
+@pytest.mark.parametrize("aspect_ratio", [(1, 1, 1), (1, 1.5, 2)])
 def test_mpi_char_func_from_level_set_3d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
@@ -65,7 +62,6 @@ def test_mpi_char_func_from_level_set_3d(
     else:
         ref_level_set_field = None
         blend_width = None
-    ref_level_set_field = mpi_construct.grid.bcast(ref_level_set_field, root=0)
     blend_width = mpi_construct.grid.bcast(blend_width, root=0)
 
     # scatter global field

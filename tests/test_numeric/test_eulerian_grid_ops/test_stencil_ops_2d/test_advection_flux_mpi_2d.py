@@ -63,10 +63,8 @@ def test_mpi_advection_flux_conservative_eno3_2d(
         inv_dx = real_t(0.1)
     else:
         ref_field = None
-        ref_velocity = None
+        ref_velocity = (None,) * mpi_construct.grid_dim
         inv_dx = None
-    ref_field = mpi_construct.grid.bcast(ref_field, root=0)
-    ref_velocity = mpi_construct.grid.bcast(ref_velocity, root=0)
     inv_dx = mpi_construct.grid.bcast(inv_dx, root=0)
 
     # scatter global field

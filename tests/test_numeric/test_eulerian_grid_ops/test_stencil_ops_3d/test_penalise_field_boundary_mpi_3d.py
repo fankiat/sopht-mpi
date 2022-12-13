@@ -87,7 +87,7 @@ def test_mpi_penalise_field_boundary_pyst_3d(
         ref_field = None
         width = None
         dx = None
-        ref_grid_field = (None, None, None)
+        ref_grid_field = (None,) * mpi_construct.grid_dim
     dx = mpi_construct.grid.bcast(dx, root=0)
     width = mpi_construct.grid.bcast(width, root=0)
 
@@ -219,10 +219,10 @@ def test_mpi_penalise_vector_field_boundary_pyst_3d(
         )
         ref_grid_field = np.flipud(np.array(np.meshgrid(z, y, x, indexing="ij")))
     else:
-        ref_vector_field = (None, None, None)
+        ref_vector_field = (None,) * mpi_construct.grid_dim
         width = None
         dx = None
-        ref_grid_field = (None, None, None)
+        ref_grid_field = (None,) * mpi_construct.grid_dim
     dx = mpi_construct.grid.bcast(dx, root=0)
     width = mpi_construct.grid.bcast(width, root=0)
 
