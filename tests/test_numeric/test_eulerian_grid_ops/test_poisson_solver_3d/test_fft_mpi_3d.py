@@ -1,28 +1,34 @@
 import numpy as np
 import pytest
 from sopht_mpi.utils import (
-    MPIConstruct2D,
-    MPIFieldCommunicator2D,
+    MPIConstruct3D,
+    MPIFieldCommunicator3D,
 )
-from sopht_mpi.numeric.eulerian_grid_ops.poisson_solver_2d import FFTMPI2D
+from sopht_mpi.numeric.eulerian_grid_ops.poisson_solver_3d import FFTMPI3D
 from sopht.utils.precision import get_real_t, get_test_tol
 from scipy.fft import rfftn
 
 
-@pytest.mark.mpi(group="MPI_Poisson_solver_2d", min_size=4)
+@pytest.mark.mpi(group="MPI_Poisson_solver_3d", min_size=4)
 @pytest.mark.parametrize("ghost_size", [1, 2])
 @pytest.mark.parametrize("precision", ["single", "double"])
-@pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1.5, 1)])
-def test_mpi_fft_2d(ghost_size, precision, rank_distribution, aspect_ratio):
+@pytest.mark.parametrize(
+    "rank_distribution",
+    [(0, 1, 1), (1, 0, 1), (1, 1, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)],
+)
+@pytest.mark.parametrize("aspect_ratio", [(1, 1, 1), (1, 1.5, 2)])
+def test_mpi_fft_3d(ghost_size, precision, rank_distribution, aspect_ratio):
     """
-    Test parallel FFT on (slab) distributed 2d array
+    Test parallel FFT on (slab / pencil) distributed 3d arrays
     """
     n_values = 8
-    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    grid_size_z, grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(
+        int
+    )
     real_t = get_real_t(precision)
     # Generate the MPI topology minimal object
-    mpi_construct = MPIConstruct2D(
+    mpi_construct = MPIConstruct3D(
+        grid_size_z=grid_size_z,
         grid_size_y=grid_size_y,
         grid_size_x=grid_size_x,
         real_t=real_t,
@@ -30,15 +36,16 @@ def test_mpi_fft_2d(ghost_size, precision, rank_distribution, aspect_ratio):
     )
 
     # Create parallel fft plan
-    mpi_fft = FFTMPI2D(
-        grid_size_y=mpi_construct.global_grid_size[0],
-        grid_size_x=mpi_construct.global_grid_size[1],
+    mpi_fft = FFTMPI3D(
+        grid_size_z=mpi_construct.global_grid_size[0],
+        grid_size_y=mpi_construct.global_grid_size[1],
+        grid_size_x=mpi_construct.global_grid_size[2],
         mpi_construct=mpi_construct,
         real_t=real_t,
     )
 
     # Initialize communicator for scatter and gather
-    mpi_field_comm = MPIFieldCommunicator2D(
+    mpi_field_comm = MPIFieldCommunicator3D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
     gather_local_field = mpi_field_comm.gather_local_field
@@ -47,9 +54,12 @@ def test_mpi_fft_2d(ghost_size, precision, rank_distribution, aspect_ratio):
 
     # Generate solution and broadcast solution from rank 0 to all ranks
     if mpi_construct.rank == 0:
-        ref_field = np.random.randn(grid_size_y, grid_size_x).astype(real_t)
+        ref_field = np.random.randn(grid_size_z, grid_size_y, grid_size_x).astype(
+            real_t
+        )
     else:
         ref_field = None
+    ref_field = mpi_construct.grid.bcast(ref_field, root=0)
 
     # 1. Scatter initial local field from solution ref field
     local_field = np.zeros(mpi_construct.local_grid_size + 2 * ghost_size).astype(
@@ -81,7 +91,7 @@ def test_mpi_fft_2d(ghost_size, precision, rank_distribution, aspect_ratio):
         local_field=local_inv_fourier_field,
         mpi_construct=mpi_construct,
     )
-    # # 5. Assert correct
+    # 5. Assert correct
     if mpi_construct.rank == 0:
         # unpack fft axes from mpi4py-fft, and use for scipy axes
         solution_fft_axes = []
