@@ -110,11 +110,8 @@ class ImmersedBodyFlowInteractionMPI(VirtualBoundaryForcingMPI):
         self.forcing_grid.compute_lag_grid_velocity_field()
         # 2. Ghost the velocity field
         self.eul_grid_velocity_field.flags.writeable = True
-        self.mpi_ghost_exchange_communicator.exchange_init(
-            self.eul_grid_velocity_field[0], self.mpi_construct
-        )
-        self.mpi_ghost_exchange_communicator.exchange_init(
-            self.eul_grid_velocity_field[1], self.mpi_construct
+        self.mpi_ghost_exchange_communicator.exchange_vector_field_init(
+            self.eul_grid_velocity_field
         )
         self.mpi_ghost_exchange_communicator.exchange_finalise()
         self.eul_grid_velocity_field.flags.writeable = False
@@ -132,11 +129,8 @@ class ImmersedBodyFlowInteractionMPI(VirtualBoundaryForcingMPI):
         self.forcing_grid.compute_lag_grid_velocity_field()
         # 2. Ghost the velocity field
         self.eul_grid_velocity_field.flags.writeable = True
-        self.mpi_ghost_exchange_communicator.exchange_init(
-            self.eul_grid_velocity_field[0], self.mpi_construct
-        )
-        self.mpi_ghost_exchange_communicator.exchange_init(
-            self.eul_grid_velocity_field[1], self.mpi_construct
+        self.mpi_ghost_exchange_communicator.exchange_vector_field_init(
+            self.eul_grid_velocity_field
         )
         self.mpi_ghost_exchange_communicator.exchange_finalise()
         self.eul_grid_velocity_field.flags.writeable = False

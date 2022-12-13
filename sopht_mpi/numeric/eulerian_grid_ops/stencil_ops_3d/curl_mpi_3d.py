@@ -38,7 +38,7 @@ def gen_curl_pyst_mpi_kernel_3d(real_t, mpi_construct, ghost_exchange_communicat
         # define variable for use later
         ghost_size = ghost_exchange_communicator.ghost_size
         # begin ghost comm.
-        ghost_exchange_communicator.exchange_init(field, mpi_construct)
+        ghost_exchange_communicator.exchange_scalar_field_init(field)
 
         # crunch interior stencil
         curl_pyst_kernel_3d(
