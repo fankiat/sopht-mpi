@@ -49,8 +49,8 @@ def test_mpi_update_vorticity_from_velocity_forcing_3d(
     mpi_field_communicator = MPIFieldCommunicator3D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_communicator.gather_local_field
-    scatter_global_field = mpi_field_communicator.scatter_global_field
+    gather_local_vector_field = mpi_field_communicator.gather_local_vector_field
+    scatter_global_vector_field = mpi_field_communicator.scatter_global_vector_field
 
     # Allocate local field
     local_vorticity_field = np.zeros(
@@ -79,36 +79,9 @@ def test_mpi_update_vorticity_from_velocity_forcing_3d(
     prefactor = mpi_construct.grid.bcast(prefactor, root=0)
 
     # scatter global field
-    # TODO: replace with vector field scatter
-    scatter_global_field(
-        local_vorticity_field[VectorField.x_axis_idx()],
-        ref_vorticity_field[VectorField.x_axis_idx()],
-        mpi_construct,
-    )
-    scatter_global_field(
-        local_vorticity_field[VectorField.y_axis_idx()],
-        ref_vorticity_field[VectorField.y_axis_idx()],
-        mpi_construct,
-    )
-    scatter_global_field(
-        local_vorticity_field[VectorField.z_axis_idx()],
-        ref_vorticity_field[VectorField.z_axis_idx()],
-        mpi_construct,
-    )
-    scatter_global_field(
-        local_velocity_forcing_field[VectorField.x_axis_idx()],
-        ref_velocity_forcing_field[VectorField.x_axis_idx()],
-        mpi_construct,
-    )
-    scatter_global_field(
-        local_velocity_forcing_field[VectorField.y_axis_idx()],
-        ref_velocity_forcing_field[VectorField.y_axis_idx()],
-        mpi_construct,
-    )
-    scatter_global_field(
-        local_velocity_forcing_field[VectorField.z_axis_idx()],
-        ref_velocity_forcing_field[VectorField.z_axis_idx()],
-        mpi_construct,
+    scatter_global_vector_field(local_vorticity_field, ref_vorticity_field)
+    scatter_global_vector_field(
+        local_velocity_forcing_field, ref_velocity_forcing_field
     )
 
     # compute the vorticity update from velocity forcing
@@ -128,21 +101,7 @@ def test_mpi_update_vorticity_from_velocity_forcing_3d(
     # gather back the diffusion flux globally
     global_vorticity_field = np.zeros_like(ref_vorticity_field)
     # TODO: replace with vector field gather
-    gather_local_field(
-        global_vorticity_field[VectorField.x_axis_idx()],
-        local_vorticity_field[VectorField.x_axis_idx()],
-        mpi_construct,
-    )
-    gather_local_field(
-        global_vorticity_field[VectorField.y_axis_idx()],
-        local_vorticity_field[VectorField.y_axis_idx()],
-        mpi_construct,
-    )
-    gather_local_field(
-        global_vorticity_field[VectorField.z_axis_idx()],
-        local_vorticity_field[VectorField.z_axis_idx()],
-        mpi_construct,
-    )
+    gather_local_vector_field(global_vorticity_field, local_vorticity_field)
 
     # assert correct
     if mpi_construct.rank == 0:
@@ -205,8 +164,8 @@ def test_mpi_update_vorticity_from_penalised_velocity_3d(
     mpi_field_communicator = MPIFieldCommunicator3D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_communicator.gather_local_field
-    scatter_global_field = mpi_field_communicator.scatter_global_field
+    gather_local_vector_field = mpi_field_communicator.gather_local_vector_field
+    scatter_global_vector_field = mpi_field_communicator.scatter_global_vector_field
 
     # Allocate local field
     local_vorticity_field = np.zeros(
@@ -240,51 +199,10 @@ def test_mpi_update_vorticity_from_penalised_velocity_3d(
     prefactor = mpi_construct.grid.bcast(prefactor, root=0)
 
     # scatter global field
-    # TODO: replace with vector field scatter
-    scatter_global_field(
-        local_vorticity_field[VectorField.x_axis_idx()],
-        ref_vorticity_field[VectorField.x_axis_idx()],
-        mpi_construct,
-    )
-    scatter_global_field(
-        local_vorticity_field[VectorField.y_axis_idx()],
-        ref_vorticity_field[VectorField.y_axis_idx()],
-        mpi_construct,
-    )
-    scatter_global_field(
-        local_vorticity_field[VectorField.z_axis_idx()],
-        ref_vorticity_field[VectorField.z_axis_idx()],
-        mpi_construct,
-    )
-    scatter_global_field(
-        local_velocity_field[VectorField.x_axis_idx()],
-        ref_velocity_field[VectorField.x_axis_idx()],
-        mpi_construct,
-    )
-    scatter_global_field(
-        local_velocity_field[VectorField.y_axis_idx()],
-        ref_velocity_field[VectorField.y_axis_idx()],
-        mpi_construct,
-    )
-    scatter_global_field(
-        local_velocity_field[VectorField.z_axis_idx()],
-        ref_velocity_field[VectorField.z_axis_idx()],
-        mpi_construct,
-    )
-    scatter_global_field(
-        local_penalised_velocity_field[VectorField.x_axis_idx()],
-        ref_penalised_velocity_field[VectorField.x_axis_idx()],
-        mpi_construct,
-    )
-    scatter_global_field(
-        local_penalised_velocity_field[VectorField.y_axis_idx()],
-        ref_penalised_velocity_field[VectorField.y_axis_idx()],
-        mpi_construct,
-    )
-    scatter_global_field(
-        local_penalised_velocity_field[VectorField.z_axis_idx()],
-        ref_penalised_velocity_field[VectorField.z_axis_idx()],
-        mpi_construct,
+    scatter_global_vector_field(local_vorticity_field, ref_vorticity_field)
+    scatter_global_vector_field(local_velocity_field, ref_velocity_field)
+    scatter_global_vector_field(
+        local_penalised_velocity_field, ref_penalised_velocity_field
     )
 
     # compute the vorticity update from penalised velocity
@@ -304,22 +222,7 @@ def test_mpi_update_vorticity_from_penalised_velocity_3d(
 
     # gather back the diffusion flux globally
     global_vorticity_field = np.zeros_like(ref_vorticity_field)
-    # TODO: replace with vector field gather
-    gather_local_field(
-        global_vorticity_field[VectorField.x_axis_idx()],
-        local_vorticity_field[VectorField.x_axis_idx()],
-        mpi_construct,
-    )
-    gather_local_field(
-        global_vorticity_field[VectorField.y_axis_idx()],
-        local_vorticity_field[VectorField.y_axis_idx()],
-        mpi_construct,
-    )
-    gather_local_field(
-        global_vorticity_field[VectorField.z_axis_idx()],
-        local_vorticity_field[VectorField.z_axis_idx()],
-        mpi_construct,
-    )
+    gather_local_vector_field(global_vorticity_field, local_vorticity_field)
 
     # assert correct
     if mpi_construct.rank == 0:

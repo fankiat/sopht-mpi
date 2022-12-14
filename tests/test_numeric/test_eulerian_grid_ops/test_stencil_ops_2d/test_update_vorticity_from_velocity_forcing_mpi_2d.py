@@ -40,8 +40,9 @@ def test_mpi_update_vorticity_from_velocity_forcing_2d(
     mpi_field_communicator = MPIFieldCommunicator2D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_communicator.gather_local_field
-    scatter_global_field = mpi_field_communicator.scatter_global_field
+    gather_local_scalar_field = mpi_field_communicator.gather_local_scalar_field
+    scatter_global_scalar_field = mpi_field_communicator.scatter_global_scalar_field
+    scatter_global_vector_field = mpi_field_communicator.scatter_global_vector_field
 
     # Allocate local field
     local_vorticity_field = np.zeros(
@@ -72,12 +73,9 @@ def test_mpi_update_vorticity_from_velocity_forcing_2d(
     prefactor = mpi_construct.grid.bcast(prefactor, root=0)
 
     # scatter global field
-    scatter_global_field(local_vorticity_field, ref_vorticity_field, mpi_construct)
-    scatter_global_field(
-        local_velocity_forcing_field[0], ref_velocity_forcing_field[0], mpi_construct
-    )
-    scatter_global_field(
-        local_velocity_forcing_field[1], ref_velocity_forcing_field[1], mpi_construct
+    scatter_global_scalar_field(local_vorticity_field, ref_vorticity_field)
+    scatter_global_vector_field(
+        local_velocity_forcing_field, ref_velocity_forcing_field
     )
 
     # compute the vorticity update from velocity forcing
@@ -97,7 +95,7 @@ def test_mpi_update_vorticity_from_velocity_forcing_2d(
 
     # gather back the diffusion flux globally
     global_vorticity_field = np.zeros_like(ref_vorticity_field)
-    gather_local_field(global_vorticity_field, local_vorticity_field, mpi_construct)
+    gather_local_scalar_field(global_vorticity_field, local_vorticity_field)
 
     # assert correct
     if mpi_construct.rank == 0:

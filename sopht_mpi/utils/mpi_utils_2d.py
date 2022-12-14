@@ -227,6 +227,7 @@ class MPIFieldCommunicator2D:
                 "for field IO communication."
             )
         self.ghost_size = ghost_size
+        self.mpi_construct = mpi_construct
         if self.ghost_size == 0:
             self.inner_idx = ...
         else:
@@ -255,76 +256,101 @@ class MPIFieldCommunicator2D:
             )
         self.sub_array_type.Commit()
 
-    def gather_local_field(self, global_field, local_field, mpi_construct):
+    def gather_local_scalar_field(self, global_field, local_field):
         """
-        Gather local fields from all ranks and return a global field in master rank
+        Gather local scalar fields from all ranks and return a global scalar field in
+        master rank
         """
-        if mpi_construct.rank == self.master_rank:
+        if self.mpi_construct.rank == self.master_rank:
             # Fill in field values for master rank
-            coords = mpi_construct.grid.Get_coords(self.master_rank)
+            coords = self.mpi_construct.grid.Get_coords(self.master_rank)
             local_chunk_idx = (
                 slice(
-                    coords[0] * mpi_construct.local_grid_size[0],
-                    (coords[0] + 1) * mpi_construct.local_grid_size[0],
+                    coords[0] * self.mpi_construct.local_grid_size[0],
+                    (coords[0] + 1) * self.mpi_construct.local_grid_size[0],
                 ),
                 slice(
-                    coords[1] * mpi_construct.local_grid_size[1],
-                    (coords[1] + 1) * mpi_construct.local_grid_size[1],
+                    coords[1] * self.mpi_construct.local_grid_size[1],
+                    (coords[1] + 1) * self.mpi_construct.local_grid_size[1],
                 ),
             )
             global_field[local_chunk_idx] = local_field[self.inner_idx]
             # Receiving from other ranks as contiguous array
             for rank_idx in self.slave_ranks:
-                coords = mpi_construct.grid.Get_coords(rank_idx)
+                coords = self.mpi_construct.grid.Get_coords(rank_idx)
                 idx = np.ravel_multi_index(
-                    coords * mpi_construct.local_grid_size,
-                    mpi_construct.global_grid_size,
+                    coords * self.mpi_construct.local_grid_size,
+                    self.mpi_construct.global_grid_size,
                 )
-                mpi_construct.grid.Recv(
+                self.mpi_construct.grid.Recv(
                     (global_field.ravel()[idx:], 1, self.sub_array_type),
                     source=rank_idx,
                 )
         else:
             # Sending as contiguous chunks
-            mpi_construct.grid.Send(
+            self.mpi_construct.grid.Send(
                 (local_field, 1, self.sub_array_type), dest=self.master_rank
             )
 
-    def scatter_global_field(self, local_field, global_field, mpi_construct):
+    def gather_local_vector_field(self, global_vector_field, local_vector_field):
         """
-        Scatter a global field in master rank to corresponding ranks into local
-        fields
+        Gather local vector fields from all ranks and return a global vector field in
+        master rank
+        """
+        self.gather_local_scalar_field(
+            global_field=global_vector_field[0], local_field=local_vector_field[0]
+        )
+        self.gather_local_scalar_field(
+            global_field=global_vector_field[1], local_field=local_vector_field[1]
+        )
+
+    def scatter_global_scalar_field(self, local_field, global_field):
+        """
+        Scatter a global scalar field in master rank into local scalar fields in each
+        corresponding ranks
         """
         # Fill in field values for master rank on the edge
-        if mpi_construct.rank == self.master_rank:
-            coords = mpi_construct.grid.Get_coords(self.master_rank)
+        if self.mpi_construct.rank == self.master_rank:
+            coords = self.mpi_construct.grid.Get_coords(self.master_rank)
             local_chunk_idx = (
                 slice(
-                    coords[0] * mpi_construct.local_grid_size[0],
-                    (coords[0] + 1) * mpi_construct.local_grid_size[0],
+                    coords[0] * self.mpi_construct.local_grid_size[0],
+                    (coords[0] + 1) * self.mpi_construct.local_grid_size[0],
                 ),
                 slice(
-                    coords[1] * mpi_construct.local_grid_size[1],
-                    (coords[1] + 1) * mpi_construct.local_grid_size[1],
+                    coords[1] * self.mpi_construct.local_grid_size[1],
+                    (coords[1] + 1) * self.mpi_construct.local_grid_size[1],
                 ),
             )
             local_field[self.inner_idx] = global_field[local_chunk_idx]
             # Sending to other ranks as contiguous array
             for rank_idx in self.slave_ranks:
-                coords = mpi_construct.grid.Get_coords(rank_idx)
+                coords = self.mpi_construct.grid.Get_coords(rank_idx)
                 idx = np.ravel_multi_index(
-                    coords * mpi_construct.local_grid_size,
-                    mpi_construct.global_grid_size,
+                    coords * self.mpi_construct.local_grid_size,
+                    self.mpi_construct.global_grid_size,
                 )
-                mpi_construct.grid.Send(
+                self.mpi_construct.grid.Send(
                     (global_field.ravel()[idx:], 1, self.sub_array_type),
                     dest=rank_idx,
                 )
         else:
             # Receiving from master_rank as contiguous array
-            mpi_construct.grid.Recv(
+            self.mpi_construct.grid.Recv(
                 (local_field, 1, self.sub_array_type), source=self.master_rank
             )
+
+    def scatter_global_vector_field(self, local_vector_field, global_vector_field):
+        """
+        Scatter a global vector field in master rank into local vector fields in each
+        corresponding ranks
+        """
+        self.scatter_global_scalar_field(
+            local_field=local_vector_field[0], global_field=global_vector_field[0]
+        )
+        self.scatter_global_scalar_field(
+            local_field=local_vector_field[1], global_field=global_vector_field[1]
+        )
 
 
 class MPILagrangianFieldCommunicator2D:
