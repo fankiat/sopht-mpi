@@ -42,6 +42,7 @@ def flow_past_cylinder_boundary_forcing_case(
         with_free_stream_flow=True,
         real_t=real_t,
         rank_distribution=rank_distribution,
+        time=0.0,
     )
 
     # ==================FLOW-BODY COMMUNICATOR SETUP START======
@@ -79,7 +80,6 @@ def flow_past_cylinder_boundary_forcing_case(
     # iterate
     timescale = cyl_radius / velocity_scale
     final_time = nondim_final_time * timescale  # dimensional end time
-    time = 0.0
     foto_timer = 0.0
     foto_timer_limit = final_time / 50
 
@@ -92,16 +92,18 @@ def flow_past_cylinder_boundary_forcing_case(
     mpi_plotter = MPIPlotter2D(
         flow_sim.mpi_construct,
         flow_sim.ghost_size,
-        title=f"Vorticity, time: {time / timescale:.2f}",
+        title=f"Vorticity, time: {flow_sim.time / timescale:.2f}",
         master_rank=master_rank,
     )
 
-    while time < final_time:
+    while flow_sim.time < final_time:
 
         # Plot solution
         if foto_timer >= foto_timer_limit or foto_timer == 0:
             foto_timer = 0.0
-            mpi_plotter.ax.set_title(f"Vorticity, time: {time / timescale:.2f}")
+            mpi_plotter.ax.set_title(
+                f"Vorticity, time: {flow_sim.time / timescale:.2f}"
+            )
             mpi_plotter.contourf(
                 flow_sim.position_field[x_axis_idx],
                 flow_sim.position_field[y_axis_idx],
@@ -116,7 +118,7 @@ def flow_past_cylinder_boundary_forcing_case(
                 color="k",
             )
             mpi_plotter.savefig(
-                file_name="snap_" + str("%0.4d" % (time * 100)) + ".png"
+                file_name="snap_" + str("%0.4d" % (flow_sim.time * 100)) + ".png"
             )
             mpi_plotter.clearfig()
 
@@ -126,7 +128,7 @@ def flow_past_cylinder_boundary_forcing_case(
             )
             max_vort = flow_sim.get_max_vorticity()
             logger.info(
-                f"time: {time:.2f} ({(time / final_time * 100):2.1f}%), "
+                f"time: {flow_sim.time:.2f} ({(flow_sim.time / final_time * 100):2.1f}%), "
                 f"max_vort: {max_vort:.4f}, "
                 f"grid deviation L2 error: {grid_dev_error_l2_norm:.8f}"
             )
@@ -135,7 +137,7 @@ def flow_past_cylinder_boundary_forcing_case(
         if data_timer >= data_timer_limit or data_timer == 0:
             data_timer = 0.0
             if flow_sim.mpi_construct.rank == master_rank:
-                drag_coeffs_time.append(time / timescale)
+                drag_coeffs_time.append(flow_sim.time / timescale)
                 # calculate drag
                 F = np.sum(
                     cylinder_flow_interactor.global_lag_grid_forcing_field[
@@ -153,8 +155,7 @@ def flow_past_cylinder_boundary_forcing_case(
         # timestep the flow
         flow_sim.time_step(dt=dt, free_stream_velocity=velocity_free_stream)
 
-        # update time
-        time += dt
+        # update timers
         foto_timer += dt
         data_timer += dt
 
