@@ -109,6 +109,7 @@ def flow_past_rod_case(
         with_free_stream_flow=True,
         real_t=real_t,
         rank_distribution=rank_distribution,
+        time=0.0,
     )
     # ==================FLOW SETUP END=========================
 
@@ -141,7 +142,6 @@ def flow_past_rod_case(
     do_step, stages_and_updates = ea.extend_stepper_interface(
         timestepper, flow_past_sim
     )
-    time = 0.0
     foto_timer = 0.0
     timescale = base_length / velocity_free_stream
     final_time = nondim_final_time * timescale
@@ -162,12 +162,14 @@ def flow_past_rod_case(
         flow_sim.ghost_size,
     )
 
-    while time < final_time:
+    while flow_sim.time < final_time:
 
         # Plot solution
         if foto_timer >= foto_timer_limit or foto_timer == 0:
             foto_timer = 0.0
-            mpi_plotter.ax.set_title(f"Vorticity, time: {time / timescale:.2f}")
+            mpi_plotter.ax.set_title(
+                f"Vorticity, time: {flow_sim.time / timescale:.2f}"
+            )
             mpi_plotter.contourf(
                 flow_sim.position_field[x_axis_idx],
                 flow_sim.position_field[y_axis_idx],
@@ -182,7 +184,7 @@ def flow_past_rod_case(
                 color="k",
             )
             mpi_plotter.savefig(
-                file_name="snap_" + str("%0.4d" % (time * 100)) + ".png"
+                file_name="snap_" + str("%0.4d" % (flow_sim.time * 100)) + ".png"
             )
             mpi_plotter.clearfig()
 
@@ -192,7 +194,7 @@ def flow_past_rod_case(
             )
             max_vort = flow_sim.get_max_vorticity()
             logger.info(
-                f"time: {time:.2f} ({(time / final_time*100):2.1f}%), "
+                f"time: {flow_sim.time:.2f} ({(flow_sim.time / final_time*100):2.1f}%), "
                 f"max_vort: {max_vort:.4f}, "
                 f"grid deviation L2 error: {grid_dev_error_l2_norm:.8f}"
             )
@@ -201,7 +203,7 @@ def flow_past_rod_case(
         if data_timer >= data_timer_limit or data_timer == 0:
             data_timer = 0.0
             if flow_sim.mpi_construct.rank == master_rank:
-                tip_time.append(time / timescale)
+                tip_time.append(flow_sim.time / timescale)
                 tip_position.append(
                     (
                         flow_past_rod.position_collection[(x_axis_idx, y_axis_idx), -1]
@@ -216,7 +218,7 @@ def flow_past_rod_case(
         # timestep the rod, through the flow timestep
         rod_time_steps = int(flow_dt / min(flow_dt, rod_dt))
         local_rod_dt = flow_dt / rod_time_steps
-        rod_time = time
+        rod_time = flow_sim.time
         for i in range(rod_time_steps):
             rod_time = do_step(
                 timestepper, stages_and_updates, flow_past_sim, rod_time, local_rod_dt
@@ -227,7 +229,7 @@ def flow_past_rod_case(
         # evaluate feedback/interaction between flow and rod
         cosserat_rod_flow_interactor()
 
-        ramp_factor = np.exp(-time / ramp_timescale)
+        ramp_factor = np.exp(-flow_sim.time / ramp_timescale)
         # timestep the flow
         flow_sim.time_step(
             dt=flow_dt,
@@ -237,8 +239,7 @@ def flow_past_rod_case(
             ],
         )
 
-        # update simulation time
-        time += flow_dt
+        # update timers
         foto_timer += flow_dt
         data_timer += flow_dt
 
