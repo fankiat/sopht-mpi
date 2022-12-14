@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 from sopht.utils.precision import get_real_t, get_test_tol
-from sopht.utils.field import VectorField
 from sopht.numeric.eulerian_grid_ops.stencil_ops_3d import (
     gen_update_vorticity_from_velocity_forcing_pyst_kernel_3d,
     gen_update_vorticity_from_penalised_velocity_pyst_kernel_3d,
