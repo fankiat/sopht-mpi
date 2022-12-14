@@ -25,6 +25,7 @@ class UnboundedFlowSimulator2D:
         grid_size,
         x_range,
         kinematic_viscosity,
+        time=0.0,
         CFL=0.1,
         flow_type="passive_scalar",
         with_free_stream_flow=False,
@@ -38,6 +39,7 @@ class UnboundedFlowSimulator2D:
         :param grid_size: Grid size of simulator
         :param x_range: Range of X coordinate of the grid
         :param kinematic_viscosity: kinematic viscosity of the fluid
+        :param time: simulator time at initialisation
         :param CFL: Courant Freidrich Lewy number (advection timestep)
         :param flow_type: Nature of the simulator, can be "passive_scalar" (default value),
         "navier_stokes" or "navier_stokes_with_forcing"
@@ -58,6 +60,7 @@ class UnboundedFlowSimulator2D:
         self.with_free_stream_flow = with_free_stream_flow
         self.kinematic_viscosity = kinematic_viscosity
         self.CFL = CFL
+        self.time = time
         supported_flow_types = [
             "passive_scalar",
             "navier_stokes",
@@ -234,12 +237,21 @@ class UnboundedFlowSimulator2D:
 
     def finalise_flow_timestep(self):
         # default time step
-        self.time_step = self.advection_and_diffusion_timestep
+        self.flow_time_step = self.advection_and_diffusion_timestep
 
         if self.flow_type == "navier_stokes":
-            self.time_step = self.navier_stokes_timestep
+            self.flow_time_step = self.navier_stokes_timestep
         elif self.flow_type == "navier_stokes_with_forcing":
-            self.time_step = self.navier_stokes_with_forcing_timestep
+            self.flow_time_step = self.navier_stokes_with_forcing_timestep
+
+    def update_simulator_time(self, dt):
+        """Updates simulator time."""
+        self.time += dt
+
+    def time_step(self, dt, **kwargs):
+        """Final simulator time step"""
+        self.flow_time_step(dt=dt, **kwargs)
+        self.update_simulator_time(dt=dt)
 
     def advection_and_diffusion_timestep(self, dt, **kwargs):
         self.advection_timestep(
