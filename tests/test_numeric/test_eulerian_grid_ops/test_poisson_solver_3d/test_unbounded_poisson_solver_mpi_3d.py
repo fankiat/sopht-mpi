@@ -49,8 +49,8 @@ def test_mpi_unbounded_poisson_solve_3d(
     mpi_field_comm = MPIFieldCommunicator3D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_comm.gather_local_field
-    scatter_global_field = mpi_field_comm.scatter_global_field
+    gather_local_scalar_field = mpi_field_comm.gather_local_scalar_field
+    scatter_global_scalar_field = mpi_field_comm.scatter_global_scalar_field
 
     # Allocate local field
     local_rhs_field = np.zeros(
@@ -71,7 +71,7 @@ def test_mpi_unbounded_poisson_solve_3d(
         ref_rhs_field = None
 
     # scatter global field
-    scatter_global_field(local_rhs_field, ref_rhs_field, mpi_construct)
+    scatter_global_scalar_field(local_rhs_field, ref_rhs_field)
 
     # compute the unbounded poisson solve
     unbounded_poisson_solver.solve(
@@ -80,7 +80,7 @@ def test_mpi_unbounded_poisson_solve_3d(
 
     # gather back the solution field globally
     global_solution_field = np.zeros_like(ref_rhs_field)
-    gather_local_field(global_solution_field, local_solution_field, mpi_construct)
+    gather_local_scalar_field(global_solution_field, local_solution_field)
 
     # assert correct
     if mpi_construct.rank == 0:
@@ -140,8 +140,8 @@ def test_mpi_unbounded_vector_field_poisson_solve_3d(
     mpi_field_comm = MPIFieldCommunicator3D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_comm.gather_local_field
-    scatter_global_field = mpi_field_comm.scatter_global_field
+    gather_local_vector_field = mpi_field_comm.gather_local_vector_field
+    scatter_global_vector_field = mpi_field_comm.scatter_global_vector_field
 
     # Allocate local field
     local_rhs_vector_field = np.zeros(
@@ -163,16 +163,7 @@ def test_mpi_unbounded_vector_field_poisson_solve_3d(
         ref_rhs_vector_field = (None, None, None)
 
     # scatter global field
-    # TODO: replace with vector scatter when available
-    scatter_global_field(
-        local_rhs_vector_field[0], ref_rhs_vector_field[0], mpi_construct
-    )
-    scatter_global_field(
-        local_rhs_vector_field[1], ref_rhs_vector_field[1], mpi_construct
-    )
-    scatter_global_field(
-        local_rhs_vector_field[2], ref_rhs_vector_field[2], mpi_construct
-    )
+    scatter_global_vector_field(local_rhs_vector_field, ref_rhs_vector_field)
 
     # compute the unbounded poisson solve
     unbounded_poisson_solver.vector_field_solve(
@@ -182,16 +173,7 @@ def test_mpi_unbounded_vector_field_poisson_solve_3d(
 
     # gather back the solution field globally
     global_solution_vector_field = np.zeros_like(ref_rhs_vector_field)
-    # TODO: replace with vector gather when available
-    gather_local_field(
-        global_solution_vector_field[0], local_solution_vector_field[0], mpi_construct
-    )
-    gather_local_field(
-        global_solution_vector_field[1], local_solution_vector_field[1], mpi_construct
-    )
-    gather_local_field(
-        global_solution_vector_field[2], local_solution_vector_field[2], mpi_construct
-    )
+    gather_local_vector_field(global_solution_vector_field, local_solution_vector_field)
 
     # assert correct
     if mpi_construct.rank == 0:

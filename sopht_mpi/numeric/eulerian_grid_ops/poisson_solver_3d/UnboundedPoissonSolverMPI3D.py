@@ -8,6 +8,7 @@ from sopht.numeric.eulerian_grid_ops.stencil_ops_3d.elementwise_ops_3d import (
 )
 from sopht_mpi.numeric.eulerian_grid_ops.poisson_solver_3d.fft_mpi_3d import FFTMPI3D
 import itertools
+from sopht.utils.field import VectorField
 
 
 class UnboundedPoissonSolverMPI3D:
@@ -173,13 +174,16 @@ class UnboundedPoissonSolverMPI3D:
         Greens function convolution and domain doubling trick (Hockney and Eastwood).
         """
         self.solve(
-            solution_field=solution_vector_field[0], rhs_field=rhs_vector_field[0]
+            solution_field=solution_vector_field[VectorField.x_axis_idx()],
+            rhs_field=rhs_vector_field[VectorField.x_axis_idx()],
         )
         self.solve(
-            solution_field=solution_vector_field[1], rhs_field=rhs_vector_field[1]
+            solution_field=solution_vector_field[VectorField.y_axis_idx()],
+            rhs_field=rhs_vector_field[VectorField.y_axis_idx()],
         )
         self.solve(
-            solution_field=solution_vector_field[2], rhs_field=rhs_vector_field[2]
+            solution_field=solution_vector_field[VectorField.z_axis_idx()],
+            rhs_field=rhs_vector_field[VectorField.z_axis_idx()],
         )
 
 
