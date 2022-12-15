@@ -43,15 +43,7 @@ def gen_update_vorticity_from_velocity_forcing_pyst_mpi_kernel_3d(
         ghost_size = ghost_exchange_communicator.ghost_size
         # begin ghost comm.
         # TODO: replace with vector field exchange
-        ghost_exchange_communicator.exchange_init(
-            velocity_forcing_field[0], mpi_construct
-        )
-        ghost_exchange_communicator.exchange_init(
-            velocity_forcing_field[1], mpi_construct
-        )
-        ghost_exchange_communicator.exchange_init(
-            velocity_forcing_field[2], mpi_construct
-        )
+        ghost_exchange_communicator.exchange_vector_field_init(velocity_forcing_field)
 
         # crunch interior stencil
         update_vorticity_from_velocity_forcing_pyst_kernel_3d(
@@ -223,18 +215,8 @@ def gen_update_vorticity_from_penalised_velocity_pyst_mpi_kernel_3d(
         ghost_size = ghost_exchange_communicator.ghost_size
         # begin ghost comm.
         # TODO: replace with vector field exchange
-        ghost_exchange_communicator.exchange_init(velocity_field[0], mpi_construct)
-        ghost_exchange_communicator.exchange_init(velocity_field[1], mpi_construct)
-        ghost_exchange_communicator.exchange_init(velocity_field[2], mpi_construct)
-        ghost_exchange_communicator.exchange_init(
-            penalised_velocity_field[0], mpi_construct
-        )
-        ghost_exchange_communicator.exchange_init(
-            penalised_velocity_field[1], mpi_construct
-        )
-        ghost_exchange_communicator.exchange_init(
-            penalised_velocity_field[2], mpi_construct
-        )
+        ghost_exchange_communicator.exchange_vector_field_init(velocity_field)
+        ghost_exchange_communicator.exchange_vector_field_init(penalised_velocity_field)
 
         # crunch interior stencil
         update_vorticity_from_penalised_velocity_pyst_kernel_3d(

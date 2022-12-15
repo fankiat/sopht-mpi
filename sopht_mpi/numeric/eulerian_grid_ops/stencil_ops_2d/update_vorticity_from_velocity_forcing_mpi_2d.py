@@ -40,12 +40,7 @@ def gen_update_vorticity_from_velocity_forcing_pyst_mpi_kernel_2d(
         # define variable for use later
         ghost_size = ghost_exchange_communicator.ghost_size
         # begin ghost comm.
-        ghost_exchange_communicator.exchange_init(
-            velocity_forcing_field[0], mpi_construct
-        )
-        ghost_exchange_communicator.exchange_init(
-            velocity_forcing_field[1], mpi_construct
-        )
+        ghost_exchange_communicator.exchange_vector_field_init(velocity_forcing_field)
 
         # crunch interior stencil
         update_vorticity_from_velocity_forcing_pyst_kernel_2d(

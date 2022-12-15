@@ -685,12 +685,8 @@ def test_mpi_compute_interaction_force_on_lag_grid_2d(
         mpi_construct,
     )
     # ghost the local field
-    mpi_ghost_exchange_communicator.exchange_init(
-        mpi_local_eul_grid_velocity_field[0], mpi_construct
-    )
-    mpi_ghost_exchange_communicator.exchange_finalise()
-    mpi_ghost_exchange_communicator.exchange_init(
-        mpi_local_eul_grid_velocity_field[1], mpi_construct
+    mpi_ghost_exchange_communicator.exchange_vector_field_init(
+        mpi_local_eul_grid_velocity_field
     )
     mpi_ghost_exchange_communicator.exchange_finalise()
 
@@ -873,12 +869,8 @@ def test_mpi_compute_interaction_force_on_eul_and_lag_grid_2d(
         mpi_construct,
     )
     # ghost the local field
-    mpi_ghost_exchange_communicator.exchange_init(
-        mpi_local_eul_grid_velocity_field[0], mpi_construct
-    )
-    mpi_ghost_exchange_communicator.exchange_finalise()
-    mpi_ghost_exchange_communicator.exchange_init(
-        mpi_local_eul_grid_velocity_field[1], mpi_construct
+    mpi_ghost_exchange_communicator.exchange_vector_field_init(
+        mpi_local_eul_grid_velocity_field
     )
     mpi_ghost_exchange_communicator.exchange_finalise()
 

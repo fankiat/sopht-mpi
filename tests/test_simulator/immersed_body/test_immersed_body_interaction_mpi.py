@@ -113,11 +113,8 @@ def test_mpi_immersed_body_interactor_call_method(master_rank, precision):
     forcing_grid.compute_lag_grid_position_field()
     forcing_grid.compute_lag_grid_velocity_field()
     # 2. Ghost the velocity field
-    cylinder_flow_interactor.mpi_ghost_exchange_communicator.exchange_init(
-        local_eul_grid_velocity_field[0], cylinder_flow_interactor.mpi_construct
-    )
-    cylinder_flow_interactor.mpi_ghost_exchange_communicator.exchange_init(
-        local_eul_grid_velocity_field[1], cylinder_flow_interactor.mpi_construct
+    cylinder_flow_interactor.mpi_ghost_exchange_communicator.exchange_vector_field_init(
+        local_eul_grid_velocity_field
     )
     cylinder_flow_interactor.mpi_ghost_exchange_communicator.exchange_finalise()
     # 3. Compute interaction forcing
@@ -155,11 +152,8 @@ def test_mpi_immersed_body_interactor_compute_flow_forces_and_torques(
     forcing_grid.compute_lag_grid_position_field()
     forcing_grid.compute_lag_grid_velocity_field()
     # 2. Ghost the velocity field
-    cylinder_flow_interactor.mpi_ghost_exchange_communicator.exchange_init(
-        local_eul_grid_velocity_field[0], cylinder_flow_interactor.mpi_construct
-    )
-    cylinder_flow_interactor.mpi_ghost_exchange_communicator.exchange_init(
-        local_eul_grid_velocity_field[1], cylinder_flow_interactor.mpi_construct
+    cylinder_flow_interactor.mpi_ghost_exchange_communicator.exchange_vector_field_init(
+        local_eul_grid_velocity_field
     )
     cylinder_flow_interactor.mpi_ghost_exchange_communicator.exchange_finalise()
     # 3. Compute interaction forcing on lag grid

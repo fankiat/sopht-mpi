@@ -32,9 +32,8 @@ def gen_advection_flux_conservative_eno3_pyst_mpi_kernel_2d(
         # define variable for use later
         ghost_size = ghost_exchange_communicator.ghost_size
         # begin ghost comm.
-        ghost_exchange_communicator.exchange_init(field, mpi_construct)
-        ghost_exchange_communicator.exchange_init(velocity[0], mpi_construct)
-        ghost_exchange_communicator.exchange_init(velocity[1], mpi_construct)
+        ghost_exchange_communicator.exchange_scalar_field_init(field)
+        ghost_exchange_communicator.exchange_vector_field_init(velocity)
 
         # crunch interior stencil
         advection_flux_pyst_kernel(
