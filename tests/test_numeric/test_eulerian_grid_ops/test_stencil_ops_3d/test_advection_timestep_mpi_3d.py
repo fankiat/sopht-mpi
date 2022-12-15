@@ -47,8 +47,9 @@ def test_mpi_advection_timestep_eno3_euler_forward_3d(
     mpi_field_communicator = MPIFieldCommunicator3D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_communicator.gather_local_field
-    scatter_global_field = mpi_field_communicator.scatter_global_field
+    gather_local_scalar_field = mpi_field_communicator.gather_local_scalar_field
+    scatter_global_scalar_field = mpi_field_communicator.scatter_global_scalar_field
+    scatter_global_vector_field = mpi_field_communicator.scatter_global_vector_field
 
     # Allocate local field
     local_field = np.zeros(
@@ -58,9 +59,14 @@ def test_mpi_advection_timestep_eno3_euler_forward_3d(
             mpi_construct.local_grid_size[2] + 2 * ghost_size,
         )
     ).astype(real_t)
-    local_velocity_x = np.zeros_like(local_field).astype(real_t)
-    local_velocity_y = np.zeros_like(local_field).astype(real_t)
-    local_velocity_z = np.zeros_like(local_field).astype(real_t)
+    local_velocity = np.zeros(
+        (
+            mpi_construct.grid_dim,
+            mpi_construct.local_grid_size[0] + 2 * ghost_size,
+            mpi_construct.local_grid_size[1] + 2 * ghost_size,
+            mpi_construct.local_grid_size[2] + 2 * ghost_size,
+        )
+    ).astype(real_t)
     local_advection_flux = np.zeros_like(local_field).astype(real_t)
 
     # Initialize and broadcast solution for comparison later
@@ -81,22 +87,8 @@ def test_mpi_advection_timestep_eno3_euler_forward_3d(
     dt_by_dx = real_t(dt * inv_dx)
 
     # scatter global field
-    scatter_global_field(local_field, ref_field, mpi_construct)
-    scatter_global_field(local_velocity_x, ref_velocity[0], mpi_construct)
-    scatter_global_field(local_velocity_y, ref_velocity[1], mpi_construct)
-    scatter_global_field(local_velocity_z, ref_velocity[2], mpi_construct)
-
-    local_velocity = np.zeros(
-        (
-            mpi_construct.grid_dim,
-            mpi_construct.local_grid_size[0] + 2 * ghost_size,
-            mpi_construct.local_grid_size[1] + 2 * ghost_size,
-            mpi_construct.local_grid_size[2] + 2 * ghost_size,
-        )
-    ).astype(real_t)
-    local_velocity[0] = local_velocity_x
-    local_velocity[1] = local_velocity_y
-    local_velocity[2] = local_velocity_z
+    scatter_global_scalar_field(local_field, ref_field)
+    scatter_global_vector_field(local_velocity, ref_velocity)
 
     # compute the advection timestep
     advection_timestep_euler_forward_conservative_eno3_pyst_mpi_kernel_3d = (
@@ -116,7 +108,7 @@ def test_mpi_advection_timestep_eno3_euler_forward_3d(
 
     # gather back the field globally after advection timestep
     global_field = np.zeros_like(ref_field)
-    gather_local_field(global_field, local_field, mpi_construct)
+    gather_local_scalar_field(global_field, local_field)
 
     # assert correct
     if mpi_construct.rank == 0:
@@ -179,8 +171,8 @@ def test_mpi_vector_field_advection_timestep_eno3_euler_forward_3d(
     mpi_field_communicator = MPIFieldCommunicator3D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_communicator.gather_local_field
-    scatter_global_field = mpi_field_communicator.scatter_global_field
+    gather_local_vector_field = mpi_field_communicator.gather_local_vector_field
+    scatter_global_vector_field = mpi_field_communicator.scatter_global_vector_field
 
     # Allocate local field
     local_vector_field = np.zeros(
@@ -191,16 +183,14 @@ def test_mpi_vector_field_advection_timestep_eno3_euler_forward_3d(
             mpi_construct.local_grid_size[2] + 2 * ghost_size,
         )
     ).astype(real_t)
-    local_velocity_x = np.zeros(
+    local_velocity = np.zeros_like(local_vector_field)
+    local_advection_flux = np.zeros(
         (
             mpi_construct.local_grid_size[0] + 2 * ghost_size,
             mpi_construct.local_grid_size[1] + 2 * ghost_size,
             mpi_construct.local_grid_size[2] + 2 * ghost_size,
         )
     ).astype(real_t)
-    local_velocity_y = np.zeros_like(local_velocity_x)
-    local_velocity_z = np.zeros_like(local_velocity_y)
-    local_advection_flux = np.zeros_like(local_velocity_z)
 
     # Initialize and broadcast solution for comparison later
     if mpi_construct.rank == 0:
@@ -222,24 +212,8 @@ def test_mpi_vector_field_advection_timestep_eno3_euler_forward_3d(
     dt_by_dx = real_t(dt * inv_dx)
 
     # scatter global field
-    scatter_global_field(local_vector_field[0], ref_vector_field[0], mpi_construct)
-    scatter_global_field(local_vector_field[1], ref_vector_field[1], mpi_construct)
-    scatter_global_field(local_vector_field[2], ref_vector_field[2], mpi_construct)
-    scatter_global_field(local_velocity_x, ref_velocity[0], mpi_construct)
-    scatter_global_field(local_velocity_y, ref_velocity[1], mpi_construct)
-    scatter_global_field(local_velocity_z, ref_velocity[2], mpi_construct)
-
-    local_velocity = np.zeros(
-        (
-            mpi_construct.grid_dim,
-            mpi_construct.local_grid_size[0] + 2 * ghost_size,
-            mpi_construct.local_grid_size[1] + 2 * ghost_size,
-            mpi_construct.local_grid_size[2] + 2 * ghost_size,
-        )
-    ).astype(real_t)
-    local_velocity[0] = local_velocity_x
-    local_velocity[1] = local_velocity_y
-    local_velocity[2] = local_velocity_z
+    scatter_global_vector_field(local_vector_field, ref_vector_field)
+    scatter_global_vector_field(local_velocity, ref_velocity)
 
     # compute the advection timestep
     vector_field_advection_timestep_euler_forward_conservative_eno3_pyst_mpi_kernel_3d = gen_advection_timestep_euler_forward_conservative_eno3_pyst_mpi_kernel_3d(
@@ -258,9 +232,7 @@ def test_mpi_vector_field_advection_timestep_eno3_euler_forward_3d(
 
     # gather back the field globally after advection timestep
     global_vector_field = np.zeros_like(ref_vector_field)
-    gather_local_field(global_vector_field[0], local_vector_field[0], mpi_construct)
-    gather_local_field(global_vector_field[1], local_vector_field[1], mpi_construct)
-    gather_local_field(global_vector_field[2], local_vector_field[2], mpi_construct)
+    gather_local_vector_field(global_vector_field, local_vector_field)
 
     # assert correct
     if mpi_construct.rank == 0:

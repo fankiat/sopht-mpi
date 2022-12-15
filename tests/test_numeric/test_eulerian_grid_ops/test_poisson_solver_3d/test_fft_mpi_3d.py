@@ -48,8 +48,8 @@ def test_mpi_fft_3d(ghost_size, precision, rank_distribution, aspect_ratio):
     mpi_field_comm = MPIFieldCommunicator3D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_comm.gather_local_field
-    scatter_global_field = mpi_field_comm.scatter_global_field
+    gather_local_scalar_field = mpi_field_comm.gather_local_scalar_field
+    scatter_global_scalar_field = mpi_field_comm.scatter_global_scalar_field
     local_field_inner_idx = mpi_field_comm.inner_idx
 
     # Generate solution and broadcast solution from rank 0 to all ranks
@@ -65,7 +65,7 @@ def test_mpi_fft_3d(ghost_size, precision, rank_distribution, aspect_ratio):
     local_field = np.zeros(mpi_construct.local_grid_size + 2 * ghost_size).astype(
         real_t
     )
-    scatter_global_field(local_field, ref_field, mpi_construct)
+    scatter_global_scalar_field(local_field, ref_field)
 
     # 2. Forward transform (fourier field)
     local_fourier_field = np.zeros_like(mpi_fft.fourier_field_buffer)
@@ -86,10 +86,8 @@ def test_mpi_fft_3d(ghost_size, precision, rank_distribution, aspect_ratio):
     # distributed in an uneven fashion, for which gather_array doesn't work
     fourier_field = local_fourier_field.get((slice(None),) * mpi_construct.grid_dim)
     inv_fourier_field = np.zeros_like(ref_field)
-    gather_local_field(
-        global_field=inv_fourier_field,
-        local_field=local_inv_fourier_field,
-        mpi_construct=mpi_construct,
+    gather_local_scalar_field(
+        global_field=inv_fourier_field, local_field=local_inv_fourier_field
     )
     # 5. Assert correct
     if mpi_construct.rank == 0:

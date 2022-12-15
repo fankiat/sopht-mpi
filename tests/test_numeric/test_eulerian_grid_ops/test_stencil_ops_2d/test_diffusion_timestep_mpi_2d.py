@@ -41,8 +41,8 @@ def test_mpi_diffusion_timestep_2d(
     mpi_field_communicator = MPIFieldCommunicator2D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_communicator.gather_local_field
-    scatter_global_field = mpi_field_communicator.scatter_global_field
+    gather_local_scalar_field = mpi_field_communicator.gather_local_scalar_field
+    scatter_global_scalar_field = mpi_field_communicator.scatter_global_scalar_field
 
     # Allocate local field
     local_field = np.zeros(
@@ -63,7 +63,7 @@ def test_mpi_diffusion_timestep_2d(
     nu_dt_by_dx2 = mpi_construct.grid.bcast(nu_dt_by_dx2, root=0)
 
     # scatter global field
-    scatter_global_field(local_field, ref_field, mpi_construct)
+    scatter_global_scalar_field(local_field, ref_field)
 
     # compute the diffusion timestep
     diffusion_timestep_euler_forward_pyst_mpi_kernel = (
@@ -82,7 +82,7 @@ def test_mpi_diffusion_timestep_2d(
 
     # gather back the field globally after diffusion timestep
     global_field = np.zeros_like(ref_field)
-    gather_local_field(global_field, local_field, mpi_construct)
+    gather_local_scalar_field(global_field, local_field)
 
     # assert correct
     if mpi_construct.rank == 0:

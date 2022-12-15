@@ -34,8 +34,8 @@ def test_mpi_char_func_from_level_set_2d(
     mpi_field_communicator = MPIFieldCommunicator2D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_communicator.gather_local_field
-    scatter_global_field = mpi_field_communicator.scatter_global_field
+    gather_local_scalar_field = mpi_field_communicator.gather_local_scalar_field
+    scatter_global_scalar_field = mpi_field_communicator.scatter_global_scalar_field
 
     # Allocate local field
     local_char_func_field = np.zeros(
@@ -56,7 +56,7 @@ def test_mpi_char_func_from_level_set_2d(
     blend_width = mpi_construct.grid.bcast(blend_width, root=0)
 
     # scatter global field
-    scatter_global_field(local_level_set_field, ref_level_set_field, mpi_construct)
+    scatter_global_scalar_field(local_level_set_field, ref_level_set_field)
 
     # compute the char func from level set
     char_func_from_level_set_via_sine_heaviside_pyst_mpi_kernel = (
@@ -71,7 +71,7 @@ def test_mpi_char_func_from_level_set_2d(
 
     # gather back the field globally after diffusion timestep
     global_char_func_field = np.zeros_like(ref_level_set_field)
-    gather_local_field(global_char_func_field, local_char_func_field, mpi_construct)
+    gather_local_scalar_field(global_char_func_field, local_char_func_field)
 
     # assert correct
     if mpi_construct.rank == 0:

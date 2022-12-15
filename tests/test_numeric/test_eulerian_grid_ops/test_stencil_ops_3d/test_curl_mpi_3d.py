@@ -42,8 +42,8 @@ def test_mpi_curl_3d(ghost_size, precision, rank_distribution, aspect_ratio):
     mpi_field_communicator = MPIFieldCommunicator3D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_communicator.gather_local_field
-    scatter_global_field = mpi_field_communicator.scatter_global_field
+    gather_local_vector_field = mpi_field_communicator.gather_local_vector_field
+    scatter_global_vector_field = mpi_field_communicator.scatter_global_vector_field
 
     # Allocate local field
     local_vector_field = np.zeros(
@@ -68,9 +68,7 @@ def test_mpi_curl_3d(ghost_size, precision, rank_distribution, aspect_ratio):
     prefactor = mpi_construct.grid.bcast(prefactor, root=0)
 
     # scatter global field
-    scatter_global_field(local_vector_field[0], ref_vector_field[0], mpi_construct)
-    scatter_global_field(local_vector_field[1], ref_vector_field[1], mpi_construct)
-    scatter_global_field(local_vector_field[2], ref_vector_field[2], mpi_construct)
+    scatter_global_vector_field(local_vector_field, ref_vector_field)
 
     # compute the curl
     curl_pyst_mpi_kernel_3d = gen_curl_pyst_mpi_kernel_3d(
@@ -89,9 +87,7 @@ def test_mpi_curl_3d(ghost_size, precision, rank_distribution, aspect_ratio):
     global_curl = np.zeros(
         (mpi_construct.grid_dim, grid_size_z, grid_size_y, grid_size_x)
     ).astype(real_t)
-    gather_local_field(global_curl[0], local_curl[0], mpi_construct)
-    gather_local_field(global_curl[1], local_curl[1], mpi_construct)
-    gather_local_field(global_curl[2], local_curl[2], mpi_construct)
+    gather_local_vector_field(global_curl, local_curl)
 
     # assert correct
     if mpi_construct.rank == 0:

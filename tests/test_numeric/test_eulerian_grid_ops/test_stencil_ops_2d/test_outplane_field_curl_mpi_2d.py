@@ -40,8 +40,8 @@ def test_mpi_outplane_field_curl_2d(
     mpi_field_communicator = MPIFieldCommunicator2D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_communicator.gather_local_field
-    scatter_global_field = mpi_field_communicator.scatter_global_field
+    gather_local_vector_field = mpi_field_communicator.gather_local_vector_field
+    scatter_global_scalar_field = mpi_field_communicator.scatter_global_scalar_field
 
     # Allocate local field
     local_field = np.zeros(
@@ -68,7 +68,7 @@ def test_mpi_outplane_field_curl_2d(
     prefactor = mpi_construct.grid.bcast(prefactor, root=0)
 
     # scatter global field
-    scatter_global_field(local_field, ref_field, mpi_construct)
+    scatter_global_scalar_field(local_field, ref_field)
 
     # compute the diffusion flux
     outplane_field_curl_pyst_mpi_kernel_2d = gen_outplane_field_curl_pyst_mpi_kernel_2d(
@@ -87,8 +87,7 @@ def test_mpi_outplane_field_curl_2d(
     global_curl = np.zeros((mpi_construct.grid_dim, grid_size_y, grid_size_x)).astype(
         real_t
     )
-    gather_local_field(global_curl[0], local_curl[0], mpi_construct)
-    gather_local_field(global_curl[1], local_curl[1], mpi_construct)
+    gather_local_vector_field(global_curl, local_curl)
 
     # assert correct
     if mpi_construct.rank == 0:
