@@ -35,33 +35,59 @@ def test_mpi_field_gather_scatter(
     mpi_field_communicator = MPIFieldCommunicator3D(
         ghost_size=ghost_size, mpi_construct=mpi_construct, master_rank=master_rank
     )
-    global_field = np.random.rand(
+    global_scalar_field = np.random.rand(
         mpi_construct.global_grid_size[0],
         mpi_construct.global_grid_size[1],
         mpi_construct.global_grid_size[2],
     ).astype(real_t)
-    ref_global_field = global_field.copy()
-    local_field = np.zeros(
+    global_vector_field = np.random.rand(
+        mpi_construct.grid_dim,
+        mpi_construct.global_grid_size[0],
+        mpi_construct.global_grid_size[1],
+        mpi_construct.global_grid_size[2],
+    ).astype(real_t)
+    ref_global_scalar_field = global_scalar_field.copy()
+    ref_global_vector_field = global_vector_field.copy()
+    local_scalar_field = np.zeros(
         (
             mpi_construct.local_grid_size[0] + 2 * ghost_size,
             mpi_construct.local_grid_size[1] + 2 * ghost_size,
             mpi_construct.local_grid_size[2] + 2 * ghost_size,
         )
     ).astype(real_t)
-    gather_local_field = mpi_field_communicator.gather_local_field
-    scatter_global_field = mpi_field_communicator.scatter_global_field
+    local_vector_field = np.zeros(
+        (
+            mpi_construct.grid_dim,
+            mpi_construct.local_grid_size[0] + 2 * ghost_size,
+            mpi_construct.local_grid_size[1] + 2 * ghost_size,
+            mpi_construct.local_grid_size[2] + 2 * ghost_size,
+        )
+    ).astype(real_t)
+    gather_local_scalar_field = mpi_field_communicator.gather_local_scalar_field
+    scatter_global_scalar_field = mpi_field_communicator.scatter_global_scalar_field
+    gather_local_vector_field = mpi_field_communicator.gather_local_vector_field
+    scatter_global_vector_field = mpi_field_communicator.scatter_global_vector_field
     # scatter global field to other ranks
-    scatter_global_field(local_field, ref_global_field, mpi_construct)
+    scatter_global_scalar_field(local_scalar_field, ref_global_scalar_field)
+    scatter_global_vector_field(local_vector_field, ref_global_vector_field)
     # randomise global field after scatter
-    global_field[...] = np.random.rand(
+    global_scalar_field[...] = np.random.rand(
+        mpi_construct.global_grid_size[0],
+        mpi_construct.global_grid_size[1],
+        mpi_construct.global_grid_size[2],
+    ).astype(real_t)
+    global_vector_field[...] = np.random.rand(
+        mpi_construct.grid_dim,
         mpi_construct.global_grid_size[0],
         mpi_construct.global_grid_size[1],
         mpi_construct.global_grid_size[2],
     ).astype(real_t)
     # reconstruct global field from local ranks
-    gather_local_field(global_field, local_field, mpi_construct)
+    gather_local_scalar_field(global_scalar_field, local_scalar_field)
+    gather_local_vector_field(global_vector_field, local_vector_field)
     if mpi_construct.rank == master_rank:
-        np.testing.assert_allclose(ref_global_field, global_field)
+        np.testing.assert_allclose(ref_global_scalar_field, global_scalar_field)
+        np.testing.assert_allclose(ref_global_vector_field, global_vector_field)
 
 
 @pytest.mark.mpi(group="MPI_utils", min_size=4)
@@ -94,74 +120,171 @@ def test_mpi_ghost_communication(
     )
     # Set internal field to manufactured values
     np.random.seed(0)
-    local_field = np.random.rand(
+    local_scalar_field = np.random.rand(
+        mpi_construct.local_grid_size[0] + 2 * ghost_size,
+        mpi_construct.local_grid_size[1] + 2 * ghost_size,
+        mpi_construct.local_grid_size[2] + 2 * ghost_size,
+    ).astype(real_t)
+    local_vector_field = np.random.rand(
+        mpi_construct.grid_dim,
         mpi_construct.local_grid_size[0] + 2 * ghost_size,
         mpi_construct.local_grid_size[1] + 2 * ghost_size,
         mpi_construct.local_grid_size[2] + 2 * ghost_size,
     ).astype(real_t)
 
     # ghost comm.
-    mpi_ghost_exchange_communicator.exchange_init(local_field, mpi_construct)
+    mpi_ghost_exchange_communicator.exchange_scalar_field_init(local_scalar_field)
+    mpi_ghost_exchange_communicator.exchange_vector_field_init(local_vector_field)
     mpi_ghost_exchange_communicator.exchange_finalise()
 
     # check if comm. done rightly!
+    # Test scalar field
     # Along X: comm with previous block
     np.testing.assert_allclose(
-        local_field[
+        local_scalar_field[
             ghost_size:-ghost_size, ghost_size:-ghost_size, ghost_size : 2 * ghost_size
         ],
-        local_field[
+        local_scalar_field[
             ghost_size:-ghost_size,
             ghost_size:-ghost_size,
-            -ghost_size : local_field.shape[2],
+            -ghost_size : local_scalar_field.shape[2],
         ],
     )
     # Along X: comm with next block
     np.testing.assert_allclose(
-        local_field[
+        local_scalar_field[
             ghost_size:-ghost_size,
             ghost_size:-ghost_size,
             -2 * ghost_size : -ghost_size,
         ],
-        local_field[ghost_size:-ghost_size, ghost_size:-ghost_size, 0:ghost_size],
+        local_scalar_field[
+            ghost_size:-ghost_size, ghost_size:-ghost_size, 0:ghost_size
+        ],
     )
     # Along Y: comm with previous block
     np.testing.assert_allclose(
-        local_field[
+        local_scalar_field[
             ghost_size:-ghost_size, ghost_size : 2 * ghost_size, ghost_size:-ghost_size
         ],
-        local_field[
+        local_scalar_field[
             ghost_size:-ghost_size,
-            -ghost_size : local_field.shape[1],
+            -ghost_size : local_scalar_field.shape[1],
             ghost_size:-ghost_size,
         ],
     )
     # Along Y: comm with next block
     np.testing.assert_allclose(
-        local_field[
+        local_scalar_field[
             ghost_size:-ghost_size,
             -2 * ghost_size : -ghost_size,
             ghost_size:-ghost_size,
         ],
-        local_field[ghost_size:-ghost_size, 0:ghost_size, ghost_size:-ghost_size],
+        local_scalar_field[
+            ghost_size:-ghost_size, 0:ghost_size, ghost_size:-ghost_size
+        ],
     )
     # Along Z: comm with previous block
     np.testing.assert_allclose(
-        local_field[
+        local_scalar_field[
             ghost_size : 2 * ghost_size, ghost_size:-ghost_size, ghost_size:-ghost_size
         ],
-        local_field[
-            -ghost_size : local_field.shape[0],
+        local_scalar_field[
+            -ghost_size : local_scalar_field.shape[0],
             ghost_size:-ghost_size,
             ghost_size:-ghost_size,
         ],
     )
     # Along Z: comm with next block
     np.testing.assert_allclose(
-        local_field[
+        local_scalar_field[
             -2 * ghost_size : -ghost_size,
             ghost_size:-ghost_size,
             ghost_size:-ghost_size,
         ],
-        local_field[0:ghost_size, ghost_size:-ghost_size, ghost_size:-ghost_size],
+        local_scalar_field[
+            0:ghost_size, ghost_size:-ghost_size, ghost_size:-ghost_size
+        ],
+    )
+
+    # Test vector field
+    # Along X: comm with previous block
+    np.testing.assert_allclose(
+        local_vector_field[
+            :,
+            ghost_size:-ghost_size,
+            ghost_size:-ghost_size,
+            ghost_size : 2 * ghost_size,
+        ],
+        local_vector_field[
+            :,
+            ghost_size:-ghost_size,
+            ghost_size:-ghost_size,
+            -ghost_size : local_vector_field.shape[3],
+        ],
+    )
+    # Along X: comm with next block
+    np.testing.assert_allclose(
+        local_vector_field[
+            :,
+            ghost_size:-ghost_size,
+            ghost_size:-ghost_size,
+            -2 * ghost_size : -ghost_size,
+        ],
+        local_vector_field[
+            :, ghost_size:-ghost_size, ghost_size:-ghost_size, 0:ghost_size
+        ],
+    )
+    # Along Y: comm with previous block
+    np.testing.assert_allclose(
+        local_vector_field[
+            :,
+            ghost_size:-ghost_size,
+            ghost_size : 2 * ghost_size,
+            ghost_size:-ghost_size,
+        ],
+        local_vector_field[
+            :,
+            ghost_size:-ghost_size,
+            -ghost_size : local_vector_field.shape[2],
+            ghost_size:-ghost_size,
+        ],
+    )
+    # Along Y: comm with next block
+    np.testing.assert_allclose(
+        local_vector_field[
+            :,
+            ghost_size:-ghost_size,
+            -2 * ghost_size : -ghost_size,
+            ghost_size:-ghost_size,
+        ],
+        local_vector_field[
+            :, ghost_size:-ghost_size, 0:ghost_size, ghost_size:-ghost_size
+        ],
+    )
+    # Along Z: comm with previous block
+    np.testing.assert_allclose(
+        local_vector_field[
+            :,
+            ghost_size : 2 * ghost_size,
+            ghost_size:-ghost_size,
+            ghost_size:-ghost_size,
+        ],
+        local_vector_field[
+            :,
+            -ghost_size : local_vector_field.shape[1],
+            ghost_size:-ghost_size,
+            ghost_size:-ghost_size,
+        ],
+    )
+    # Along Z: comm with next block
+    np.testing.assert_allclose(
+        local_vector_field[
+            :,
+            -2 * ghost_size : -ghost_size,
+            ghost_size:-ghost_size,
+            ghost_size:-ghost_size,
+        ],
+        local_vector_field[
+            :, 0:ghost_size, ghost_size:-ghost_size, ghost_size:-ghost_size
+        ],
     )

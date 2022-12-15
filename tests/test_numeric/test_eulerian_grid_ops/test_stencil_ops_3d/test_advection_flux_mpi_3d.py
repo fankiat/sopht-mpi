@@ -46,8 +46,9 @@ def test_mpi_advection_flux_conservative_eno3_3d(
     mpi_field_communicator = MPIFieldCommunicator3D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_communicator.gather_local_field
-    scatter_global_field = mpi_field_communicator.scatter_global_field
+    gather_local_scalar_field = mpi_field_communicator.gather_local_scalar_field
+    scatter_global_scalar_field = mpi_field_communicator.scatter_global_scalar_field
+    scatter_global_vector_field = mpi_field_communicator.scatter_global_vector_field
 
     # Allocate local field
     local_field = np.zeros(
@@ -57,9 +58,14 @@ def test_mpi_advection_flux_conservative_eno3_3d(
             mpi_construct.local_grid_size[2] + 2 * ghost_size,
         )
     ).astype(real_t)
-    local_velocity_x = np.zeros_like(local_field).astype(real_t)
-    local_velocity_y = np.zeros_like(local_field).astype(real_t)
-    local_velocity_z = np.zeros_like(local_field).astype(real_t)
+    local_velocity = np.zeros(
+        (
+            mpi_construct.grid_dim,
+            mpi_construct.local_grid_size[0] + 2 * ghost_size,
+            mpi_construct.local_grid_size[1] + 2 * ghost_size,
+            mpi_construct.local_grid_size[2] + 2 * ghost_size,
+        )
+    ).astype(real_t)
     local_advection_flux = np.zeros_like(local_field).astype(real_t)
 
     # Initialize and broadcast solution for comparison later
@@ -76,22 +82,8 @@ def test_mpi_advection_flux_conservative_eno3_3d(
     inv_dx = mpi_construct.grid.bcast(inv_dx, root=0)
 
     # scatter global field
-    scatter_global_field(local_field, ref_field, mpi_construct)
-    scatter_global_field(local_velocity_x, ref_velocity[0], mpi_construct)
-    scatter_global_field(local_velocity_y, ref_velocity[1], mpi_construct)
-    scatter_global_field(local_velocity_z, ref_velocity[2], mpi_construct)
-
-    local_velocity = np.zeros(
-        (
-            mpi_construct.grid_dim,
-            mpi_construct.local_grid_size[0] + 2 * ghost_size,
-            mpi_construct.local_grid_size[1] + 2 * ghost_size,
-            mpi_construct.local_grid_size[2] + 2 * ghost_size,
-        )
-    ).astype(real_t)
-    local_velocity[0] = local_velocity_x
-    local_velocity[1] = local_velocity_y
-    local_velocity[2] = local_velocity_z
+    scatter_global_scalar_field(local_field, ref_field)
+    scatter_global_vector_field(local_velocity, ref_velocity)
 
     # compute the advection flux
     advection_flux_conservative_eno3_pyst_mpi_kernel_3d = (
@@ -111,7 +103,7 @@ def test_mpi_advection_flux_conservative_eno3_3d(
 
     # gather back the advection flux globally
     global_advection_flux = np.zeros_like(ref_field)
-    gather_local_field(global_advection_flux, local_advection_flux, mpi_construct)
+    gather_local_scalar_field(global_advection_flux, local_advection_flux)
 
     # assert correct
     if mpi_construct.rank == 0:

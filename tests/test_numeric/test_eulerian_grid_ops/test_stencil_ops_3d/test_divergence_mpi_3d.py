@@ -42,8 +42,8 @@ def test_mpi_divergence_3d(ghost_size, precision, rank_distribution, aspect_rati
     mpi_field_communicator = MPIFieldCommunicator3D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_communicator.gather_local_field
-    scatter_global_field = mpi_field_communicator.scatter_global_field
+    gather_local_scalar_field = mpi_field_communicator.gather_local_scalar_field
+    scatter_global_vector_field = mpi_field_communicator.scatter_global_vector_field
 
     # Allocate local field
     local_vector_field = np.zeros(
@@ -74,9 +74,7 @@ def test_mpi_divergence_3d(ghost_size, precision, rank_distribution, aspect_rati
     inv_dx = mpi_construct.grid.bcast(inv_dx, root=0)
 
     # scatter global field
-    scatter_global_field(local_vector_field[0], ref_vector_field[0], mpi_construct)
-    scatter_global_field(local_vector_field[1], ref_vector_field[1], mpi_construct)
-    scatter_global_field(local_vector_field[2], ref_vector_field[2], mpi_construct)
+    scatter_global_vector_field(local_vector_field, ref_vector_field)
 
     # compute the divergence
     divergence_pyst_mpi_kernel = gen_divergence_pyst_mpi_kernel_3d(
@@ -92,7 +90,7 @@ def test_mpi_divergence_3d(ghost_size, precision, rank_distribution, aspect_rati
 
     # gather back the divergence globally
     global_divergence = np.zeros_like(ref_vector_field[0])
-    gather_local_field(global_divergence, local_divergence, mpi_construct)
+    gather_local_scalar_field(global_divergence, local_divergence)
 
     # assert correct
     if mpi_construct.rank == 0:

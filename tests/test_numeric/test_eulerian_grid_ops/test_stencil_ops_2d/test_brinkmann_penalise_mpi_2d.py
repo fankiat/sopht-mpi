@@ -34,8 +34,8 @@ def test_mpi_brinkmann_penalise_scalar_field_2d(
     mpi_field_communicator = MPIFieldCommunicator2D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_communicator.gather_local_field
-    scatter_global_field = mpi_field_communicator.scatter_global_field
+    gather_local_scalar_field = mpi_field_communicator.gather_local_scalar_field
+    scatter_global_scalar_field = mpi_field_communicator.scatter_global_scalar_field
 
     # Allocate local field
     local_field = np.zeros(
@@ -62,9 +62,9 @@ def test_mpi_brinkmann_penalise_scalar_field_2d(
     penalty_factor = mpi_construct.grid.bcast(penalty_factor, root=0)
 
     # scatter global field
-    scatter_global_field(local_field, ref_field, mpi_construct)
-    scatter_global_field(local_penalty_field, ref_penalty_field, mpi_construct)
-    scatter_global_field(local_char_field, ref_char_field, mpi_construct)
+    scatter_global_scalar_field(local_field, ref_field)
+    scatter_global_scalar_field(local_penalty_field, ref_penalty_field)
+    scatter_global_scalar_field(local_char_field, ref_char_field)
 
     # compute the brinkmann penalisation
     brinkmann_penalise_scalar_field_pyst_mpi_kernel = (
@@ -81,7 +81,7 @@ def test_mpi_brinkmann_penalise_scalar_field_2d(
 
     # gather back the field globally after diffusion timestep
     global_penalised_field = np.zeros_like(ref_field)
-    gather_local_field(global_penalised_field, local_penalised_field, mpi_construct)
+    gather_local_scalar_field(global_penalised_field, local_penalised_field)
 
     # assert correct
     if mpi_construct.rank == 0:
@@ -131,8 +131,9 @@ def test_mpi_brinkmann_penalise_vector_field_2d(
     mpi_field_communicator = MPIFieldCommunicator2D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = mpi_field_communicator.gather_local_field
-    scatter_global_field = mpi_field_communicator.scatter_global_field
+    gather_local_vector_field = mpi_field_communicator.gather_local_vector_field
+    scatter_global_scalar_field = mpi_field_communicator.scatter_global_scalar_field
+    scatter_global_vector_field = mpi_field_communicator.scatter_global_vector_field
 
     # Allocate local field
     local_vector_field = np.zeros(
@@ -164,15 +165,9 @@ def test_mpi_brinkmann_penalise_vector_field_2d(
     penalty_factor = mpi_construct.grid.bcast(penalty_factor, root=0)
 
     # scatter global field
-    scatter_global_field(local_vector_field[0], ref_vector_field[0], mpi_construct)
-    scatter_global_field(local_vector_field[1], ref_vector_field[1], mpi_construct)
-    scatter_global_field(
-        local_penalty_vector_field[0], ref_penalty_vector_field[0], mpi_construct
-    )
-    scatter_global_field(
-        local_penalty_vector_field[1], ref_penalty_vector_field[1], mpi_construct
-    )
-    scatter_global_field(local_char_field, ref_char_field, mpi_construct)
+    scatter_global_vector_field(local_vector_field, ref_vector_field)
+    scatter_global_vector_field(local_penalty_vector_field, ref_penalty_vector_field)
+    scatter_global_scalar_field(local_char_field, ref_char_field)
 
     # compute the brinkmann penalisation
     brinkmann_penalise_vector_field_pyst_mpi_kernel = (
@@ -189,11 +184,8 @@ def test_mpi_brinkmann_penalise_vector_field_2d(
 
     # gather back the vector field globally after diffusion timestep
     global_penalised_vector_field = np.zeros_like(ref_vector_field)
-    gather_local_field(
-        global_penalised_vector_field[0], local_penalised_vector_field[0], mpi_construct
-    )
-    gather_local_field(
-        global_penalised_vector_field[1], local_penalised_vector_field[1], mpi_construct
+    gather_local_vector_field(
+        global_penalised_vector_field, local_penalised_vector_field
     )
 
     # assert correct

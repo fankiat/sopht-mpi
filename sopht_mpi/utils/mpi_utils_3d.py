@@ -1,6 +1,7 @@
 from mpi4py import MPI
 import numpy as np
 from sopht_mpi.utils.mpi_logger import logger
+from sopht.utils.field import VectorField
 
 
 class MPIConstruct3D:
@@ -96,6 +97,7 @@ class MPIGhostCommunicator3D:
                 "for calling ghost communication."
             )
         self.ghost_size = ghost_size
+        self.mpi_construct = mpi_construct
         # define field_size variable for local field size (which includes ghost)
         self.field_size = mpi_construct.local_grid_size + 2 * self.ghost_size
 
@@ -187,16 +189,10 @@ class MPIGhostCommunicator3D:
         )
         self.recv_previous_along_z_type.Commit()
 
-        # non-blocking comm, stuff
-        self.num_requests = (
-            mpi_construct.grid_dim * 2 * 2
-        )  # dimension * 2 request for send/recv * 2 directions along each axis
-        # initialize the requests array
-        self.comm_requests = [
-            0,
-        ] * self.num_requests
+        # Initialize requests list for non-blocking comm
+        self.comm_requests = []
 
-    def exchange_init(self, local_field, mpi_construct):
+    def exchange_scalar_field_init(self, local_field):
         """
         Exchange ghost data between neighbors.
         """
@@ -205,60 +201,95 @@ class MPIGhostCommunicator3D:
         y_axis = 1
         x_axis = 2
         # Along X: send to previous block, receive from next block
-        self.comm_requests[0] = mpi_construct.grid.Isend(
-            (local_field, self.send_previous_along_x_type),
-            dest=mpi_construct.previous_grid_along[x_axis],
+        self.comm_requests.append(
+            self.mpi_construct.grid.Isend(
+                (local_field, self.send_previous_along_x_type),
+                dest=self.mpi_construct.previous_grid_along[x_axis],
+            )
         )
-        self.comm_requests[1] = mpi_construct.grid.Irecv(
-            (local_field, self.recv_next_along_x_type),
-            source=mpi_construct.next_grid_along[x_axis],
+        self.comm_requests.append(
+            self.mpi_construct.grid.Irecv(
+                (local_field, self.recv_next_along_x_type),
+                source=self.mpi_construct.next_grid_along[x_axis],
+            )
         )
         # Along X: send to next block, receive from previous block
-        self.comm_requests[2] = mpi_construct.grid.Isend(
-            (local_field, self.send_next_along_x_type),
-            dest=mpi_construct.next_grid_along[x_axis],
+        self.comm_requests.append(
+            self.mpi_construct.grid.Isend(
+                (local_field, self.send_next_along_x_type),
+                dest=self.mpi_construct.next_grid_along[x_axis],
+            )
         )
-        self.comm_requests[3] = mpi_construct.grid.Irecv(
-            (local_field, self.recv_previous_along_x_type),
-            source=mpi_construct.previous_grid_along[x_axis],
+        self.comm_requests.append(
+            self.mpi_construct.grid.Irecv(
+                (local_field, self.recv_previous_along_x_type),
+                source=self.mpi_construct.previous_grid_along[x_axis],
+            )
         )
 
         # Along Y: send to previous block, receive from next block
-        self.comm_requests[4] = mpi_construct.grid.Isend(
-            (local_field, self.send_previous_along_y_type),
-            dest=mpi_construct.previous_grid_along[y_axis],
+        self.comm_requests.append(
+            self.mpi_construct.grid.Isend(
+                (local_field, self.send_previous_along_y_type),
+                dest=self.mpi_construct.previous_grid_along[y_axis],
+            )
         )
-        self.comm_requests[5] = mpi_construct.grid.Irecv(
-            (local_field, self.recv_next_along_y_type),
-            source=mpi_construct.next_grid_along[y_axis],
+        self.comm_requests.append(
+            self.mpi_construct.grid.Irecv(
+                (local_field, self.recv_next_along_y_type),
+                source=self.mpi_construct.next_grid_along[y_axis],
+            )
         )
         # Along Y: send to next block, receive from previous block
-        self.comm_requests[6] = mpi_construct.grid.Isend(
-            (local_field, self.send_next_along_y_type),
-            dest=mpi_construct.next_grid_along[y_axis],
+        self.comm_requests.append(
+            self.mpi_construct.grid.Isend(
+                (local_field, self.send_next_along_y_type),
+                dest=self.mpi_construct.next_grid_along[y_axis],
+            )
         )
-        self.comm_requests[7] = mpi_construct.grid.Irecv(
-            (local_field, self.recv_previous_along_y_type),
-            source=mpi_construct.previous_grid_along[y_axis],
+        self.comm_requests.append(
+            self.mpi_construct.grid.Irecv(
+                (local_field, self.recv_previous_along_y_type),
+                source=self.mpi_construct.previous_grid_along[y_axis],
+            )
         )
 
         # Along Z: send to previous block, receive from next block
-        self.comm_requests[8] = mpi_construct.grid.Isend(
-            (local_field, self.send_previous_along_z_type),
-            dest=mpi_construct.previous_grid_along[z_axis],
+        self.comm_requests.append(
+            self.mpi_construct.grid.Isend(
+                (local_field, self.send_previous_along_z_type),
+                dest=self.mpi_construct.previous_grid_along[z_axis],
+            )
         )
-        self.comm_requests[9] = mpi_construct.grid.Irecv(
-            (local_field, self.recv_next_along_z_type),
-            source=mpi_construct.next_grid_along[z_axis],
+        self.comm_requests.append(
+            self.mpi_construct.grid.Irecv(
+                (local_field, self.recv_next_along_z_type),
+                source=self.mpi_construct.next_grid_along[z_axis],
+            )
         )
         # Along Z: send to next block, receive from previous block
-        self.comm_requests[10] = mpi_construct.grid.Isend(
-            (local_field, self.send_next_along_z_type),
-            dest=mpi_construct.next_grid_along[z_axis],
+        self.comm_requests.append(
+            self.mpi_construct.grid.Isend(
+                (local_field, self.send_next_along_z_type),
+                dest=self.mpi_construct.next_grid_along[z_axis],
+            )
         )
-        self.comm_requests[11] = mpi_construct.grid.Irecv(
-            (local_field, self.recv_previous_along_z_type),
-            source=mpi_construct.previous_grid_along[z_axis],
+        self.comm_requests.append(
+            self.mpi_construct.grid.Irecv(
+                (local_field, self.recv_previous_along_z_type),
+                source=self.mpi_construct.previous_grid_along[z_axis],
+            )
+        )
+
+    def exchange_vector_field_init(self, local_vector_field):
+        self.exchange_scalar_field_init(
+            local_field=local_vector_field[VectorField.x_axis_idx()]
+        )
+        self.exchange_scalar_field_init(
+            local_field=local_vector_field[VectorField.y_axis_idx()]
+        )
+        self.exchange_scalar_field_init(
+            local_field=local_vector_field[VectorField.z_axis_idx()]
         )
 
     def exchange_finalise(self):
@@ -266,6 +297,8 @@ class MPIGhostCommunicator3D:
         Finalizing non-blocking exchange ghost data between neighbors.
         """
         MPI.Request.Waitall(self.comm_requests)
+        # reset the list of requests
+        self.comm_requests = []
 
 
 class MPIFieldCommunicator3D:
@@ -286,6 +319,7 @@ class MPIFieldCommunicator3D:
                 "for field IO communication."
             )
         self.ghost_size = ghost_size
+        self.mpi_construct = mpi_construct
         if self.ghost_size == 0:
             self.inner_idx = ...
         else:
@@ -314,81 +348,118 @@ class MPIFieldCommunicator3D:
             )
         self.sub_array_type.Commit()
 
-    def gather_local_field(self, global_field, local_field, mpi_construct):
+    def gather_local_scalar_field(self, global_field, local_field):
         """
-        Gather local fields from all ranks and return a global field in rank 0
+        Gather local scalar fields from all ranks and return a global scalar field in
+        rank 0
         """
-        if mpi_construct.rank == self.master_rank:
+        if self.mpi_construct.rank == self.master_rank:
             # Fill in field values for master rank
-            coords = mpi_construct.grid.Get_coords(self.master_rank)
+            coords = self.mpi_construct.grid.Get_coords(self.master_rank)
             local_chunk_idx = (
                 slice(
-                    coords[0] * mpi_construct.local_grid_size[0],
-                    (coords[0] + 1) * mpi_construct.local_grid_size[0],
+                    coords[0] * self.mpi_construct.local_grid_size[0],
+                    (coords[0] + 1) * self.mpi_construct.local_grid_size[0],
                 ),
                 slice(
-                    coords[1] * mpi_construct.local_grid_size[1],
-                    (coords[1] + 1) * mpi_construct.local_grid_size[1],
+                    coords[1] * self.mpi_construct.local_grid_size[1],
+                    (coords[1] + 1) * self.mpi_construct.local_grid_size[1],
                 ),
                 slice(
-                    coords[2] * mpi_construct.local_grid_size[2],
-                    (coords[2] + 1) * mpi_construct.local_grid_size[2],
+                    coords[2] * self.mpi_construct.local_grid_size[2],
+                    (coords[2] + 1) * self.mpi_construct.local_grid_size[2],
                 ),
             )
             global_field[local_chunk_idx] = local_field[self.inner_idx]
             # Receiving from other ranks as contiguous array
             for rank_idx in self.slave_ranks:
-                coords = mpi_construct.grid.Get_coords(rank_idx)
+                coords = self.mpi_construct.grid.Get_coords(rank_idx)
                 idx = np.ravel_multi_index(
-                    coords * mpi_construct.local_grid_size,
-                    mpi_construct.global_grid_size,
+                    coords * self.mpi_construct.local_grid_size,
+                    self.mpi_construct.global_grid_size,
                 )
-                mpi_construct.grid.Recv(
+                self.mpi_construct.grid.Recv(
                     (global_field.ravel()[idx:], 1, self.sub_array_type),
                     source=rank_idx,
                 )
         else:
             # Sending as contiguous chunks
-            mpi_construct.grid.Send(
+            self.mpi_construct.grid.Send(
                 (local_field, 1, self.sub_array_type), dest=self.master_rank
             )
 
-    def scatter_global_field(self, local_field, global_field, mpi_construct):
+    def gather_local_vector_field(self, global_vector_field, local_vector_field):
         """
-        Scatter a global field in rank 0 to corresponding ranks into local
-        fields
+        Gather local vector fields from all ranks and return a global vector field in
+        rank 0
+        """
+        self.gather_local_scalar_field(
+            global_field=global_vector_field[VectorField.x_axis_idx()],
+            local_field=local_vector_field[VectorField.x_axis_idx()],
+        )
+        self.gather_local_scalar_field(
+            global_field=global_vector_field[VectorField.y_axis_idx()],
+            local_field=local_vector_field[VectorField.y_axis_idx()],
+        )
+        self.gather_local_scalar_field(
+            global_field=global_vector_field[VectorField.z_axis_idx()],
+            local_field=local_vector_field[VectorField.z_axis_idx()],
+        )
+
+    def scatter_global_scalar_field(self, local_field, global_field):
+        """
+        Scatter a global scalar field in rank 0 into local scalar fields in each
+        corresponding ranks
         """
         # Fill in field values for master rank on the edge
-        if mpi_construct.rank == self.master_rank:
-            coords = mpi_construct.grid.Get_coords(self.master_rank)
+        if self.mpi_construct.rank == self.master_rank:
+            coords = self.mpi_construct.grid.Get_coords(self.master_rank)
             local_chunk_idx = (
                 slice(
-                    coords[0] * mpi_construct.local_grid_size[0],
-                    (coords[0] + 1) * mpi_construct.local_grid_size[0],
+                    coords[0] * self.mpi_construct.local_grid_size[0],
+                    (coords[0] + 1) * self.mpi_construct.local_grid_size[0],
                 ),
                 slice(
-                    coords[1] * mpi_construct.local_grid_size[1],
-                    (coords[1] + 1) * mpi_construct.local_grid_size[1],
+                    coords[1] * self.mpi_construct.local_grid_size[1],
+                    (coords[1] + 1) * self.mpi_construct.local_grid_size[1],
                 ),
                 slice(
-                    coords[2] * mpi_construct.local_grid_size[2],
-                    (coords[2] + 1) * mpi_construct.local_grid_size[2],
+                    coords[2] * self.mpi_construct.local_grid_size[2],
+                    (coords[2] + 1) * self.mpi_construct.local_grid_size[2],
                 ),
             )
             local_field[self.inner_idx] = global_field[local_chunk_idx]
             # Sending to other ranks as contiguous array
             for rank_idx in self.slave_ranks:
-                coords = mpi_construct.grid.Get_coords(rank_idx)
+                coords = self.mpi_construct.grid.Get_coords(rank_idx)
                 idx = np.ravel_multi_index(
-                    coords * mpi_construct.local_grid_size,
-                    mpi_construct.global_grid_size,
+                    coords * self.mpi_construct.local_grid_size,
+                    self.mpi_construct.global_grid_size,
                 )
-                mpi_construct.grid.Send(
+                self.mpi_construct.grid.Send(
                     (global_field.ravel()[idx:], 1, self.sub_array_type),
                     dest=rank_idx,
                 )
         else:
             # Receiving from rank 0 as contiguous array
-            mpi_construct.grid.Recv(
+            self.mpi_construct.grid.Recv(
                 (local_field, 1, self.sub_array_type), source=self.master_rank
             )
+
+    def scatter_global_vector_field(self, local_vector_field, global_vector_field):
+        """
+        Scatter a global vector field in master rank into local vector fields in each
+        corresponding ranks
+        """
+        self.scatter_global_scalar_field(
+            local_field=local_vector_field[VectorField.x_axis_idx()],
+            global_field=global_vector_field[VectorField.x_axis_idx()],
+        )
+        self.scatter_global_scalar_field(
+            local_field=local_vector_field[VectorField.y_axis_idx()],
+            global_field=global_vector_field[VectorField.y_axis_idx()],
+        )
+        self.scatter_global_scalar_field(
+            local_field=local_vector_field[VectorField.z_axis_idx()],
+            global_field=global_vector_field[VectorField.z_axis_idx()],
+        )
