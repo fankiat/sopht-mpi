@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sopht_mpi.utils.lab_cmap import lab_cmap
 from sopht_mpi.utils.mpi_logger import logger
+from sopht.utils.field import VectorField
 
 
 class MPIConstruct2D:
@@ -298,10 +299,12 @@ class MPIFieldCommunicator2D:
         master rank
         """
         self.gather_local_scalar_field(
-            global_field=global_vector_field[0], local_field=local_vector_field[0]
+            global_field=global_vector_field[VectorField.x_axis_idx()],
+            local_field=local_vector_field[VectorField.x_axis_idx()],
         )
         self.gather_local_scalar_field(
-            global_field=global_vector_field[1], local_field=local_vector_field[1]
+            global_field=global_vector_field[VectorField.y_axis_idx()],
+            local_field=local_vector_field[VectorField.y_axis_idx()],
         )
 
     def scatter_global_scalar_field(self, local_field, global_field):
@@ -346,10 +349,12 @@ class MPIFieldCommunicator2D:
         corresponding ranks
         """
         self.scatter_global_scalar_field(
-            local_field=local_vector_field[0], global_field=global_vector_field[0]
+            local_field=local_vector_field[VectorField.x_axis_idx()],
+            global_field=global_vector_field[VectorField.x_axis_idx()],
         )
         self.scatter_global_scalar_field(
-            local_field=local_vector_field[1], global_field=global_vector_field[1]
+            local_field=local_vector_field[VectorField.y_axis_idx()],
+            global_field=global_vector_field[VectorField.y_axis_idx()],
         )
 
 

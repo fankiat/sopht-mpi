@@ -1,6 +1,7 @@
 from mpi4py import MPI
 import numpy as np
 from sopht_mpi.utils.mpi_logger import logger
+from sopht.utils.field import VectorField
 
 
 class MPIConstruct3D:
@@ -361,13 +362,16 @@ class MPIFieldCommunicator3D:
         rank 0
         """
         self.gather_local_scalar_field(
-            global_field=global_vector_field[0], local_field=local_vector_field[0]
+            global_field=global_vector_field[VectorField.x_axis_idx()],
+            local_field=local_vector_field[VectorField.x_axis_idx()],
         )
         self.gather_local_scalar_field(
-            global_field=global_vector_field[1], local_field=local_vector_field[1]
+            global_field=global_vector_field[VectorField.y_axis_idx()],
+            local_field=local_vector_field[VectorField.y_axis_idx()],
         )
         self.gather_local_scalar_field(
-            global_field=global_vector_field[2], local_field=local_vector_field[2]
+            global_field=global_vector_field[VectorField.z_axis_idx()],
+            local_field=local_vector_field[VectorField.z_axis_idx()],
         )
 
     def scatter_global_scalar_field(self, local_field, global_field):
@@ -416,11 +420,14 @@ class MPIFieldCommunicator3D:
         corresponding ranks
         """
         self.scatter_global_scalar_field(
-            local_field=local_vector_field[0], global_field=global_vector_field[0]
+            local_field=local_vector_field[VectorField.x_axis_idx()],
+            global_field=global_vector_field[VectorField.x_axis_idx()],
         )
         self.scatter_global_scalar_field(
-            local_field=local_vector_field[1], global_field=global_vector_field[1]
+            local_field=local_vector_field[VectorField.y_axis_idx()],
+            global_field=global_vector_field[VectorField.y_axis_idx()],
         )
         self.scatter_global_scalar_field(
-            local_field=local_vector_field[2], global_field=global_vector_field[2]
+            local_field=local_vector_field[VectorField.z_axis_idx()],
+            global_field=global_vector_field[VectorField.z_axis_idx()],
         )
