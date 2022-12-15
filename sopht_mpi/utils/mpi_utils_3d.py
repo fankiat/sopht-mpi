@@ -1,6 +1,7 @@
 from mpi4py import MPI
 import numpy as np
 from sopht_mpi.utils.mpi_logger import logger
+from sopht.utils.field import VectorField
 
 
 class MPIConstruct3D:
@@ -281,9 +282,15 @@ class MPIGhostCommunicator3D:
         )
 
     def exchange_vector_field_init(self, local_vector_field):
-        self.exchange_scalar_field_init(local_field=local_vector_field[0])
-        self.exchange_scalar_field_init(local_field=local_vector_field[1])
-        self.exchange_scalar_field_init(local_field=local_vector_field[2])
+        self.exchange_scalar_field_init(
+            local_field=local_vector_field[VectorField.x_axis_idx()]
+        )
+        self.exchange_scalar_field_init(
+            local_field=local_vector_field[VectorField.y_axis_idx()]
+        )
+        self.exchange_scalar_field_init(
+            local_field=local_vector_field[VectorField.z_axis_idx()]
+        )
 
     def exchange_finalise(self):
         """
