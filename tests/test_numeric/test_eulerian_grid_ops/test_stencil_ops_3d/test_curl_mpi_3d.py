@@ -104,11 +104,9 @@ def test_mpi_curl_3d(ghost_size, precision, rank_distribution, aspect_ratio):
         # check kernel_support for the curl kernel
         assert kernel_support == 1, "Incorrect kernel support!"
         # check field correctness
-        inner_idx = (
-            slice(None),
+        inner_idx = (slice(None),) + (
             slice(kernel_support, -kernel_support),
-            slice(kernel_support, -kernel_support),
-        )
+        ) * mpi_construct.grid_dim
         np.testing.assert_allclose(
             ref_curl[inner_idx],
             global_curl[inner_idx],
