@@ -235,3 +235,9 @@ outcmaes/*
 
 # csv files
 *.csv
+
+# xmf files
+*.xmf
+
+# h5 files
+*.h5
