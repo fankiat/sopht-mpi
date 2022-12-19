@@ -552,7 +552,6 @@ class MPIPlotter2D:
             master_rank=self.master_rank,
         )
         self.gather_local_scalar_field = self.mpi_field_comm.gather_local_scalar_field
-        self.gather_local_vector_field = self.mpi_field_comm.gather_local_vector_field
 
         # Initialize global buffers for plotting
         self.field_io = np.zeros(self.mpi_construct.global_grid_size).astype(
