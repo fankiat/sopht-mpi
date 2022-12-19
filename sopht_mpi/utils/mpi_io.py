@@ -425,7 +425,7 @@ class MPIIO:
         h5_file_name: str
             String containing name of the hdf5 file.
         """
-        with h5py.File(h5_file_name, "r") as f:
+        with h5py.File(h5_file_name, "r", driver="mpio", comm=MPI.COMM_WORLD) as f:
             keys = []
             f.visit(keys.append)
 
