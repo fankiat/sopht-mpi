@@ -5,7 +5,9 @@ import os
 import sopht.utils as spu
 import sopht_mpi.simulator as sps
 from sopht_mpi.utils.mpi_utils_2d import MPIPlotter2D
+from sopht_mpi.utils.mpi_io import MPIIO, CosseratRodMPIIO
 from sopht_mpi.utils import logger
+from mpi4py import MPI
 
 
 def flow_past_rod_case(
@@ -20,6 +22,7 @@ def flow_past_rod_case(
     coupling_damping=-30,
     rank_distribution=None,
     precision="single",
+    save_flow_data=False,
 ):
     # =================COMMON SIMULATOR STUFF=======================
     x_axis_idx = spu.VectorField.x_axis_idx()
@@ -135,6 +138,46 @@ def flow_past_rod_case(
     )
     # ==================FLOW-ROD COMMUNICATOR SETUP END======
 
+    if save_flow_data:
+        # setup IO
+        # TODO: internalise this into flow simulator in a cleaner way
+        origin_x = flow_sim.mpi_construct.grid.allreduce(
+            flow_sim.position_field[
+                x_axis_idx,
+                flow_sim.ghost_size : -flow_sim.ghost_size,
+                flow_sim.ghost_size : -flow_sim.ghost_size,
+            ].min(),
+            op=MPI.MIN,
+        )
+        origin_y = flow_sim.mpi_construct.grid.allreduce(
+            flow_sim.position_field[
+                y_axis_idx,
+                flow_sim.ghost_size : -flow_sim.ghost_size,
+                flow_sim.ghost_size : -flow_sim.ghost_size,
+            ].min(),
+            op=MPI.MIN,
+        )
+        io_origin = np.array([origin_y, origin_x])
+        io_dx = flow_sim.dx * np.ones(flow_sim.grid_dim)
+        io_grid_size = np.array(grid_size)
+        io = MPIIO(mpi_construct=flow_sim.mpi_construct, real_dtype=real_t)
+        io.define_eulerian_grid(
+            origin=io_origin,
+            dx=io_dx,
+            grid_size=io_grid_size,
+            ghost_size=flow_sim.ghost_size,
+        )
+        io.add_as_eulerian_fields_for_io(
+            vorticity=flow_sim.vorticity_field, velocity=flow_sim.velocity_field
+        )
+        # Initialize rod IO
+        rod_io = CosseratRodMPIIO(
+            mpi_construct=flow_sim.mpi_construct,
+            cosserat_rod=flow_past_rod,
+            real_dtype=real_t,
+            master_rank=master_rank,
+        )
+
     # =================TIMESTEPPING====================
 
     flow_past_sim.finalize()
@@ -198,6 +241,18 @@ def flow_past_rod_case(
                 f"max_vort: {max_vort:.4f}, "
                 f"grid deviation L2 error: {grid_dev_error_l2_norm:.8f}"
             )
+
+            if save_flow_data:
+                io.save(
+                    h5_file_name="sopht_"
+                    + str("%0.4d" % (flow_sim.time * 100))
+                    + ".h5",
+                    time=flow_sim.time,
+                )
+                rod_io.save(
+                    h5_file_name="rod_" + str("%0.4d" % (flow_sim.time * 100)) + ".h5",
+                    time=flow_sim.time,
+                )
 
         # save diagnostic data
         if data_timer >= data_timer_limit or data_timer == 0:
