@@ -551,7 +551,7 @@ class MPIPlotter2D:
             mpi_construct=self.mpi_construct,
             master_rank=self.master_rank,
         )
-        self.gather_local_field = self.mpi_field_comm.gather_local_field
+        self.gather_local_scalar_field = self.mpi_field_comm.gather_local_scalar_field
 
         # Initialize global buffers for plotting
         self.field_io = np.zeros(self.mpi_construct.global_grid_size).astype(
@@ -605,9 +605,9 @@ class MPIPlotter2D:
         anyway, and gather field needs to be called on all rank otherwise we run
         into deadlock situations.
         """
-        self.gather_local_field(self.field_io, field, self.mpi_construct)
-        self.gather_local_field(self.x_grid_io, x_grid, self.mpi_construct)
-        self.gather_local_field(self.y_grid_io, y_grid, self.mpi_construct)
+        self.gather_local_scalar_field(self.field_io, field)
+        self.gather_local_scalar_field(self.x_grid_io, x_grid)
+        self.gather_local_scalar_field(self.y_grid_io, y_grid)
         contourf_obj = self.ax.contourf(
             self.x_grid_io,
             self.y_grid_io,
