@@ -121,7 +121,7 @@ def test_mpi_update_vorticity_from_velocity_forcing_3d(
         # check kernel_support for the diffusion kernel
         assert kernel_support == 1, "Incorrect kernel support!"
         # check field correctness
-        inner_idx = (slice(None, None),) + (
+        inner_idx = (slice(None),) + (
             slice(kernel_support, -kernel_support),
         ) * mpi_construct.grid_dim
         np.testing.assert_allclose(
@@ -244,7 +244,7 @@ def test_mpi_update_vorticity_from_penalised_velocity_3d(
         # check kernel_support for the diffusion kernel
         assert kernel_support == 1, "Incorrect kernel support!"
         # check field correctness
-        inner_idx = (slice(None, None),) + (
+        inner_idx = (slice(None),) + (
             slice(kernel_support, -kernel_support),
         ) * mpi_construct.grid_dim
         np.testing.assert_allclose(
