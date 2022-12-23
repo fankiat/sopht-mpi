@@ -45,7 +45,6 @@ def gen_laplacian_filter_mpi_kernel_3d(  # noqa: C901
     ):
         raise ValueError("Invalid value for filter flux buffer boundary zone")
 
-
     kernel_support = 1
     # define this here so that ghost size and kernel support is checked during
     # generation phase itself
