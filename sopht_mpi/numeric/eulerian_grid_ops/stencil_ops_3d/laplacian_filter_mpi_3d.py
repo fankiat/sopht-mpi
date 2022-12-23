@@ -47,9 +47,6 @@ def gen_laplacian_filter_mpi_kernel_3d(  # noqa: C901
     ):
         raise ValueError("Invalid value for filter flux buffer boundary zone")
 
-    supported_filter_types = ["multiplicative", "convolution"]
-    if filter_type not in supported_filter_types:
-        raise ValueError("Invalid filter type")
 
     kernel_support = 1
     # define this here so that ghost size and kernel support is checked during
