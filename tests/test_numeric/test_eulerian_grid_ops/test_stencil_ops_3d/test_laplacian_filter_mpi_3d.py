@@ -48,41 +48,39 @@ def test_mpi_laplacian_filter_3d(
     mpi_field_communicator = MPIFieldCommunicator3D(
         ghost_size=ghost_size, mpi_construct=mpi_construct
     )
-    gather_local_field = (
-        mpi_field_communicator.gather_local_scalar_field
-        if field_type == "scalar"
-        else mpi_field_communicator.gather_local_vector_field
-    )
-    scatter_global_field = (
-        mpi_field_communicator.scatter_global_scalar_field
-        if field_type == "scalar"
-        else mpi_field_communicator.scatter_global_vector_field
-    )
+
+    match field_type:
+        case "scalar":
+            gather_local_field = mpi_field_communicator.gather_local_scalar_field
+            scatter_global_field = mpi_field_communicator.scatter_global_scalar_field
+            local_test_field_shape = mpi_construct.local_grid_size + 2 * ghost_size
+            ref_field_shape = (grid_size_z, grid_size_y, grid_size_x)
+        case "vector":
+            gather_local_field = mpi_field_communicator.gather_local_vector_field
+            scatter_global_field = mpi_field_communicator.scatter_global_vector_field
+            local_test_field_shape = (
+                mpi_construct.grid_dim,
+                *(mpi_construct.local_grid_size + 2 * ghost_size),
+            )
+            ref_field_shape = (
+                mpi_construct.grid_dim,
+                grid_size_z,
+                grid_size_y,
+                grid_size_x,
+            )
 
     # Allocate local field
-    local_field_shape = mpi_construct.local_grid_size + 2 * ghost_size
-    if field_type == "vector":
-        local_field_shape = np.insert(local_field_shape, 0, mpi_construct.grid_dim)
-    local_test_field = np.zeros(local_field_shape).astype(real_t)
-    local_field_buffer = (
-        np.zeros_like(local_test_field)
-        if field_type == "scalar"
-        else np.zeros_like(local_test_field[0])
-    )
+    local_test_field = np.zeros(local_test_field_shape).astype(real_t)
+    local_field_buffer = np.zeros(
+        mpi_construct.local_grid_size + 2 * ghost_size
+    ).astype(real_t)
     local_filter_flux_buffer = np.zeros_like(local_field_buffer)
 
     # Initialize and broadcast solution for comparison later
     if mpi_construct.rank == 0:
-        ref_field_shape = (
-            (grid_size_z, grid_size_y, grid_size_x)
-            if field_type == "scalar"
-            else (mpi_construct.grid_dim, grid_size_z, grid_size_y, grid_size_x)
-        )
         ref_test_field = np.random.rand(*ref_field_shape).astype(real_t)
     else:
-        ref_test_field = (
-            None if field_type == "scalar" else (None,) * mpi_construct.grid_dim
-        )
+        ref_test_field = (None,) * mpi_construct.grid_dim
 
     # scatter global field
     scatter_global_field(local_test_field, ref_test_field)
@@ -107,10 +105,8 @@ def test_mpi_laplacian_filter_3d(
 
     # assert correct
     if mpi_construct.rank == 0:
-        ref_field_buffer = (
-            np.zeros_like(ref_test_field)
-            if field_type == "scalar"
-            else np.zeros_like(ref_test_field[0])
+        ref_field_buffer = np.zeros((grid_size_z, grid_size_y, grid_size_x)).astype(
+            real_t
         )
         ref_filter_flux_buffer = np.zeros_like(ref_field_buffer)
         laplacian_filter = gen_laplacian_filter_kernel_3d(

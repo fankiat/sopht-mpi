@@ -7,6 +7,7 @@ from sopht.numeric.eulerian_grid_ops.stencil_ops_3d import (
 )
 from sopht_mpi.utils.mpi_utils import check_valid_ghost_size_and_kernel_support
 from sopht.utils.pyst_kernel_config import get_pyst_dtype, get_pyst_kernel_config
+from sopht.utils.field import VectorField
 from mpi4py import MPI
 
 
@@ -389,29 +390,38 @@ def gen_laplacian_filter_mpi_kernel_3d(  # noqa: C901
             field_2_prefac=-1.0,
         )
 
-    scalar_field_filter_mpi_kernel_3d = None
-    if filter_type == "multiplicative":
-        scalar_field_filter_mpi_kernel_3d = (
-            scalar_field_multiplicative_filter_mpi_kernel_3d
-        )
-    elif filter_type == "convolution":
-        scalar_field_filter_mpi_kernel_3d = (
-            scalar_field_convolution_filter_mpi_kernel_3d
-        )
-    # Depending on the field type return the relevant filter implementation
-    if field_type == "scalar":
-        return scalar_field_filter_mpi_kernel_3d
-    elif field_type == "vector":
-
-        def vector_field_filter_kernel_3d(vector_field):
-            """
-            Applies laplacian filter on any vector field.
-            """
-            vector_field_filter_kernel_3d.kernel_support = (
-                gen_laplacian_filter_mpi_kernel_3d.kernel_support
+    match filter_type:
+        case "multiplicative":
+            scalar_field_filter_mpi_kernel_3d = (
+                scalar_field_multiplicative_filter_mpi_kernel_3d
             )
-            scalar_field_filter_mpi_kernel_3d(scalar_field=vector_field[0])
-            scalar_field_filter_mpi_kernel_3d(scalar_field=vector_field[1])
-            scalar_field_filter_mpi_kernel_3d(scalar_field=vector_field[2])
+        case "convolution":
+            scalar_field_filter_mpi_kernel_3d = (
+                scalar_field_convolution_filter_mpi_kernel_3d
+            )
+        case _:
+            raise ValueError("Invalid filter type")
 
-        return vector_field_filter_kernel_3d
+    # Depending on the field type return the relevant filter implementation
+    match field_type:
+        case "scalar":
+            return scalar_field_filter_mpi_kernel_3d
+        case "vector":
+            x_axis_idx = VectorField.x_axis_idx()
+            y_axis_idx = VectorField.y_axis_idx()
+            z_axis_idx = VectorField.z_axis_idx()
+
+            def vector_field_filter_kernel_3d(vector_field) -> None:
+                """
+                Applies laplacian filter on any vector field.
+                """
+                vector_field_filter_kernel_3d.kernel_support = (
+                    gen_laplacian_filter_mpi_kernel_3d.kernel_support
+                )
+                scalar_field_filter_mpi_kernel_3d(scalar_field=vector_field[x_axis_idx])
+                scalar_field_filter_mpi_kernel_3d(scalar_field=vector_field[y_axis_idx])
+                scalar_field_filter_mpi_kernel_3d(scalar_field=vector_field[z_axis_idx])
+
+            return vector_field_filter_kernel_3d
+        case _:
+            raise ValueError("Invalid field type")

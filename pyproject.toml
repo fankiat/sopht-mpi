@@ -34,7 +34,7 @@ pytest-rerunfailures = "^10.3"
 
 [tool.black]
 # https://github.com/psf/black
-target-version = ["py38"]
+target-version = ["py310"]
 line-length = 88
 
 exclude = '''
