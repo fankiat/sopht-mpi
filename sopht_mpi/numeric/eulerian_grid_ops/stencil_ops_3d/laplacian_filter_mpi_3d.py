@@ -40,8 +40,6 @@ def gen_laplacian_filter_mpi_kernel_3d(  # noqa: C901
 
     if filter_order < 0 or not isinstance(filter_order, int):
         raise ValueError("Invalid filter order")
-    if field_type != "scalar" and field_type != "vector":
-        raise ValueError("Invalid field type")
     if filter_flux_buffer_boundary_width <= 0 or not isinstance(
         filter_flux_buffer_boundary_width, int
     ):
