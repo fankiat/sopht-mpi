@@ -21,3 +21,4 @@ from .penalise_field_boundary_mpi_3d import (
     gen_penalise_field_boundary_pyst_mpi_kernel_3d,
 )
 from .curl_mpi_3d import gen_curl_pyst_mpi_kernel_3d
+from .laplacian_filter_mpi_3d import gen_laplacian_filter_mpi_kernel_3d
