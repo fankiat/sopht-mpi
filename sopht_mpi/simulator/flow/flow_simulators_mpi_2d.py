@@ -120,12 +120,12 @@ class UnboundedFlowSimulator2D:
         local_x = np.linspace(
             eul_grid_shift + substart_x - ghost_grid_shift,
             subend_x - eul_grid_shift + ghost_grid_shift,
-            local_grid_size_x + self.grid_dim * self.ghost_size,
+            local_grid_size_x + 2 * self.ghost_size,
         ).astype(self.real_t)
         local_y = np.linspace(
             eul_grid_shift + substart_y - ghost_grid_shift,
             subend_y - eul_grid_shift + ghost_grid_shift,
-            local_grid_size_y + self.grid_dim * self.ghost_size,
+            local_grid_size_y + 2 * self.ghost_size,
         ).astype(self.real_t)
         # flipud so that position field are ordered according to VectorField convention
         self.position_field = np.flipud(np.meshgrid(local_y, local_x, indexing="ij"))
