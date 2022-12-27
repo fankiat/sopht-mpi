@@ -9,6 +9,7 @@ from sopht_mpi.utils import (
     MPILagrangianFieldCommunicator2D,
 )
 from sopht.utils.precision import get_real_t, get_test_tol
+from sopht.utils.field import VectorField
 from mpi4py import MPI
 
 
@@ -58,11 +59,11 @@ class MockEulLagGridCommSolution:
         self.nearest_eul_grid_index_to_lag_grid = np.empty(
             (self.grid_dim, self.num_lag_nodes)
         ).astype(int)
-        self.nearest_eul_grid_index_to_lag_grid[0] = np.arange(
+        self.nearest_eul_grid_index_to_lag_grid[VectorField.x_axis_idx()] = np.arange(
             self.eul_grid_size_x // 2 - 1,
             self.eul_grid_size_x // 2 - 1 + self.num_lag_nodes,
         ).astype(int)
-        self.nearest_eul_grid_index_to_lag_grid[1] = np.arange(
+        self.nearest_eul_grid_index_to_lag_grid[VectorField.y_axis_idx()] = np.arange(
             self.eul_grid_size_y // 2 - 1,
             self.eul_grid_size_y // 2 - 1 + self.num_lag_nodes,
         ).astype(int)
@@ -119,8 +120,12 @@ class MockEulLagGridCommSolution:
                 (self.n_components, self.eul_grid_size_y, self.eul_grid_size_x),
                 dtype=self.real_t,
             )
-            self.mock_eul_grid_field[0] *= self.mock_eul_grid_field_prefactor_y
-            self.mock_eul_grid_field[1] *= self.mock_eul_grid_field_prefactor_x
+            self.mock_eul_grid_field[
+                VectorField.x_axis_idx()
+            ] *= self.mock_eul_grid_field_prefactor_x
+            self.mock_eul_grid_field[
+                VectorField.y_axis_idx()
+            ] *= self.mock_eul_grid_field_prefactor_y
         self.eul_lag_communicator.eulerian_to_lagrangian_grid_interpolation_kernel(
             self.lag_grid_field,
             self.mock_eul_grid_field,
@@ -143,8 +148,8 @@ class MockEulLagGridCommSolution:
             self.mock_lag_grid_field = np.ones(
                 (self.n_components, self.num_lag_nodes), dtype=self.real_t
             )
-            self.mock_lag_grid_field[0] *= prefactor_lag_field_y
-            self.mock_lag_grid_field[1] *= prefactor_lag_field_x
+            self.mock_lag_grid_field[VectorField.x_axis_idx()] *= prefactor_lag_field_x
+            self.mock_lag_grid_field[VectorField.y_axis_idx()] *= prefactor_lag_field_y
             self.eul_grid_field = np.zeros(
                 (self.n_components, self.eul_grid_size_y, self.eul_grid_size_x),
                 dtype=self.real_t,
