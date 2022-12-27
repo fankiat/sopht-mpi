@@ -9,6 +9,7 @@ from .mpi_utils_3d import (
     MPIConstruct3D,
     MPIGhostCommunicator3D,
     MPIFieldCommunicator3D,
+    MPILagrangianFieldCommunicator3D,
 )
 from .mpi_utils import check_valid_ghost_size_and_kernel_support
 from .lab_cmap import *
