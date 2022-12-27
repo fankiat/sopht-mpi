@@ -13,7 +13,7 @@ from sopht.utils.field import VectorField
 from mpi4py import MPI
 
 
-class MockEulLagGridCommSolution:
+class MockEulLagGridCommSolution2D:
     """
     Mock solution test class based on sopht-backend for 2D Eulerian-Lagrangian grid
     communicator
@@ -176,7 +176,7 @@ def test_mpi_local_eulerian_grid_support_of_lagrangian_grid_2d(
     real_t = get_real_t(precision)
     # 1. Generate reference solution (the solution is in the global domain, and each of
     # the ranks has the same reference copy)
-    mock_soln = MockEulLagGridCommSolution(
+    mock_soln = MockEulLagGridCommSolution2D(
         grid_size_y=grid_size_y, grid_size_x=grid_size_x, real_t=real_t
     )
 
@@ -289,7 +289,7 @@ def test_mpi_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
     real_t = get_real_t(precision)
     # 1. Generate reference solution (the solution is in the global domain, and each of
     # the ranks has the same reference copy)
-    mock_soln = MockEulLagGridCommSolution(
+    mock_soln = MockEulLagGridCommSolution2D(
         grid_size_y=grid_size_y, grid_size_x=grid_size_x, real_t=real_t
     )
 
@@ -382,7 +382,7 @@ def test_mpi_vector_field_eul_to_lag_grid_interpolation_kernel_2d(
     real_t = get_real_t(precision)
     # 1. Generate reference solution (the solution is in the global domain, and each of
     # the ranks has the same reference copy)
-    mock_soln = MockEulLagGridCommSolution(
+    mock_soln = MockEulLagGridCommSolution2D(
         grid_size_y=grid_size_y, grid_size_x=grid_size_x, real_t=real_t, n_components=2
     )
 
@@ -434,8 +434,12 @@ def test_mpi_vector_field_eul_to_lag_grid_interpolation_kernel_2d(
         ),
         dtype=mock_soln.real_t,
     )
-    mpi_local_eul_grid_field[0] *= mock_soln.mock_eul_grid_field_prefactor_y
-    mpi_local_eul_grid_field[1] *= mock_soln.mock_eul_grid_field_prefactor_x
+    mpi_local_eul_grid_field[
+        VectorField.x_axis_idx()
+    ] *= mock_soln.mock_eul_grid_field_prefactor_x
+    mpi_local_eul_grid_field[
+        VectorField.y_axis_idx()
+    ] *= mock_soln.mock_eul_grid_field_prefactor_y
     mpi_local_interp_weights = mock_soln.interp_weights[..., mask]
     # indices needs to be offset with mpi local reference index
     mpi_substart_idx = mpi_eul_lag_communicator.mpi_substart_idx
@@ -483,7 +487,7 @@ def test_mpi_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
     real_t = get_real_t(precision)
     # 1. Generate reference solution (the solution is in the global domain, and each of
     # the ranks has the same reference copy)
-    mock_soln = MockEulLagGridCommSolution(
+    mock_soln = MockEulLagGridCommSolution2D(
         grid_size_y=grid_size_y, grid_size_x=grid_size_x, real_t=real_t
     )
 
@@ -581,7 +585,7 @@ def test_mpi_vector_field_lag_to_eul_grid_interpolation_kernel_2d(
     real_t = get_real_t(precision)
     # 1. Generate reference solution (the solution is in the global domain, and each of
     # the ranks has the same reference copy)
-    mock_soln = MockEulLagGridCommSolution(
+    mock_soln = MockEulLagGridCommSolution2D(
         grid_size_y=grid_size_y, grid_size_x=grid_size_x, real_t=real_t, n_components=2
     )
 
@@ -693,7 +697,7 @@ def test_mpi_interpolation_weights_kernel_on_nodes_2d(
     real_t = get_real_t(precision)
     # 1. Generate reference solution (the solution is in the global domain, and each of
     # the ranks has the same reference copy)
-    mock_soln = MockEulLagGridCommSolution(
+    mock_soln = MockEulLagGridCommSolution2D(
         grid_size_y=grid_size_y,
         grid_size_x=grid_size_x,
         real_t=real_t,
