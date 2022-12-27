@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 from sopht.utils.precision import get_real_t
+from sopht.utils.field import VectorField
 from sopht_mpi.utils import (
     MPIConstruct2D,
     MPIGhostCommunicator2D,
@@ -207,8 +208,8 @@ def test_mpi_lagrangian_field_map(
         [mpi_lagrangian_field_communicator.grid_dim, 1],
     ).astype(real_t)
     # rescale to spread them across the scaled eulerian domain
-    global_lagrangian_positions[0, :] *= x_range
-    global_lagrangian_positions[1, :] *= y_range
+    global_lagrangian_positions[VectorField.x_axis_idx(), :] *= x_range
+    global_lagrangian_positions[VectorField.y_axis_idx(), :] *= y_range
 
     # Map the lagrangian nodes to respective ranks
     mpi_lagrangian_field_communicator.map_lagrangian_nodes_based_on_position(
@@ -227,12 +228,12 @@ def test_mpi_lagrangian_field_map(
     subend_y, subend_x = subend_idx * eul_grid_dx + eul_grid_coord_shift
 
     # Check locally mapped lagrangian nodes are within local eulerian grid bounds
-    assert np.all(local_lagrangian_positions[0, :] >= substart_x) & np.all(
-        local_lagrangian_positions[0, :] < subend_x
-    )
-    assert np.all(local_lagrangian_positions[1, :] >= substart_y) & np.all(
-        local_lagrangian_positions[1, :] < subend_y
-    )
+    assert np.all(
+        local_lagrangian_positions[VectorField.x_axis_idx(), :] >= substart_x
+    ) & np.all(local_lagrangian_positions[VectorField.x_axis_idx(), :] < subend_x)
+    assert np.all(
+        local_lagrangian_positions[VectorField.y_axis_idx(), :] >= substart_y
+    ) & np.all(local_lagrangian_positions[VectorField.y_axis_idx(), :] < subend_y)
 
     # Ensure that we taken all lagrangian points into account
     local_num_lag_nodes = local_lagrangian_positions.shape[1]
@@ -283,12 +284,12 @@ def test_mpi_lagrangian_field_gather_scatter(
     global_lagrangian_positions = np.zeros(
         (mpi_lagrangian_field_communicator.grid_dim, global_num_lag_nodes)
     ).astype(real_t)
-    global_lagrangian_positions[0, :] = np.random.uniform(
+    global_lagrangian_positions[VectorField.x_axis_idx(), :] = np.random.uniform(
         2 * eul_grid_coord_shift,
         x_range - 2 * eul_grid_coord_shift,
         global_num_lag_nodes,
     )
-    global_lagrangian_positions[1, :] = np.random.uniform(
+    global_lagrangian_positions[VectorField.y_axis_idx(), :] = np.random.uniform(
         2 * eul_grid_coord_shift,
         y_range - 2 * eul_grid_coord_shift,
         global_num_lag_nodes,

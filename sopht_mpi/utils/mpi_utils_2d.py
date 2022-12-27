@@ -380,9 +380,9 @@ class MPIFieldCommunicator2D:
 
 
 class MPILagrangianFieldCommunicator2D:
-    """ "
-    Class exclusive for lagrangian field communication across ranks, and takes care of
-    scattering global lagrangian fields and aggregating local lagrangian fields.
+    """
+    Class exclusive for 2D lagrangian field communication across ranks, and takes care
+    of scattering global lagrangian fields and aggregating local lagrangian fields.
 
     Notes:
     - VirtualBoundaryForcing, and subsequently, Eulerian-Lagrangian communicator will
@@ -519,7 +519,7 @@ class MPILagrangianFieldCommunicator2D:
                 )
                 self.mpi_construct.grid.Recv(recv_buffer, source=rank_i)
                 global_lag_field[:, idx] = recv_buffer.reshape(
-                    2, expected_num_lag_nodes
+                    self.grid_dim, expected_num_lag_nodes
                 )
 
 
