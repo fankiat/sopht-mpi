@@ -621,42 +621,42 @@ class MPIGhostSumCommunicator3D:
         self.send_next_along_x_type = mpi_construct.dtype_generator.Create_subarray(
             sizes=self.field_size,
             subsizes=[self.field_size[0], self.field_size[1], self.ghost_size],
-            starts=[0, 0, self.field_size[2] - 2 * self.ghost_size],
+            starts=[0, 0, self.field_size[2] - self.ghost_size],
         )
         self.send_next_along_x_type.Commit()
         # Along X (prev)
         self.send_previous_along_x_type = mpi_construct.dtype_generator.Create_subarray(
             sizes=self.field_size,
             subsizes=[self.field_size[0], self.field_size[1], self.ghost_size],
-            starts=[0, 0, self.ghost_size],
+            starts=[0, 0, 0],
         )
         self.send_previous_along_x_type.Commit()
         # Along Y (next)
         self.send_next_along_y_type = mpi_construct.dtype_generator.Create_subarray(
             sizes=self.field_size,
             subsizes=[self.field_size[0], self.ghost_size, self.field_size[2]],
-            starts=[0, self.field_size[1] - 2 * self.ghost_size, 0],
+            starts=[0, self.field_size[1] - self.ghost_size, 0],
         )
         self.send_next_along_y_type.Commit()
         # Along Y (prev)
         self.send_previous_along_y_type = mpi_construct.dtype_generator.Create_subarray(
             sizes=self.field_size,
             subsizes=[self.field_size[0], self.ghost_size, self.field_size[2]],
-            starts=[0, self.ghost_size, 0],
+            starts=[0, 0, 0],
         )
         self.send_previous_along_y_type.Commit()
         # Along Z (next)
         self.send_next_along_z_type = mpi_construct.dtype_generator.Create_subarray(
             sizes=self.field_size,
             subsizes=[self.ghost_size, self.field_size[1], self.field_size[2]],
-            starts=[self.field_size[0] - 2 * self.ghost_size, 0, 0],
+            starts=[self.field_size[0] - self.ghost_size, 0, 0],
         )
         self.send_next_along_z_type.Commit()
         # Along Z (prev)
         self.send_previous_along_z_type = mpi_construct.dtype_generator.Create_subarray(
             sizes=self.field_size,
             subsizes=[self.ghost_size, self.field_size[1], self.field_size[2]],
-            starts=[self.ghost_size, 0, 0],
+            starts=[0, 0, 0],
         )
         self.send_previous_along_z_type.Commit()
 
