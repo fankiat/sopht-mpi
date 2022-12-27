@@ -1,6 +1,7 @@
 """MPI-supported Eulerian-Lagrangian grid communicator in 2D."""
 from numba import njit
 import numpy as np
+from sopht.utils.field import VectorField
 
 
 class EulerianLagrangianGridCommunicatorMPI2D:
@@ -25,9 +26,6 @@ class EulerianLagrangianGridCommunicatorMPI2D:
         interp_kernel_type="cosine",
     ):
         """Class initialiser."""
-        if n_components != 1 and n_components != 2:
-            raise ValueError("invalid number of components for eul-lag interpolation!")
-
         # Check that ghost size is enough for interp_kernel_width
         if ghost_size < interp_kernel_width:
             raise ValueError(
@@ -76,7 +74,7 @@ class EulerianLagrangianGridCommunicatorMPI2D:
         )
 
         # Eulerian grid ghost sum kernel
-        self.eulerian_grid_ghost_sum = generate_eulerian_grid_ghost_sum(
+        self.eulerian_grid_ghost_sum = generate_eulerian_grid_ghost_sum_2d(
             n_components, self.mpi_ghost_sum_comm
         )
 
@@ -376,14 +374,14 @@ def generate_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
         return vector_field_lagrangian_to_eulerian_grid_interpolation_kernel_2d
 
 
-def generate_eulerian_grid_ghost_sum(n_components, mpi_ghost_sum_comm):
+def generate_eulerian_grid_ghost_sum_2d(n_components, mpi_ghost_sum_comm):
     if n_components == 1:
         return mpi_ghost_sum_comm.ghost_sum
     else:
 
         def vector_field_ghost_sum(local_field):
-            mpi_ghost_sum_comm.ghost_sum(local_field[0])
-            mpi_ghost_sum_comm.ghost_sum(local_field[1])
+            mpi_ghost_sum_comm.ghost_sum(local_field[VectorField.x_axis_idx()])
+            mpi_ghost_sum_comm.ghost_sum(local_field[VectorField.y_axis_idx()])
 
         return vector_field_ghost_sum
 
