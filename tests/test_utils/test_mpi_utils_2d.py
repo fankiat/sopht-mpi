@@ -162,13 +162,10 @@ def test_mpi_ghost_communication(
 
 
 @pytest.mark.mpi(group="MPI_utils", min_size=4)
-@pytest.mark.parametrize("ghost_size", [1, 2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
-def test_mpi_lagrangian_field_map(
-    ghost_size, precision, rank_distribution, aspect_ratio
-):
+def test_mpi_lagrangian_field_map(precision, rank_distribution, aspect_ratio):
     # Eulerian grid stuff
     n_values = 32
     real_t = get_real_t(precision)
@@ -243,12 +240,11 @@ def test_mpi_lagrangian_field_map(
 
 
 @pytest.mark.mpi(group="MPI_utils", min_size=4)
-@pytest.mark.parametrize("ghost_size", [1, 2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
 def test_mpi_lagrangian_field_gather_scatter(
-    ghost_size, precision, rank_distribution, aspect_ratio
+    precision, rank_distribution, aspect_ratio
 ):
     # Eulerian grid stuff
     n_values = 32
