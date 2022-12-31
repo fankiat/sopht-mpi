@@ -80,23 +80,30 @@ def test_mpi_field_gather_scatter(
 @pytest.mark.mpi(group="MPI_utils", min_size=4)
 @pytest.mark.parametrize("ghost_size", [1, 2, 3])
 @pytest.mark.parametrize("precision", ["single", "double"])
-@pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
+@pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1), (2, 2)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
+@pytest.mark.parametrize("halo_mode", [True, False])
 def test_mpi_ghost_communication(
-    ghost_size, precision, rank_distribution, aspect_ratio
+    ghost_size,
+    precision,
+    rank_distribution,
+    aspect_ratio,
+    halo_mode,
 ):
     n_values = 32
     real_t = get_real_t(precision)
     mpi_construct = MPIConstruct2D(
         grid_size_y=n_values * aspect_ratio[0],
         grid_size_x=n_values * aspect_ratio[1],
-        periodic_flag=True,
+        periodic_domain=True,
         real_t=real_t,
         rank_distribution=rank_distribution,
     )
     # extra width needed for kernel computation
     mpi_ghost_exchange_communicator = MPIGhostCommunicator2D(
-        ghost_size=ghost_size, mpi_construct=mpi_construct
+        ghost_size=ghost_size,
+        mpi_construct=mpi_construct,
+        halo_mode=halo_mode,
     )
     # Set internal field to manufactured values
     np.random.seed(0)
@@ -158,6 +165,62 @@ def test_mpi_ghost_communication(
         local_vector_field[:, ghost_size:-ghost_size, -2 * ghost_size : -ghost_size],
         local_vector_field[:, ghost_size:-ghost_size, 0:ghost_size],
     )
+
+    if halo_mode:
+        # Check bottom left (ghost cell) == top right (inner cell)
+        np.testing.assert_allclose(
+            local_scalar_field[:ghost_size, :ghost_size],  # bottom left (ghost cell)
+            local_scalar_field[
+                -2 * ghost_size : -ghost_size, -2 * ghost_size : -ghost_size
+            ],  # top right (inner cell)
+        )
+        np.testing.assert_allclose(
+            local_vector_field[:, :ghost_size, :ghost_size],  # bottom left (ghost cell)
+            local_vector_field[
+                :, -2 * ghost_size : -ghost_size, -2 * ghost_size : -ghost_size
+            ],  # top right (inner cell)
+        )
+        # Check bottom right (ghost cell) == top left (inner cell)
+        np.testing.assert_allclose(
+            local_scalar_field[:ghost_size, -ghost_size:],  # bottom right (ghost cell)
+            local_scalar_field[
+                -2 * ghost_size : -ghost_size, ghost_size : 2 * ghost_size
+            ],  # top left (inner cell)
+        )
+        np.testing.assert_allclose(
+            local_vector_field[
+                :, :ghost_size, -ghost_size:
+            ],  # bottom right (ghost cell)
+            local_vector_field[
+                :, -2 * ghost_size : -ghost_size, ghost_size : 2 * ghost_size
+            ],  # top left (inner cell)
+        )
+        # Check top left (ghost cell) == bottom right (inner cell)
+        np.testing.assert_allclose(
+            local_scalar_field[-ghost_size:, :ghost_size],  # top left (ghost cell)
+            local_scalar_field[
+                ghost_size : 2 * ghost_size, -2 * ghost_size : -ghost_size
+            ],  # bottom right (inner cell)
+        )
+        np.testing.assert_allclose(
+            local_vector_field[:, -ghost_size:, :ghost_size],  # top left (ghost cell)
+            local_vector_field[
+                :, ghost_size : 2 * ghost_size, -2 * ghost_size : -ghost_size
+            ],  # bottom right (inner cell)
+        )
+        # Check top right (ghost cell) == bottom left (inner cell)
+        np.testing.assert_allclose(
+            local_scalar_field[-ghost_size:, -ghost_size:],  # top right (ghost cell)
+            local_scalar_field[
+                ghost_size : 2 * ghost_size, ghost_size : 2 * ghost_size
+            ],  # bottom left (inner cell)
+        )
+        np.testing.assert_allclose(
+            local_vector_field[:, -ghost_size:, -ghost_size:],  # top right (ghost cell)
+            local_vector_field[
+                :, ghost_size : 2 * ghost_size, ghost_size : 2 * ghost_size
+            ],  # bottom left (inner cell)
+        )
 
 
 @pytest.mark.mpi(group="MPI_utils", min_size=4)

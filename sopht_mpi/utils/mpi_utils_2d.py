@@ -17,7 +17,7 @@ class MPIConstruct2D:
         self,
         grid_size_y,
         grid_size_x,
-        periodic_flag=False,
+        periodic_domain=False,
         real_t=np.float64,
         rank_distribution=None,
     ):
@@ -27,6 +27,7 @@ class MPIConstruct2D:
         # Set the MPI dtype generator based on precision
         self.dtype_generator = MPI.FLOAT if real_t == np.float32 else MPI.DOUBLE
         # Setup MPI environment
+        self.periodic_domain = periodic_domain
         self.world = MPI.COMM_WORLD
         # Automatically create topologies
         if rank_distribution is None:
@@ -37,8 +38,10 @@ class MPIConstruct2D:
         else:
             self.rank_distribution = rank_distribution
         if 1 not in self.rank_distribution:
-            raise ValueError(
-                f"Rank distribution {self.rank_distribution} needs to be"
+            # Log warning here for more generic use.
+            # mpi4py-fft will take care of throwing errors if fft is invoked later.
+            logger.warning(
+                f"Rank distribution {self.rank_distribution} needs to be "
                 "aligned in at least one direction for fft"
             )
         self.grid_topology = MPI.Compute_dims(
@@ -60,7 +63,7 @@ class MPIConstruct2D:
 
         # Create Cartesian grid communicator
         self.grid = self.world.Create_cart(
-            self.grid_topology, periods=periodic_flag, reorder=False
+            self.grid_topology, periods=self.periodic_domain, reorder=False
         )
         # Determine neighbours in all directions
         self.previous_grid_along = np.zeros(self.grid_dim).astype(int)
@@ -88,9 +91,12 @@ class MPIGhostCommunicator2D:
     dtypes based on ghost_size (determined from stencil width of the kernel)
     This class wont be seen by the user, rather based on stencils we determine
     the properties here.
+
+    Note: halo_mode is used to allow for full halo ring exchange, otherwise only each
+    directional sides are exchanged.
     """
 
-    def __init__(self, ghost_size, mpi_construct):
+    def __init__(self, ghost_size, mpi_construct, halo_mode=True):
         # extra width needed for kernel computation
         if ghost_size <= 0 and not isinstance(ghost_size, int):
             raise ValueError(
@@ -99,120 +105,44 @@ class MPIGhostCommunicator2D:
             )
         self.ghost_size = ghost_size
         self.mpi_construct = mpi_construct
+        # exchange mode to include corners (forming full halo ring) or not
+        self.halo_mode = halo_mode
+        self.grid_coord = np.array(self.mpi_construct.grid.coords)
         # define field_size variable for local field size (which includes ghost)
-        self.field_size = mpi_construct.local_grid_size + 2 * self.ghost_size
+        self.field_size = mpi_construct.local_grid_size
 
         # Set datatypes for ghost communication
-        # For row we use contiguous type
-        self.row_type = mpi_construct.dtype_generator.Create_contiguous(
-            count=self.ghost_size * self.field_size[1]
+        # Note: this can be done more cleanly using Create_subarray, but using vector
+        # approach here for illustration in a simpler 2d setting
+        # For row data
+        self.row_type = mpi_construct.dtype_generator.Create_vector(
+            count=self.ghost_size,
+            blocklength=self.field_size[1],
+            stride=self.field_size[1] + 2 * self.ghost_size,
         )
         self.row_type.Commit()
-        # For column we use strided vector
+        # For column data
         self.column_type = mpi_construct.dtype_generator.Create_vector(
             count=self.field_size[0],
             blocklength=self.ghost_size,
-            stride=self.field_size[1],
+            stride=self.field_size[1] + 2 * self.ghost_size,
         )
         self.column_type.Commit()
+        # For corner data
+        self.corner_type = mpi_construct.dtype_generator.Create_vector(
+            count=self.ghost_size,
+            blocklength=self.ghost_size,
+            stride=self.field_size[1] + 2 * self.ghost_size,
+        )
+        self.corner_type.Commit()
 
         # Initialize requests list for non-blocking comm
         self.comm_requests = []
 
-    def exchange_scalar_field_init(self, local_field):
-        """
-        Exchange scalar field ghost data between neighbors.
-        """
-        # Lines below to make code more literal
-        y_axis = 0
-        x_axis = 1
-        # Along Y: send to previous block, receive from next block
-        self.comm_requests.append(
-            self.mpi_construct.grid.Isend(
-                (
-                    local_field[self.ghost_size : 2 * self.ghost_size, :],
-                    1,
-                    self.row_type,
-                ),
-                dest=self.mpi_construct.previous_grid_along[y_axis],
-            )
-        )
-        self.comm_requests.append(
-            self.mpi_construct.grid.Irecv(
-                (
-                    local_field[-self.ghost_size : local_field.shape[0], :],
-                    1,
-                    self.row_type,
-                ),
-                source=self.mpi_construct.next_grid_along[y_axis],
-            )
-        )
-
-        # Along Y: send to next block, receive from previous block
-        self.comm_requests.append(
-            self.mpi_construct.grid.Isend(
-                (
-                    local_field[-2 * self.ghost_size : -self.ghost_size, :],
-                    1,
-                    self.row_type,
-                ),
-                dest=self.mpi_construct.next_grid_along[y_axis],
-            )
-        )
-        self.comm_requests.append(
-            self.mpi_construct.grid.Irecv(
-                (
-                    local_field[0 : self.ghost_size, :],
-                    1,
-                    self.row_type,
-                ),
-                source=self.mpi_construct.previous_grid_along[y_axis],
-            )
-        )
-
-        # Along X: send to previous block, receive from next block
-        self.comm_requests.append(
-            self.mpi_construct.grid.Isend(
-                (
-                    local_field.ravel()[self.ghost_size :],
-                    1,
-                    self.column_type,
-                ),
-                dest=self.mpi_construct.previous_grid_along[x_axis],
-            )
-        )
-        self.comm_requests.append(
-            self.mpi_construct.grid.Irecv(
-                (
-                    local_field.ravel()[local_field.shape[1] - self.ghost_size :],
-                    1,
-                    self.column_type,
-                ),
-                source=self.mpi_construct.next_grid_along[x_axis],
-            )
-        )
-
-        # Along X: send to next block, receive from previous block
-        self.comm_requests.append(
-            self.mpi_construct.grid.Isend(
-                (
-                    local_field.ravel()[local_field.shape[1] - 2 * self.ghost_size :],
-                    1,
-                    self.column_type,
-                ),
-                dest=self.mpi_construct.next_grid_along[x_axis],
-            )
-        )
-        self.comm_requests.append(
-            self.mpi_construct.grid.Irecv(
-                (
-                    local_field.ravel()[0:],
-                    1,
-                    self.column_type,
-                ),
-                source=self.mpi_construct.previous_grid_along[x_axis],
-            )
-        )
+        if self.halo_mode:
+            self.exchange_scalar_field_init = self.exchange_scalar_field_halo_init
+        else:
+            self.exchange_scalar_field_init = self.exchange_scalar_field_sides_init
 
     def exchange_vector_field_init(self, local_vector_field):
         self.exchange_scalar_field_init(
@@ -229,6 +159,235 @@ class MPIGhostCommunicator2D:
         MPI.Request.Waitall(self.comm_requests)
         # reset the list of requests
         self.comm_requests = []
+
+    def exchange_scalar_field_sides_init(self, local_field):
+        """
+        Exchange scalar field ghost data (on sides in each direction) between neighbors.
+        """
+        # Lines below to make code more literal
+        y_axis = 0
+        x_axis = 1
+        ghost_rows_offset = self.ghost_size * local_field.shape[1]
+
+        # Along Y: send to previous block, receive from next block
+        self.comm_requests.append(
+            self.mpi_construct.grid.Isend(
+                (
+                    local_field.ravel()[ghost_rows_offset + self.ghost_size :],
+                    1,
+                    self.row_type,
+                ),
+                dest=self.mpi_construct.previous_grid_along[y_axis],
+            )
+        )
+        self.comm_requests.append(
+            self.mpi_construct.grid.Irecv(
+                (
+                    local_field.ravel()[-ghost_rows_offset + self.ghost_size :],
+                    1,
+                    self.row_type,
+                ),
+                source=self.mpi_construct.next_grid_along[y_axis],
+            )
+        )
+
+        # Along Y: send to next block, receive from previous block
+        self.comm_requests.append(
+            self.mpi_construct.grid.Isend(
+                (
+                    local_field.ravel()[-2 * ghost_rows_offset + self.ghost_size :],
+                    1,
+                    self.row_type,
+                ),
+                dest=self.mpi_construct.next_grid_along[y_axis],
+            )
+        )
+        self.comm_requests.append(
+            self.mpi_construct.grid.Irecv(
+                (
+                    local_field.ravel()[self.ghost_size :],
+                    1,
+                    self.row_type,
+                ),
+                source=self.mpi_construct.previous_grid_along[y_axis],
+            )
+        )
+
+        # Along X: send to previous block, receive from next block
+        self.comm_requests.append(
+            self.mpi_construct.grid.Isend(
+                (
+                    local_field.ravel()[ghost_rows_offset + self.ghost_size :],
+                    1,
+                    self.column_type,
+                ),
+                dest=self.mpi_construct.previous_grid_along[x_axis],
+            )
+        )
+        self.comm_requests.append(
+            self.mpi_construct.grid.Irecv(
+                (
+                    local_field.ravel()[
+                        ghost_rows_offset + local_field.shape[1] - self.ghost_size :
+                    ],
+                    1,
+                    self.column_type,
+                ),
+                source=self.mpi_construct.next_grid_along[x_axis],
+            )
+        )
+
+        # Along X: send to next block, receive from previous block
+        self.comm_requests.append(
+            self.mpi_construct.grid.Isend(
+                (
+                    local_field.ravel()[
+                        ghost_rows_offset + local_field.shape[1] - 2 * self.ghost_size :
+                    ],
+                    1,
+                    self.column_type,
+                ),
+                dest=self.mpi_construct.next_grid_along[x_axis],
+            )
+        )
+        self.comm_requests.append(
+            self.mpi_construct.grid.Irecv(
+                (
+                    local_field.ravel()[ghost_rows_offset:],
+                    1,
+                    self.column_type,
+                ),
+                source=self.mpi_construct.previous_grid_along[x_axis],
+            )
+        )
+
+    def exchange_scalar_field_corners_init(self, local_field):
+        """
+        Exchange scalar field ghost data (on corners in each diagonal direction)
+        between neighbors.
+        """
+        ghost_rows_offset = self.ghost_size * local_field.shape[1]
+        # Exchange corner ghost cells (four corners, so 4 exchanges here)
+        # (1) Update top right corner
+        # send bottom left corner to corresponding diagonal block (-1, -1),
+        # receive as top right corner from corresponding diagonal block (+1, +1)
+        self.comm_requests.append(
+            self.mpi_construct.grid.Isend(
+                (
+                    local_field.ravel()[ghost_rows_offset + self.ghost_size :],
+                    1,
+                    self.corner_type,
+                ),
+                dest=self._get_diagonally_shifted_coord_rank(coord_shift=[-1, -1]),
+            )
+        )
+        self.comm_requests.append(
+            self.mpi_construct.grid.Irecv(
+                (
+                    local_field.ravel()[
+                        -(self.ghost_size - 1) * local_field.shape[1]
+                        - self.ghost_size :
+                    ],
+                    1,
+                    self.corner_type,
+                ),
+                source=self._get_diagonally_shifted_coord_rank(coord_shift=[1, 1]),
+            )
+        )
+        # (2) Update bottom left corner
+        # send top right corner to corresponding block (+1, +1),
+        # receive as bottom left corner from corresponding diagonal block (-1, -1)
+        self.comm_requests.append(
+            self.mpi_construct.grid.Isend(
+                (
+                    local_field.ravel()[
+                        -(2 * self.ghost_size - 1) * local_field.shape[1]
+                        - 2 * self.ghost_size :
+                    ],
+                    1,
+                    self.corner_type,
+                ),
+                dest=self._get_diagonally_shifted_coord_rank(coord_shift=[1, 1]),
+            )
+        )
+        self.comm_requests.append(
+            self.mpi_construct.grid.Irecv(
+                (
+                    local_field.ravel()[0:],
+                    1,
+                    self.corner_type,
+                ),
+                source=self._get_diagonally_shifted_coord_rank(coord_shift=[-1, -1]),
+            )
+        )
+        # (3) Update top left corner
+        # send bottom right corner to corresponding diagonal block (-1, +1),
+        # receive as top left corner from corresponding diagonal block (+1, -1)
+        self.comm_requests.append(
+            self.mpi_construct.grid.Isend(
+                (
+                    local_field.ravel()[
+                        ghost_rows_offset + local_field.shape[1] - 2 * self.ghost_size :
+                    ],
+                    1,
+                    self.corner_type,
+                ),
+                dest=self._get_diagonally_shifted_coord_rank(coord_shift=[-1, 1]),
+            )
+        )
+        self.comm_requests.append(
+            self.mpi_construct.grid.Irecv(
+                (
+                    local_field.ravel()[-ghost_rows_offset:],
+                    1,
+                    self.corner_type,
+                ),
+                source=self._get_diagonally_shifted_coord_rank(coord_shift=[1, -1]),
+            )
+        )
+        # (4) Update bottom right corner
+        # send top left corner to corresponding diagonal block (+1, -1),
+        # receive as bottom right corner from corresponding diagonal block (-1, +1)
+        self.comm_requests.append(
+            self.mpi_construct.grid.Isend(
+                (
+                    local_field.ravel()[-2 * ghost_rows_offset + self.ghost_size :],
+                    1,
+                    self.corner_type,
+                ),
+                dest=self._get_diagonally_shifted_coord_rank(coord_shift=[1, -1]),
+            )
+        )
+        self.comm_requests.append(
+            self.mpi_construct.grid.Irecv(
+                (
+                    local_field.ravel()[local_field.shape[1] - self.ghost_size :],
+                    1,
+                    self.corner_type,
+                ),
+                source=self._get_diagonally_shifted_coord_rank(coord_shift=[-1, 1]),
+            )
+        )
+
+    def exchange_scalar_field_halo_init(self, local_field):
+        """
+        Exchange scalar field ghost data (a full halo ring) between neighbors.
+        """
+        self.exchange_scalar_field_sides_init(local_field)
+        self.exchange_scalar_field_corners_init(local_field)
+
+    def _get_diagonally_shifted_coord_rank(self, coord_shift):
+        shifted_coord = self.grid_coord + np.array(coord_shift)
+        if not self.mpi_construct.periodic_domain and (
+            np.any(shifted_coord >= self.mpi_construct.grid_topology)
+            or np.any(shifted_coord < 0)
+        ):
+            # The shifted coord is out of non-periodic domain
+            rank = MPI.PROC_NULL
+        else:
+            # Periodic domain is automatically taken care of in mpi cartersian grid
+            rank = self.mpi_construct.grid.Get_cart_rank(shifted_coord)
+        return rank
 
 
 class MPIFieldCommunicator2D:
@@ -380,9 +539,9 @@ class MPIFieldCommunicator2D:
 
 
 class MPILagrangianFieldCommunicator2D:
-    """ "
-    Class exclusive for lagrangian field communication across ranks, and takes care of
-    scattering global lagrangian fields and aggregating local lagrangian fields.
+    """
+    Class exclusive for 2D lagrangian field communication across ranks, and takes care
+    of scattering global lagrangian fields and aggregating local lagrangian fields.
 
     Notes:
     - VirtualBoundaryForcing, and subsequently, Eulerian-Lagrangian communicator will
@@ -519,7 +678,7 @@ class MPILagrangianFieldCommunicator2D:
                 )
                 self.mpi_construct.grid.Recv(recv_buffer, source=rank_i)
                 global_lag_field[:, idx] = recv_buffer.reshape(
-                    2, expected_num_lag_nodes
+                    self.grid_dim, expected_num_lag_nodes
                 )
 
 
