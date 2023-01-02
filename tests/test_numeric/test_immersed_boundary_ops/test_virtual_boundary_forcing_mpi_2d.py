@@ -9,10 +9,11 @@ from sopht_mpi.utils import (
     MPIFieldCommunicator2D,
 )
 from sopht.utils.precision import get_real_t, get_test_tol
+from sopht.utils.field import VectorField
 from mpi4py import MPI
 
 
-class ReferenceVirtualBoundaryForcing(VirtualBoundaryForcing):
+class ReferenceVirtualBoundaryForcing2D(VirtualBoundaryForcing):
     """Mock solution test class for virtual boundary forcing."""
 
     def __init__(
@@ -20,10 +21,10 @@ class ReferenceVirtualBoundaryForcing(VirtualBoundaryForcing):
         grid_size_y,
         grid_size_x,
         real_t,
-        grid_dim=2,
         enable_eul_grid_forcing_reset=True,
     ):
         """Class initialiser."""
+        self.grid_dim = 2
         self.real_t = real_t
         self.virtual_boundary_stiffness_coeff = real_t(1e3)
         self.virtual_boundary_damping_coeff = real_t(1e1)
@@ -34,7 +35,6 @@ class ReferenceVirtualBoundaryForcing(VirtualBoundaryForcing):
         self.eul_grid_coord_shift = real_t(self.dx / 2)
         self.num_lag_nodes = 3
         self.interp_kernel_width = 2
-        self.grid_dim = grid_dim
         self.time = 0.0
 
         super().__init__(
@@ -52,11 +52,11 @@ class ReferenceVirtualBoundaryForcing(VirtualBoundaryForcing):
 
     def init_reference_lagrangian_nodes(self):
         # init lag. grid around center of the domain
-        self.nearest_eul_grid_index_to_lag_grid[0] = np.arange(
+        self.nearest_eul_grid_index_to_lag_grid[VectorField.x_axis_idx()] = np.arange(
             self.grid_size_x // 2 - 1,
             self.grid_size_x // 2 - 1 + self.num_lag_nodes,
         ).astype(int)
-        self.nearest_eul_grid_index_to_lag_grid[1] = np.arange(
+        self.nearest_eul_grid_index_to_lag_grid[VectorField.y_axis_idx()] = np.arange(
             self.grid_size_y // 2 - 1,
             self.grid_size_y // 2 - 1 + self.num_lag_nodes,
         ).astype(int)
@@ -118,15 +118,13 @@ class ReferenceVirtualBoundaryForcing(VirtualBoundaryForcing):
 def test_mpi_virtual_boundary_forcing_init_2d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    grid_dim = 2
     n_values = 16
     grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
     real_t = get_real_t(precision)
     # 1. Generate reference solution
-    ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing(
+    ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing2D(
         grid_size_y=grid_size_y,
         grid_size_x=grid_size_x,
-        grid_dim=grid_dim,
         real_t=real_t,
     )
 
@@ -229,15 +227,13 @@ def test_mpi_virtual_boundary_forcing_init_2d(
 def test_mpi_compute_lag_grid_velocity_mismatch_field_2d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    grid_dim = 2
     n_values = 16
     grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
     real_t = get_real_t(precision)
     # 1. Generate reference solution
-    ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing(
+    ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing2D(
         grid_size_y=grid_size_y,
         grid_size_x=grid_size_x,
-        grid_dim=grid_dim,
         real_t=real_t,
     )
 
@@ -285,10 +281,12 @@ def test_mpi_compute_lag_grid_velocity_mismatch_field_2d(
     # Initialize and broadcast solution for comparison later
     if mpi_construct.rank == 0:
         ref_lag_grid_velocity_field = np.random.rand(
-            grid_dim, ref_virtual_boundary_forcing.num_lag_nodes
+            ref_virtual_boundary_forcing.grid_dim,
+            ref_virtual_boundary_forcing.num_lag_nodes,
         ).astype(ref_virtual_boundary_forcing.real_t)
         ref_lag_grid_flow_velocity_field = np.random.rand(
-            grid_dim, ref_virtual_boundary_forcing.num_lag_nodes
+            ref_virtual_boundary_forcing.grid_dim,
+            ref_virtual_boundary_forcing.num_lag_nodes,
         ).astype(ref_virtual_boundary_forcing.real_t)
     else:
         ref_lag_grid_velocity_field = None
@@ -343,15 +341,13 @@ def test_mpi_compute_lag_grid_velocity_mismatch_field_2d(
 def test_mpi_update_lag_grid_position_mismatch_field_via_euler_forward_2d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    grid_dim = 2
     n_values = 16
     grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
     real_t = get_real_t(precision)
     # 1. Generate reference solution
-    ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing(
+    ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing2D(
         grid_size_y=grid_size_y,
         grid_size_x=grid_size_x,
-        grid_dim=grid_dim,
         real_t=real_t,
     )
 
@@ -399,10 +395,12 @@ def test_mpi_update_lag_grid_position_mismatch_field_via_euler_forward_2d(
     # Initialize and broadcast solution for comparison later
     if mpi_construct.rank == 0:
         ref_lag_grid_position_mismatch_field = np.random.rand(
-            grid_dim, ref_virtual_boundary_forcing.num_lag_nodes
+            ref_virtual_boundary_forcing.grid_dim,
+            ref_virtual_boundary_forcing.num_lag_nodes,
         ).astype(ref_virtual_boundary_forcing.real_t)
         ref_lag_grid_velocity_mismatch_field = np.random.rand(
-            grid_dim, ref_virtual_boundary_forcing.num_lag_nodes
+            ref_virtual_boundary_forcing.grid_dim,
+            ref_virtual_boundary_forcing.num_lag_nodes,
         ).astype(ref_virtual_boundary_forcing.real_t)
     else:
         ref_lag_grid_position_mismatch_field = None
@@ -458,15 +456,13 @@ def test_mpi_update_lag_grid_position_mismatch_field_via_euler_forward_2d(
 def test_mpi_compute_lag_grid_forcing_field_2d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    grid_dim = 2
     n_values = 16
     grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
     real_t = get_real_t(precision)
     # 1. Generate reference solution
-    ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing(
+    ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing2D(
         grid_size_y=grid_size_y,
         grid_size_x=grid_size_x,
-        grid_dim=grid_dim,
         real_t=real_t,
     )
 
@@ -514,10 +510,12 @@ def test_mpi_compute_lag_grid_forcing_field_2d(
     # Initialize and broadcast solution for comparison later
     if mpi_construct.rank == 0:
         ref_lag_grid_position_mismatch_field = np.random.rand(
-            grid_dim, ref_virtual_boundary_forcing.num_lag_nodes
+            ref_virtual_boundary_forcing.grid_dim,
+            ref_virtual_boundary_forcing.num_lag_nodes,
         ).astype(ref_virtual_boundary_forcing.real_t)
         ref_lag_grid_velocity_mismatch_field = np.random.rand(
-            grid_dim, ref_virtual_boundary_forcing.num_lag_nodes
+            ref_virtual_boundary_forcing.grid_dim,
+            ref_virtual_boundary_forcing.num_lag_nodes,
         ).astype(ref_virtual_boundary_forcing.real_t)
     else:
         ref_lag_grid_position_mismatch_field = None
@@ -576,15 +574,13 @@ def test_mpi_compute_lag_grid_forcing_field_2d(
 def test_mpi_compute_interaction_force_on_lag_grid_2d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    grid_dim = 2
     n_values = 16
     grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
     real_t = get_real_t(precision)
     # 1. Generate reference solution
-    ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing(
+    ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing2D(
         grid_size_y=grid_size_y,
         grid_size_x=grid_size_x,
-        grid_dim=grid_dim,
         real_t=real_t,
     )
 
@@ -641,10 +637,11 @@ def test_mpi_compute_interaction_force_on_lag_grid_2d(
     # Initialize and broadcast solution for comparison later
     if mpi_construct.rank == 0:
         ref_lag_grid_velocity_field = np.random.rand(
-            grid_dim, ref_virtual_boundary_forcing.num_lag_nodes
+            ref_virtual_boundary_forcing.grid_dim,
+            ref_virtual_boundary_forcing.num_lag_nodes,
         ).astype(ref_virtual_boundary_forcing.real_t)
         ref_eul_grid_velocity_field = np.random.rand(
-            grid_dim,
+            ref_virtual_boundary_forcing.grid_dim,
             ref_virtual_boundary_forcing.grid_size_y,
             ref_virtual_boundary_forcing.grid_size_x,
         ).astype(ref_virtual_boundary_forcing.real_t)
@@ -668,7 +665,7 @@ def test_mpi_compute_interaction_force_on_lag_grid_2d(
     # Allocate local eul grid velocity field
     mpi_local_eul_grid_velocity_field = np.zeros(
         (
-            grid_dim,
+            mpi_construct.grid_dim,
             mpi_construct.local_grid_size[0] + 2 * ghost_size,
             mpi_construct.local_grid_size[1] + 2 * ghost_size,
         )
@@ -748,15 +745,13 @@ def test_mpi_compute_interaction_force_on_eul_and_lag_grid_2d(
     aspect_ratio,
     enable_eul_grid_forcing_reset,
 ):
-    grid_dim = 2
     n_values = 16
     grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
     real_t = get_real_t(precision)
     # 1. Generate reference solution
-    ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing(
+    ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing2D(
         grid_size_y=grid_size_y,
         grid_size_x=grid_size_x,
-        grid_dim=grid_dim,
         real_t=real_t,
         enable_eul_grid_forcing_reset=enable_eul_grid_forcing_reset,
     )
@@ -815,10 +810,11 @@ def test_mpi_compute_interaction_force_on_eul_and_lag_grid_2d(
     # Initialize and broadcast solution for comparison later
     if mpi_construct.rank == 0:
         ref_lag_grid_velocity_field = np.random.rand(
-            grid_dim, ref_virtual_boundary_forcing.num_lag_nodes
+            ref_virtual_boundary_forcing.grid_dim,
+            ref_virtual_boundary_forcing.num_lag_nodes,
         ).astype(ref_virtual_boundary_forcing.real_t)
         ref_eul_grid_velocity_field = np.random.rand(
-            grid_dim,
+            ref_virtual_boundary_forcing.grid_dim,
             ref_virtual_boundary_forcing.grid_size_y,
             ref_virtual_boundary_forcing.grid_size_x,
         ).astype(ref_virtual_boundary_forcing.real_t)
@@ -844,7 +840,7 @@ def test_mpi_compute_interaction_force_on_eul_and_lag_grid_2d(
     # Allocate local eul grid velocity field
     mpi_local_eul_grid_velocity_field = np.zeros(
         (
-            grid_dim,
+            mpi_construct.grid_dim,
             mpi_construct.local_grid_size[0] + 2 * ghost_size,
             mpi_construct.local_grid_size[1] + 2 * ghost_size,
         )
@@ -944,15 +940,13 @@ def test_mpi_compute_interaction_force_on_eul_and_lag_grid_2d(
 def test_mpi_virtual_boundary_forcing_time_step_2d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
-    grid_dim = 2
     n_values = 16
     grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
     real_t = get_real_t(precision)
     # 1. Generate reference solution
-    ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing(
+    ref_virtual_boundary_forcing = ReferenceVirtualBoundaryForcing2D(
         grid_size_y=grid_size_y,
         grid_size_x=grid_size_x,
-        grid_dim=grid_dim,
         real_t=real_t,
     )
 
@@ -1000,10 +994,12 @@ def test_mpi_virtual_boundary_forcing_time_step_2d(
     # Initialize and broadcast solution for comparison later
     if mpi_construct.rank == 0:
         ref_lag_grid_position_mismatch_field = np.random.rand(
-            grid_dim, ref_virtual_boundary_forcing.num_lag_nodes
+            ref_virtual_boundary_forcing.grid_dim,
+            ref_virtual_boundary_forcing.num_lag_nodes,
         ).astype(ref_virtual_boundary_forcing.real_t)
         ref_lag_grid_velocity_mismatch_field = np.random.rand(
-            grid_dim, ref_virtual_boundary_forcing.num_lag_nodes
+            ref_virtual_boundary_forcing.grid_dim,
+            ref_virtual_boundary_forcing.num_lag_nodes,
         ).astype(ref_virtual_boundary_forcing.real_t)
     else:
         ref_lag_grid_position_mismatch_field = None
