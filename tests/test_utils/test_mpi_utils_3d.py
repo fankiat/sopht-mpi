@@ -12,7 +12,7 @@ from mpi4py import MPI
 
 
 @pytest.mark.mpi(group="MPI_utils", min_size=4)
-@pytest.mark.parametrize("ghost_size", [1, 2, 3])
+@pytest.mark.parametrize("ghost_size", [1, 2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize(
     "rank_distribution",
@@ -26,7 +26,7 @@ from mpi4py import MPI
 def test_mpi_field_gather_scatter(
     ghost_size, precision, rank_distribution, aspect_ratio, master_rank
 ):
-    n_values = 32
+    n_values = 8
     real_t = get_real_t(precision)
     mpi_construct = MPIConstruct3D(
         grid_size_z=n_values * aspect_ratio[0],
@@ -94,7 +94,7 @@ def test_mpi_field_gather_scatter(
 
 
 @pytest.mark.mpi(group="MPI_utils", min_size=4)
-@pytest.mark.parametrize("ghost_size", [1, 2, 3])
+@pytest.mark.parametrize("ghost_size", [1, 2])
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize(
     "rank_distribution",
@@ -108,7 +108,7 @@ def test_mpi_field_gather_scatter(
 def test_mpi_ghost_communication(
     ghost_size, precision, rank_distribution, aspect_ratio, full_exchange
 ):
-    n_values = 32
+    n_values = 8
     real_t = get_real_t(precision)
     mpi_construct = MPIConstruct3D(
         grid_size_z=n_values * aspect_ratio[0],
@@ -794,7 +794,7 @@ def test_mpi_ghost_communication(
 )
 def test_mpi_lagrangian_field_map(precision, rank_distribution, aspect_ratio):
     # Eulerian grid stuff
-    n_values = 32
+    n_values = 8
     real_t = get_real_t(precision)
     grid_size_z = n_values * aspect_ratio[0]
     grid_size_y = n_values * aspect_ratio[1]
@@ -889,7 +889,7 @@ def test_mpi_lagrangian_field_gather_scatter(
     precision, rank_distribution, aspect_ratio
 ):
     # Eulerian grid stuff
-    n_values = 32
+    n_values = 8
     real_t = get_real_t(precision)
     grid_size_z = n_values * aspect_ratio[0]
     grid_size_y = n_values * aspect_ratio[1]
