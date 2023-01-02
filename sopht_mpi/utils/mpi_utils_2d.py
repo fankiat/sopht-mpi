@@ -87,16 +87,36 @@ class MPIConstruct2D:
 class MPIGhostCommunicator2D:
     """
     Class exclusive for ghost communication across ranks, initialises data types
-    that will be used for comm. in both blocking and non-blocking styles. Builds
-    dtypes based on ghost_size (determined from stencil width of the kernel)
-    This class wont be seen by the user, rather based on stencils we determine
-    the properties here.
+    for communication based on ghost_size (determined from stencil width of the kernel).
 
-    Note: halo_mode is used to allow for full halo ring exchange, otherwise only each
-    directional sides are exchanged.
+    Here we refer the side and corners ghost cells following the terminologies for
+    polygons (https://en.wikipedia.org/wiki/Polygon) as below:
+    "The segments of a polygonal circuit are called its edges or sides. The points where
+    two edges meet are the polygon's vertices (singular: vertex) or corners."
+
+    v e e e e e v <- vertex (corner)
+    e x x x x x e
+    e x x x x x e <- edge (side)
+    e x x x x x e
+    v e e e e e v
+
+    (v) vertex (corner) ghost cell
+    (e) edge (side) ghost cell
+    (x) inner non-ghost cell
+
+    Note
+    ---
+    `full_exchange` allows for exchange both the edges (sides) and the vertex (corners)
+    ghost cells of the local domain (see illustration above). The full exchange mode is
+    required when Eulerian-to-Lagrangian (structured-to-unstructured) grid interpolation
+    is performed. In our 2D current unbounded flow solver, we won't need the
+    full exchange mode even when the interpolation is performed since mpi4py-fft only
+    for allows for slabs decomposition, and the corner cells corresponds to then the
+    corners of the unbounded domain. The full exchange mode may become useful if a
+    periodic domain flow solver is employed.
     """
 
-    def __init__(self, ghost_size, mpi_construct, halo_mode=True):
+    def __init__(self, ghost_size, mpi_construct, full_exchange=True):
         # extra width needed for kernel computation
         if ghost_size <= 0 and not isinstance(ghost_size, int):
             raise ValueError(
@@ -106,63 +126,71 @@ class MPIGhostCommunicator2D:
         self.ghost_size = ghost_size
         self.mpi_construct = mpi_construct
         # exchange mode to include corners (forming full halo ring) or not
-        self.halo_mode = halo_mode
+        self.full_exchange = full_exchange
         self.grid_coord = np.array(self.mpi_construct.grid.coords)
-        # define field_size variable for local field size (which includes ghost)
-        self.field_size = mpi_construct.local_grid_size
 
-        # Set datatypes for ghost communication
-        # Note: this can be done more cleanly using Create_subarray, but using vector
-        # approach here for illustration in a simpler 2d setting
-        # For row data
-        self.row_type = mpi_construct.dtype_generator.Create_vector(
+        # Initialize data types
+        self.init_datatypes()
+
+        # Initialize requests list for non-blocking comm
+        self.comm_requests = []
+
+        if self.full_exchange:
+            self.exchange_scalar_field_init = self.exchange_scalar_field_full_init
+        else:
+            self.exchange_scalar_field_init = self.exchange_scalar_field_edges_init
+
+    def init_datatypes(self):
+        """
+        Set datatypes for ghost communication
+        Note: this can be done more cleanly using Create_subarray, but using vector
+        approach here for illustration in a simpler 2d setting
+        """
+        # define field_size variable for local field size (without ghost)
+        self.field_size = self.mpi_construct.local_grid_size
+
+        # (1) For row data
+        self.row_type = self.mpi_construct.dtype_generator.Create_vector(
             count=self.ghost_size,
             blocklength=self.field_size[1],
             stride=self.field_size[1] + 2 * self.ghost_size,
         )
         self.row_type.Commit()
-        # For column data
-        self.column_type = mpi_construct.dtype_generator.Create_vector(
+
+        # (2) For column data
+        self.column_type = self.mpi_construct.dtype_generator.Create_vector(
             count=self.field_size[0],
             blocklength=self.ghost_size,
             stride=self.field_size[1] + 2 * self.ghost_size,
         )
         self.column_type.Commit()
-        # For corner data
-        self.corner_type = mpi_construct.dtype_generator.Create_vector(
-            count=self.ghost_size,
-            blocklength=self.ghost_size,
-            stride=self.field_size[1] + 2 * self.ghost_size,
-        )
-        self.corner_type.Commit()
 
-        # Initialize requests list for non-blocking comm
-        self.comm_requests = []
+        # (3) For corner data (only if needed)
+        if self.full_exchange:
+            self.corner_type = self.mpi_construct.dtype_generator.Create_vector(
+                count=self.ghost_size,
+                blocklength=self.ghost_size,
+                stride=self.field_size[1] + 2 * self.ghost_size,
+            )
+            self.corner_type.Commit()
 
-        if self.halo_mode:
-            self.exchange_scalar_field_init = self.exchange_scalar_field_halo_init
+    def _get_diagonally_shifted_coord_rank(self, coord_shift):
+        """Helper function to get diagonally shifted coords"""
+        shifted_coord = self.grid_coord + np.array(coord_shift)
+        if not self.mpi_construct.periodic_domain and (
+            np.any(shifted_coord >= self.mpi_construct.grid_topology)
+            or np.any(shifted_coord < 0)
+        ):
+            # The shifted coord is out of non-periodic domain
+            rank = MPI.PROC_NULL
         else:
-            self.exchange_scalar_field_init = self.exchange_scalar_field_sides_init
+            # Periodic domain is automatically taken care of in mpi cartersian grid
+            rank = self.mpi_construct.grid.Get_cart_rank(shifted_coord)
+        return rank
 
-    def exchange_vector_field_init(self, local_vector_field):
-        self.exchange_scalar_field_init(
-            local_field=local_vector_field[VectorField.x_axis_idx()]
-        )
-        self.exchange_scalar_field_init(
-            local_field=local_vector_field[VectorField.y_axis_idx()]
-        )
-
-    def exchange_finalise(self):
+    def exchange_scalar_field_edges_init(self, local_field):
         """
-        Finalizing non-blocking exchange ghost data between neighbors.
-        """
-        MPI.Request.Waitall(self.comm_requests)
-        # reset the list of requests
-        self.comm_requests = []
-
-    def exchange_scalar_field_sides_init(self, local_field):
-        """
-        Exchange scalar field ghost data (on sides in each direction) between neighbors.
+        Exchange scalar field ghost data on edges (sides) between neighbors.
         """
         # Lines below to make code more literal
         y_axis = 0
@@ -261,10 +289,9 @@ class MPIGhostCommunicator2D:
             )
         )
 
-    def exchange_scalar_field_corners_init(self, local_field):
+    def exchange_scalar_field_vertices_init(self, local_field):
         """
-        Exchange scalar field ghost data (on corners in each diagonal direction)
-        between neighbors.
+        Exchange scalar field ghost data on vertices (corners) between neighbors.
         """
         ghost_rows_offset = self.ghost_size * local_field.shape[1]
         # Exchange corner ghost cells (four corners, so 4 exchanges here)
@@ -369,25 +396,28 @@ class MPIGhostCommunicator2D:
             )
         )
 
-    def exchange_scalar_field_halo_init(self, local_field):
+    def exchange_scalar_field_full_init(self, local_field):
         """
         Exchange scalar field ghost data (a full halo ring) between neighbors.
         """
-        self.exchange_scalar_field_sides_init(local_field)
-        self.exchange_scalar_field_corners_init(local_field)
+        self.exchange_scalar_field_edges_init(local_field)
+        self.exchange_scalar_field_vertices_init(local_field)
 
-    def _get_diagonally_shifted_coord_rank(self, coord_shift):
-        shifted_coord = self.grid_coord + np.array(coord_shift)
-        if not self.mpi_construct.periodic_domain and (
-            np.any(shifted_coord >= self.mpi_construct.grid_topology)
-            or np.any(shifted_coord < 0)
-        ):
-            # The shifted coord is out of non-periodic domain
-            rank = MPI.PROC_NULL
-        else:
-            # Periodic domain is automatically taken care of in mpi cartersian grid
-            rank = self.mpi_construct.grid.Get_cart_rank(shifted_coord)
-        return rank
+    def exchange_vector_field_init(self, local_vector_field):
+        self.exchange_scalar_field_init(
+            local_field=local_vector_field[VectorField.x_axis_idx()]
+        )
+        self.exchange_scalar_field_init(
+            local_field=local_vector_field[VectorField.y_axis_idx()]
+        )
+
+    def exchange_finalise(self):
+        """
+        Finalizing non-blocking exchange ghost data between neighbors.
+        """
+        MPI.Request.Waitall(self.comm_requests)
+        # reset the list of requests
+        self.comm_requests = []
 
 
 class MPIFieldCommunicator2D:

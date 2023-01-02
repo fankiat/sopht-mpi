@@ -82,13 +82,13 @@ def test_mpi_field_gather_scatter(
 @pytest.mark.parametrize("precision", ["single", "double"])
 @pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1), (2, 2)])
 @pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 2), (2, 1)])
-@pytest.mark.parametrize("halo_mode", [True, False])
+@pytest.mark.parametrize("full_exchange", [True, False])
 def test_mpi_ghost_communication(
     ghost_size,
     precision,
     rank_distribution,
     aspect_ratio,
-    halo_mode,
+    full_exchange,
 ):
     n_values = 32
     real_t = get_real_t(precision)
@@ -103,7 +103,7 @@ def test_mpi_ghost_communication(
     mpi_ghost_exchange_communicator = MPIGhostCommunicator2D(
         ghost_size=ghost_size,
         mpi_construct=mpi_construct,
-        halo_mode=halo_mode,
+        full_exchange=full_exchange,
     )
     # Set internal field to manufactured values
     np.random.seed(0)
@@ -166,7 +166,7 @@ def test_mpi_ghost_communication(
         local_vector_field[:, ghost_size:-ghost_size, 0:ghost_size],
     )
 
-    if halo_mode:
+    if full_exchange:
         # Check bottom left (ghost cell) == top right (inner cell)
         np.testing.assert_allclose(
             local_scalar_field[:ghost_size, :ghost_size],  # bottom left (ghost cell)
