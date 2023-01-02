@@ -1,11 +1,14 @@
 import numpy as np
 import pytest
 from sopht.utils.precision import get_real_t
+from sopht.utils.field import VectorField
 from sopht_mpi.utils import (
     MPIConstruct3D,
     MPIGhostCommunicator3D,
     MPIFieldCommunicator3D,
+    MPILagrangianFieldCommunicator3D,
 )
+from mpi4py import MPI
 
 
 @pytest.mark.mpi(group="MPI_utils", min_size=4)

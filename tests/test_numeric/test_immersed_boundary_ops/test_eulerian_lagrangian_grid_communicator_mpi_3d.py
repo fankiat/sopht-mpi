@@ -1,26 +1,24 @@
 import numpy as np
 import pytest
 from sopht_mpi.numeric.immersed_boundary_ops import (
-    EulerianLagrangianGridCommunicatorMPI2D,
+    EulerianLagrangianGridCommunicatorMPI3D,
 )
-from sopht.numeric.immersed_boundary_ops import EulerianLagrangianGridCommunicator2D
-from sopht_mpi.utils import (
-    MPIConstruct2D,
-    MPILagrangianFieldCommunicator2D,
-)
+from sopht.numeric.immersed_boundary_ops import EulerianLagrangianGridCommunicator3D
+from sopht_mpi.utils import MPIConstruct3D, MPILagrangianFieldCommunicator3D
 from sopht.utils.precision import get_real_t, get_test_tol
 from sopht.utils.field import VectorField
 from mpi4py import MPI
 
 
-class MockEulLagGridCommSolution2D:
+class MockEulLagGridCommSolution3D:
     """
-    Mock solution test class based on sopht-backend for 2D Eulerian-Lagrangian grid
+    Mock solution test class based on sopht-backend for 3D Eulerian-Lagrangian grid
     communicator
     """
 
     def __init__(
         self,
+        grid_size_z,
         grid_size_y,
         grid_size_x,
         real_t,
@@ -28,7 +26,8 @@ class MockEulLagGridCommSolution2D:
         n_components=1,
     ):
         self.real_t = real_t
-        self.grid_dim = 2
+        self.grid_dim = 3
+        self.eul_grid_size_z = grid_size_z
         self.eul_grid_size_y = grid_size_y
         self.eul_grid_size_x = grid_size_x
         self.eul_grid_size = self.eul_grid_size_x
@@ -44,7 +43,7 @@ class MockEulLagGridCommSolution2D:
 
     def generate_reference_solution(self):
         """Generate reference solution from sopht-backend"""
-        self.eul_lag_communicator = EulerianLagrangianGridCommunicator2D(
+        self.eul_lag_communicator = EulerianLagrangianGridCommunicator3D(
             dx=self.eul_grid_dx,
             eul_grid_coord_shift=self.eul_grid_coord_shift,
             num_lag_nodes=self.num_lag_nodes,
@@ -67,6 +66,10 @@ class MockEulLagGridCommSolution2D:
             self.eul_grid_size_y // 2 - 1,
             self.eul_grid_size_y // 2 - 1 + self.num_lag_nodes,
         ).astype(int)
+        self.nearest_eul_grid_index_to_lag_grid[VectorField.z_axis_idx()] = np.arange(
+            self.eul_grid_size_z // 2 - 1,
+            self.eul_grid_size_z // 2 - 1 + self.num_lag_nodes,
+        ).astype(int)
         self.lag_positions = (
             self.nearest_eul_grid_index_to_lag_grid * self.eul_grid_dx
             + self.eul_grid_coord_shift
@@ -76,6 +79,7 @@ class MockEulLagGridCommSolution2D:
         self.local_eul_grid_support_of_lag_grid = np.zeros(
             (
                 self.grid_dim,
+                2 * self.interp_kernel_width,
                 2 * self.interp_kernel_width,
                 2 * self.interp_kernel_width,
                 self.num_lag_nodes,
@@ -90,6 +94,7 @@ class MockEulLagGridCommSolution2D:
         # 2. Compute reference interpolation weights
         self.interp_weights = np.zeros(
             (
+                2 * self.interp_kernel_width,
                 2 * self.interp_kernel_width,
                 2 * self.interp_kernel_width,
                 self.num_lag_nodes,
@@ -108,7 +113,8 @@ class MockEulLagGridCommSolution2D:
             self.lag_grid_field = np.zeros((self.num_lag_nodes), dtype=self.real_t)
             self.mock_eul_grid_field_prefactor = self.real_t(2.0)
             self.mock_eul_grid_field = self.mock_eul_grid_field_prefactor * np.ones(
-                (self.eul_grid_size_y, self.eul_grid_size_x), dtype=self.real_t
+                (self.eul_grid_size_z, self.eul_grid_size_y, self.eul_grid_size_x),
+                dtype=self.real_t,
             )
         else:
             self.lag_grid_field = np.zeros(
@@ -116,8 +122,14 @@ class MockEulLagGridCommSolution2D:
             )
             self.mock_eul_grid_field_prefactor_x = self.real_t(2.0)
             self.mock_eul_grid_field_prefactor_y = self.real_t(2.0)
+            self.mock_eul_grid_field_prefactor_z = self.real_t(2.0)
             self.mock_eul_grid_field = np.ones(
-                (self.n_components, self.eul_grid_size_y, self.eul_grid_size_x),
+                (
+                    self.n_components,
+                    self.eul_grid_size_z,
+                    self.eul_grid_size_y,
+                    self.eul_grid_size_x,
+                ),
                 dtype=self.real_t,
             )
             self.mock_eul_grid_field[
@@ -126,6 +138,9 @@ class MockEulLagGridCommSolution2D:
             self.mock_eul_grid_field[
                 VectorField.y_axis_idx()
             ] *= self.mock_eul_grid_field_prefactor_y
+            self.mock_eul_grid_field[
+                VectorField.z_axis_idx()
+            ] *= self.mock_eul_grid_field_prefactor_z
         self.eul_lag_communicator.eulerian_to_lagrangian_grid_interpolation_kernel(
             self.lag_grid_field,
             self.mock_eul_grid_field,
@@ -140,18 +155,26 @@ class MockEulLagGridCommSolution2D:
                 (self.num_lag_nodes), dtype=self.real_t
             )
             self.eul_grid_field = np.zeros(
-                (self.eul_grid_size_y, self.eul_grid_size_x), dtype=self.real_t
+                (self.eul_grid_size_z, self.eul_grid_size_y, self.eul_grid_size_x),
+                dtype=self.real_t,
             )
         else:
-            prefactor_lag_field_y = 2
-            prefactor_lag_field_x = 3
+            prefactor_lag_field_z = 2
+            prefactor_lag_field_y = 3
+            prefactor_lag_field_x = 4
             self.mock_lag_grid_field = np.ones(
                 (self.n_components, self.num_lag_nodes), dtype=self.real_t
             )
             self.mock_lag_grid_field[VectorField.x_axis_idx()] *= prefactor_lag_field_x
             self.mock_lag_grid_field[VectorField.y_axis_idx()] *= prefactor_lag_field_y
+            self.mock_lag_grid_field[VectorField.z_axis_idx()] *= prefactor_lag_field_z
             self.eul_grid_field = np.zeros(
-                (self.n_components, self.eul_grid_size_y, self.eul_grid_size_x),
+                (
+                    self.n_components,
+                    self.eul_grid_size_z,
+                    self.eul_grid_size_y,
+                    self.eul_grid_size_x,
+                ),
                 dtype=self.real_t,
             )
 
@@ -163,26 +186,35 @@ class MockEulLagGridCommSolution2D:
         )
 
 
-@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
+@pytest.mark.mpi(group="MPI_immersed_boundary_ops_3d", min_size=4)
 @pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
-@pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
-def test_mpi_local_eulerian_grid_support_of_lagrangian_grid_2d(
+@pytest.mark.parametrize(
+    "rank_distribution",
+    [(0, 1, 1), (1, 0, 1), (1, 1, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)],
+)
+@pytest.mark.parametrize("aspect_ratio", [(1, 1, 1), (1, 1.5, 2)])
+def test_mpi_local_eulerian_grid_support_of_lagrangian_grid_3d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
     n_values = 16
-    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    grid_size_z, grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(
+        int
+    )
     real_t = get_real_t(precision)
     # 1. Generate reference solution (the solution is in the global domain, and each of
     # the ranks has the same reference copy)
-    mock_soln = MockEulLagGridCommSolution2D(
-        grid_size_y=grid_size_y, grid_size_x=grid_size_x, real_t=real_t
+    mock_soln = MockEulLagGridCommSolution3D(
+        grid_size_z=grid_size_z,
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
+        real_t=real_t,
     )
 
     # 2. Initialize MPI related stuff
     # Generate the MPI topology minimal object
-    mpi_construct = MPIConstruct2D(
+    mpi_construct = MPIConstruct3D(
+        grid_size_z=mock_soln.eul_grid_size_z,
         grid_size_y=mock_soln.eul_grid_size_y,
         grid_size_x=mock_soln.eul_grid_size_x,
         real_t=mock_soln.real_t,
@@ -191,7 +223,7 @@ def test_mpi_local_eulerian_grid_support_of_lagrangian_grid_2d(
 
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0
-    mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
+    mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator3D(
         eul_grid_dx=mock_soln.eul_grid_dx,
         eul_grid_coord_shift=mock_soln.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
@@ -206,7 +238,7 @@ def test_mpi_local_eulerian_grid_support_of_lagrangian_grid_2d(
 
     # Initialize Eulerian-Lagrangian grid numerics communicator based on mpi local eul
     # grid coord shift
-    mpi_eul_lag_communicator = EulerianLagrangianGridCommunicatorMPI2D(
+    mpi_eul_lag_communicator = EulerianLagrangianGridCommunicatorMPI3D(
         dx=mock_soln.eul_grid_dx,
         eul_grid_coord_shift=mock_soln.eul_grid_coord_shift,
         interp_kernel_width=mock_soln.interp_kernel_width,
@@ -226,6 +258,7 @@ def test_mpi_local_eulerian_grid_support_of_lagrangian_grid_2d(
     mpi_local_local_eul_grid_support_of_lag_grid = np.zeros(
         (
             mock_soln.grid_dim,
+            2 * mock_soln.interp_kernel_width,
             2 * mock_soln.interp_kernel_width,
             2 * mock_soln.interp_kernel_width,
             mpi_lagrangian_field_communicator.local_num_lag_nodes,
@@ -276,26 +309,35 @@ def test_mpi_local_eulerian_grid_support_of_lagrangian_grid_2d(
     ), f"rank {mpi_construct.rank} failed the test."
 
 
-@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
+@pytest.mark.mpi(group="MPI_immersed_boundary_ops_3d", min_size=4)
 @pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
-@pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
-def test_mpi_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
+@pytest.mark.parametrize(
+    "rank_distribution",
+    [(0, 1, 1), (1, 0, 1), (1, 1, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)],
+)
+@pytest.mark.parametrize("aspect_ratio", [(1, 1, 1), (1, 1.5, 2)])
+def test_mpi_eulerian_to_lagrangian_grid_interpolation_kernel_3d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
     n_values = 16
-    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    grid_size_z, grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(
+        int
+    )
     real_t = get_real_t(precision)
     # 1. Generate reference solution (the solution is in the global domain, and each of
     # the ranks has the same reference copy)
-    mock_soln = MockEulLagGridCommSolution2D(
-        grid_size_y=grid_size_y, grid_size_x=grid_size_x, real_t=real_t
+    mock_soln = MockEulLagGridCommSolution3D(
+        grid_size_z=grid_size_z,
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
+        real_t=real_t,
     )
 
     # 2. Initialize MPI related stuff
     # Generate the MPI topology minimal object
-    mpi_construct = MPIConstruct2D(
+    mpi_construct = MPIConstruct3D(
+        grid_size_z=mock_soln.eul_grid_size_z,
         grid_size_y=mock_soln.eul_grid_size_y,
         grid_size_x=mock_soln.eul_grid_size_x,
         real_t=mock_soln.real_t,
@@ -304,7 +346,7 @@ def test_mpi_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
 
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0
-    mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
+    mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator3D(
         eul_grid_dx=mock_soln.eul_grid_dx,
         eul_grid_coord_shift=mock_soln.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
@@ -319,7 +361,7 @@ def test_mpi_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
 
     # Initialize Eulerian-Lagrangian grid numerics communicator based on mpi local eul
     # grid coord shift
-    mpi_eul_lag_communicator = EulerianLagrangianGridCommunicatorMPI2D(
+    mpi_eul_lag_communicator = EulerianLagrangianGridCommunicatorMPI3D(
         dx=mock_soln.eul_grid_dx,
         eul_grid_coord_shift=mock_soln.eul_grid_coord_shift,
         interp_kernel_width=mock_soln.interp_kernel_width,
@@ -369,26 +411,36 @@ def test_mpi_eulerian_to_lagrangian_grid_interpolation_kernel_2d(
     assert allclose_lag_grid_field, f"rank {mpi_construct.rank} failed the test."
 
 
-@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
+@pytest.mark.mpi(group="MPI_immersed_boundary_ops_3d", min_size=4)
 @pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
-@pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
-def test_mpi_vector_field_eul_to_lag_grid_interpolation_kernel_2d(
+@pytest.mark.parametrize(
+    "rank_distribution",
+    [(0, 1, 1), (1, 0, 1), (1, 1, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)],
+)
+@pytest.mark.parametrize("aspect_ratio", [(1, 1, 1), (1, 1.5, 2)])
+def test_mpi_vector_field_eul_to_lag_grid_interpolation_kernel_3d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
     n_values = 16
-    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    grid_size_z, grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(
+        int
+    )
     real_t = get_real_t(precision)
     # 1. Generate reference solution (the solution is in the global domain, and each of
     # the ranks has the same reference copy)
-    mock_soln = MockEulLagGridCommSolution2D(
-        grid_size_y=grid_size_y, grid_size_x=grid_size_x, real_t=real_t, n_components=2
+    mock_soln = MockEulLagGridCommSolution3D(
+        grid_size_z=grid_size_z,
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
+        real_t=real_t,
+        n_components=3,
     )
 
     # 2. Initialize MPI related stuff
     # Generate the MPI topology minimal object
-    mpi_construct = MPIConstruct2D(
+    mpi_construct = MPIConstruct3D(
+        grid_size_z=mock_soln.eul_grid_size_z,
         grid_size_y=mock_soln.eul_grid_size_y,
         grid_size_x=mock_soln.eul_grid_size_x,
         real_t=mock_soln.real_t,
@@ -397,7 +449,7 @@ def test_mpi_vector_field_eul_to_lag_grid_interpolation_kernel_2d(
 
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0
-    mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
+    mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator3D(
         eul_grid_dx=mock_soln.eul_grid_dx,
         eul_grid_coord_shift=mock_soln.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
@@ -412,11 +464,11 @@ def test_mpi_vector_field_eul_to_lag_grid_interpolation_kernel_2d(
 
     # Initialize Eulerian-Lagrangian grid numerics communicator based on mpi local eul
     # grid coord shift
-    mpi_eul_lag_communicator = EulerianLagrangianGridCommunicatorMPI2D(
+    mpi_eul_lag_communicator = EulerianLagrangianGridCommunicatorMPI3D(
         dx=mock_soln.eul_grid_dx,
         eul_grid_coord_shift=mock_soln.eul_grid_coord_shift,
         interp_kernel_width=mock_soln.interp_kernel_width,
-        n_components=2,
+        n_components=mock_soln.n_components,
         real_t=mock_soln.real_t,
         mpi_construct=mpi_construct,
         ghost_size=ghost_size,
@@ -428,9 +480,10 @@ def test_mpi_vector_field_eul_to_lag_grid_interpolation_kernel_2d(
     mask = np.where(rank_address == mpi_lagrangian_field_communicator.rank)[0]
     mpi_local_eul_grid_field = np.ones(
         (
-            mock_soln.n_components,
+            mpi_construct.grid_dim,
             mpi_construct.local_grid_size[0] + 2 * ghost_size,
             mpi_construct.local_grid_size[1] + 2 * ghost_size,
+            mpi_construct.local_grid_size[2] + 2 * ghost_size,
         ),
         dtype=mock_soln.real_t,
     )
@@ -440,6 +493,9 @@ def test_mpi_vector_field_eul_to_lag_grid_interpolation_kernel_2d(
     mpi_local_eul_grid_field[
         VectorField.y_axis_idx()
     ] *= mock_soln.mock_eul_grid_field_prefactor_y
+    mpi_local_eul_grid_field[
+        VectorField.z_axis_idx()
+    ] *= mock_soln.mock_eul_grid_field_prefactor_z
     mpi_local_interp_weights = mock_soln.interp_weights[..., mask]
     # indices needs to be offset with mpi local reference index
     mpi_substart_idx = mpi_eul_lag_communicator.mpi_substart_idx
@@ -474,26 +530,35 @@ def test_mpi_vector_field_eul_to_lag_grid_interpolation_kernel_2d(
     assert allclose_lag_grid_field, f"rank {mpi_construct.rank} failed the test."
 
 
-@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
+@pytest.mark.mpi(group="MPI_immersed_boundary_ops_3d", min_size=4)
 @pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
-@pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
-def test_mpi_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
+@pytest.mark.parametrize(
+    "rank_distribution",
+    [(0, 1, 1), (1, 0, 1), (1, 1, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)],
+)
+@pytest.mark.parametrize("aspect_ratio", [(1, 1, 1), (1, 1.5, 2)])
+def test_mpi_lagrangian_to_eulerian_grid_interpolation_kernel_3d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
     n_values = 16
-    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    grid_size_z, grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(
+        int
+    )
     real_t = get_real_t(precision)
     # 1. Generate reference solution (the solution is in the global domain, and each of
     # the ranks has the same reference copy)
-    mock_soln = MockEulLagGridCommSolution2D(
-        grid_size_y=grid_size_y, grid_size_x=grid_size_x, real_t=real_t
+    mock_soln = MockEulLagGridCommSolution3D(
+        grid_size_z=grid_size_z,
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
+        real_t=real_t,
     )
 
     # 2. Initialize MPI related stuff
     # Generate the MPI topology minimal object
-    mpi_construct = MPIConstruct2D(
+    mpi_construct = MPIConstruct3D(
+        grid_size_z=mock_soln.eul_grid_size_z,
         grid_size_y=mock_soln.eul_grid_size_y,
         grid_size_x=mock_soln.eul_grid_size_x,
         real_t=mock_soln.real_t,
@@ -502,7 +567,7 @@ def test_mpi_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
 
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0
-    mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
+    mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator3D(
         eul_grid_dx=mock_soln.eul_grid_dx,
         eul_grid_coord_shift=mock_soln.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
@@ -517,7 +582,7 @@ def test_mpi_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
 
     # Initialize Eulerian-Lagrangian grid numerics communicator based on mpi local eul
     # grid coord shift
-    mpi_eul_lag_communicator = EulerianLagrangianGridCommunicatorMPI2D(
+    mpi_eul_lag_communicator = EulerianLagrangianGridCommunicatorMPI3D(
         dx=mock_soln.eul_grid_dx,
         eul_grid_coord_shift=mock_soln.eul_grid_coord_shift,
         interp_kernel_width=mock_soln.interp_kernel_width,
@@ -551,8 +616,13 @@ def test_mpi_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
     )
 
     # Get corresponding local chunk of ref solution
-    local_grid_size_y, local_grid_size_x = mpi_construct.local_grid_size
+    (
+        local_grid_size_z,
+        local_grid_size_y,
+        local_grid_size_x,
+    ) = mpi_construct.local_grid_size
     mpi_local_sol_idx = (
+        slice(mpi_substart_idx[2], mpi_substart_idx[2] + local_grid_size_z),
         slice(mpi_substart_idx[1], mpi_substart_idx[1] + local_grid_size_y),
         slice(mpi_substart_idx[0], mpi_substart_idx[0] + local_grid_size_x),
     )
@@ -560,7 +630,9 @@ def test_mpi_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
     # 4. Test and compare
     local_allclose_eul_grid_field = np.allclose(
         mock_soln.eul_grid_field[mpi_local_sol_idx],
-        mpi_local_eul_grid_field[ghost_size:-ghost_size, ghost_size:-ghost_size],
+        mpi_local_eul_grid_field[
+            ghost_size:-ghost_size, ghost_size:-ghost_size, ghost_size:-ghost_size
+        ],
         atol=get_test_tol(precision),
     )
     # reduce to make sure each chunk of data in each rank is passing
@@ -572,26 +644,36 @@ def test_mpi_lagrangian_to_eulerian_grid_interpolation_kernel_2d(
     assert allclose_eul_grid_field, f"rank {mpi_construct.rank} failed the test."
 
 
-@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
+@pytest.mark.mpi(group="MPI_immersed_boundary_ops_3d", min_size=4)
 @pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
-@pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
-def test_mpi_vector_field_lag_to_eul_grid_interpolation_kernel_2d(
+@pytest.mark.parametrize(
+    "rank_distribution",
+    [(0, 1, 1), (1, 0, 1), (1, 1, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)],
+)
+@pytest.mark.parametrize("aspect_ratio", [(1, 1, 1), (1, 1.5, 2)])
+def test_mpi_vector_field_lag_to_eul_grid_interpolation_kernel_3d(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
     n_values = 16
-    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    grid_size_z, grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(
+        int
+    )
     real_t = get_real_t(precision)
     # 1. Generate reference solution (the solution is in the global domain, and each of
     # the ranks has the same reference copy)
-    mock_soln = MockEulLagGridCommSolution2D(
-        grid_size_y=grid_size_y, grid_size_x=grid_size_x, real_t=real_t, n_components=2
+    mock_soln = MockEulLagGridCommSolution3D(
+        grid_size_z=grid_size_z,
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
+        real_t=real_t,
+        n_components=3,
     )
 
     # 2. Initialize MPI related stuff
     # Generate the MPI topology minimal object
-    mpi_construct = MPIConstruct2D(
+    mpi_construct = MPIConstruct3D(
+        grid_size_z=mock_soln.eul_grid_size_z,
         grid_size_y=mock_soln.eul_grid_size_y,
         grid_size_x=mock_soln.eul_grid_size_x,
         real_t=mock_soln.real_t,
@@ -600,7 +682,7 @@ def test_mpi_vector_field_lag_to_eul_grid_interpolation_kernel_2d(
 
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0
-    mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
+    mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator3D(
         eul_grid_dx=mock_soln.eul_grid_dx,
         eul_grid_coord_shift=mock_soln.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
@@ -615,7 +697,7 @@ def test_mpi_vector_field_lag_to_eul_grid_interpolation_kernel_2d(
 
     # Initialize Eulerian-Lagrangian grid numerics communicator based on mpi local eul
     # grid coord shift
-    mpi_eul_lag_communicator = EulerianLagrangianGridCommunicatorMPI2D(
+    mpi_eul_lag_communicator = EulerianLagrangianGridCommunicatorMPI3D(
         dx=mock_soln.eul_grid_dx,
         eul_grid_coord_shift=mock_soln.eul_grid_coord_shift,
         interp_kernel_width=mock_soln.interp_kernel_width,
@@ -631,9 +713,10 @@ def test_mpi_vector_field_lag_to_eul_grid_interpolation_kernel_2d(
     mask = np.where(rank_address == mpi_lagrangian_field_communicator.rank)[0]
     mpi_local_eul_grid_field = np.zeros(
         (
-            2,
+            mpi_construct.grid_dim,
             mpi_construct.local_grid_size[0] + 2 * ghost_size,
             mpi_construct.local_grid_size[1] + 2 * ghost_size,
+            mpi_construct.local_grid_size[2] + 2 * ghost_size,
         ),
         dtype=mock_soln.real_t,
     )
@@ -655,9 +738,17 @@ def test_mpi_vector_field_lag_to_eul_grid_interpolation_kernel_2d(
     )
 
     # Get corresponding local chunk of ref solution
-    local_grid_size_y, local_grid_size_x = mpi_construct.local_grid_size
+    (
+        local_grid_size_z,
+        local_grid_size_y,
+        local_grid_size_x,
+    ) = mpi_construct.local_grid_size
     mpi_local_sol_idx = (
         slice(None, None),
+        slice(
+            mpi_substart_idx[2],
+            mpi_substart_idx[2] + local_grid_size_z,
+        ),
         slice(
             mpi_substart_idx[1],
             mpi_substart_idx[1] + local_grid_size_y,
@@ -671,7 +762,9 @@ def test_mpi_vector_field_lag_to_eul_grid_interpolation_kernel_2d(
     # 4. Test and compare
     local_allclose_eul_grid_field = np.allclose(
         mock_soln.eul_grid_field[mpi_local_sol_idx],
-        mpi_local_eul_grid_field[:, ghost_size:-ghost_size, ghost_size:-ghost_size],
+        mpi_local_eul_grid_field[
+            :, ghost_size:-ghost_size, ghost_size:-ghost_size, ghost_size:-ghost_size
+        ],
         atol=get_test_tol(precision),
     )
     # reduce to make sure each chunk of data in each rank is passing
@@ -683,21 +776,27 @@ def test_mpi_vector_field_lag_to_eul_grid_interpolation_kernel_2d(
     assert allclose_eul_grid_field, f"rank {mpi_construct.rank} failed the test."
 
 
-@pytest.mark.mpi(group="MPI_immersed_boundary_ops_2d", min_size=4)
+@pytest.mark.mpi(group="MPI_immersed_boundary_ops_3d", min_size=4)
 @pytest.mark.parametrize("ghost_size", [2])
 @pytest.mark.parametrize("precision", ["single", "double"])
-@pytest.mark.parametrize("rank_distribution", [(1, 0), (0, 1)])
-@pytest.mark.parametrize("aspect_ratio", [(1, 1), (1, 1.5)])
+@pytest.mark.parametrize(
+    "rank_distribution",
+    [(0, 1, 1), (1, 0, 1), (1, 1, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)],
+)
+@pytest.mark.parametrize("aspect_ratio", [(1, 1, 1), (1, 1.5, 2)])
 @pytest.mark.parametrize("interp_kernel_type", ["cosine", "peskin"])
-def test_mpi_interpolation_weights_kernel_on_nodes_2d(
+def test_mpi_interpolation_weights_kernel_on_nodes_3d(
     ghost_size, precision, rank_distribution, aspect_ratio, interp_kernel_type
 ):
     n_values = 16
-    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    grid_size_z, grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(
+        int
+    )
     real_t = get_real_t(precision)
     # 1. Generate reference solution (the solution is in the global domain, and each of
     # the ranks has the same reference copy)
-    mock_soln = MockEulLagGridCommSolution2D(
+    mock_soln = MockEulLagGridCommSolution3D(
+        grid_size_z=grid_size_z,
         grid_size_y=grid_size_y,
         grid_size_x=grid_size_x,
         real_t=real_t,
@@ -706,7 +805,8 @@ def test_mpi_interpolation_weights_kernel_on_nodes_2d(
 
     # 2. Initialize MPI related stuff
     # Generate the MPI topology minimal object
-    mpi_construct = MPIConstruct2D(
+    mpi_construct = MPIConstruct3D(
+        grid_size_z=mock_soln.eul_grid_size_z,
         grid_size_y=mock_soln.eul_grid_size_y,
         grid_size_x=mock_soln.eul_grid_size_x,
         real_t=mock_soln.real_t,
@@ -715,7 +815,7 @@ def test_mpi_interpolation_weights_kernel_on_nodes_2d(
 
     # Lagrangian grid inter-rank MPI communicator
     master_rank = 0
-    mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
+    mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator3D(
         eul_grid_dx=mock_soln.eul_grid_dx,
         eul_grid_coord_shift=mock_soln.eul_grid_coord_shift,
         mpi_construct=mpi_construct,
@@ -730,7 +830,7 @@ def test_mpi_interpolation_weights_kernel_on_nodes_2d(
 
     # Initialize Eulerian-Lagrangian grid numerics communicator based on mpi local eul
     # grid coord shift
-    mpi_eul_lag_communicator = EulerianLagrangianGridCommunicatorMPI2D(
+    mpi_eul_lag_communicator = EulerianLagrangianGridCommunicatorMPI3D(
         dx=mock_soln.eul_grid_dx,
         eul_grid_coord_shift=mock_soln.eul_grid_coord_shift,
         interp_kernel_width=mock_soln.interp_kernel_width,
@@ -749,6 +849,7 @@ def test_mpi_interpolation_weights_kernel_on_nodes_2d(
     )
     mpi_local_interp_weights = np.zeros(
         (
+            2 * mock_soln.interp_kernel_width,
             2 * mock_soln.interp_kernel_width,
             2 * mock_soln.interp_kernel_width,
             mpi_lagrangian_field_communicator.local_num_lag_nodes,

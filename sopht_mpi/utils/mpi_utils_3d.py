@@ -1304,3 +1304,156 @@ class MPIFieldCommunicator3D:
             local_field=local_vector_field[VectorField.z_axis_idx()],
             global_field=global_vector_field[VectorField.z_axis_idx()],
         )
+
+
+class MPILagrangianFieldCommunicator3D:
+    """
+    Class exclusive for 3D lagrangian field communication across ranks, and takes care
+    of scattering global lagrangian fields and aggregating local lagrangian fields.
+
+    Notes:
+    - VirtualBoundaryForcing, and subsequently, Eulerian-Lagrangian communicator will
+      initialize and use this internally.
+    - Then each initialized virtual boundary instance will have its own communicator
+    - Virtual boundary forcing can then call synchronization utils from this class
+      and proceed with calculating quantities related to lag nodes in respective ranks
+    """
+
+    def __init__(
+        self,
+        eul_grid_dx,
+        eul_grid_coord_shift,
+        mpi_construct,
+        master_rank=0,
+        real_t=np.float64,
+    ):
+        self.grid_dim = 3
+        self.mpi_construct = mpi_construct
+        self.master_rank = master_rank
+        self.rank = self.mpi_construct.rank
+        self.eul_subblock_dx = eul_grid_dx * self.mpi_construct.local_grid_size
+        self.eul_grid_coord_shift = eul_grid_coord_shift
+
+        self.real_t = real_t
+
+        # Construct block-to-rank map for convenient access later to identify which
+        # block (and hence rank) a lag node reside in
+        # Note: this equivalent to comm.Get_cart_rank, which cannot accept multiple
+        # coords and so cannot be called in a vectorized fashion.
+        # This map is a workaround for that.
+        self.rank_map = np.zeros(self.mpi_construct.grid_topology, dtype=np.int32)
+        for i in range(self.mpi_construct.grid_topology[0]):
+            for j in range(self.mpi_construct.grid_topology[1]):
+                for k in range(self.mpi_construct.grid_topology[2]):
+                    self.rank_map[i, j, k] = self.mpi_construct.grid.Get_cart_rank(
+                        [i, j, k]
+                    )
+
+    def _compute_lag_nodes_rank_address(self, global_lag_positions):
+        """
+        Locate corresponding blocks (and ranks) the lagrangian nodes reside in such that
+        they stay in the half-open interval [subblock_lower_bound, subblock_upper_bound)
+        """
+        # Note: Lagrangian positions follow xy order in grid_dim here. while quantities
+        # derived from mpi_construct follow yx ordering (follows from MPI cart comm)
+        eul_subblock_coords_z = (
+            (global_lag_positions[2, ...] - self.eul_grid_coord_shift)
+            / self.eul_subblock_dx[0]
+        ).astype(np.int32)
+        eul_subblock_coords_y = (
+            (global_lag_positions[1, ...] - self.eul_grid_coord_shift)
+            / self.eul_subblock_dx[1]
+        ).astype(np.int32)
+        eul_subblock_coords_x = (
+            (global_lag_positions[0, ...] - self.eul_grid_coord_shift)
+            / self.eul_subblock_dx[2]
+        ).astype(np.int32)
+        if (
+            (np.any(eul_subblock_coords_x >= self.mpi_construct.grid_topology[2]))
+            or (np.any(eul_subblock_coords_y >= self.mpi_construct.grid_topology[1]))
+            or (np.any(eul_subblock_coords_z >= self.mpi_construct.grid_topology[0]))
+        ):
+            # python error handling exception would not work here because it halts the
+            # process before abort is called
+            logger.error("Lagrangian node is found outside of Eulerian domain!")
+            self.mpi_construct.grid.Abort()
+
+        lag_nodes_rank_address = self.rank_map[
+            eul_subblock_coords_z, eul_subblock_coords_y, eul_subblock_coords_x
+        ]
+        return lag_nodes_rank_address
+
+    def map_lagrangian_nodes_based_on_position(self, global_lag_positions):
+        if self.rank == self.master_rank:
+            if global_lag_positions.shape[0] != self.grid_dim:
+                # python error handling exception would not work here because it halts the
+                # process before abort is called
+                logger.error(
+                    f"global_lag_positions needs to be shape ({self.grid_dim}, ...)"
+                )
+                self.mpi_construct.grid.Abort()
+            rank_address = self._compute_lag_nodes_rank_address(global_lag_positions)
+        else:
+            rank_address = None
+        self.rank_address = self.mpi_construct.grid.bcast(
+            rank_address, root=self.master_rank
+        )
+
+        self.local_nodes_idx = np.where(self.rank_address == self.rank)
+        self.local_num_lag_nodes = np.count_nonzero(
+            self.rank_address == self.mpi_construct.rank
+        )
+        self.slave_ranks_containing_lag_nodes = set(self.rank_address) - set(
+            [self.master_rank]
+        )
+
+    def scatter_global_field(self, local_lag_field, global_lag_field):
+        """
+        Scatter lagrangian nodes to ranks that are involved.
+
+        Note: This assumes that lag nodes are already correctly mapped. If the nodes are
+        moving, a re-mapping is needed.
+        """
+        # Send from master rank to other ranks containing the lagrangian grid
+        if self.rank == self.master_rank:
+            # first set the local field for the master rank
+            idx = np.where(self.rank_address == self.rank)[0]
+            local_lag_field[...] = global_lag_field[:, idx]
+            # then send the other chunks to other ranks
+            for rank_i in self.slave_ranks_containing_lag_nodes:
+                idx = np.where(self.rank_address == rank_i)[0]
+                self.mpi_construct.grid.Send(
+                    global_lag_field[:, idx].ravel(), dest=rank_i
+                )
+
+        # Other ranks containing the lagrangian grid receives array from master rank
+        if self.rank in self.slave_ranks_containing_lag_nodes:
+            self.mpi_construct.grid.Recv(local_lag_field, source=self.master_rank)
+
+    def gather_local_field(self, global_lag_field, local_lag_field):
+        """
+        Gather lagrangian nodes to master rank
+
+        Note: This assumes that lag nodes are already correctly mapped. If the nodes are
+        moving, a re-mapping is needed.
+        """
+        # Slave ranks send their corresponding lagrangian grid to master rank
+        if self.rank in self.slave_ranks_containing_lag_nodes:
+            self.mpi_construct.grid.Send(local_lag_field, dest=self.master_rank)
+
+        # Master rank receives from other ranks containing the lagrangian grid
+        if self.rank == self.master_rank:
+            # first set the chunk of global field for the master rank
+            idx = np.where(self.rank_address == self.rank)[0]
+            global_lag_field[:, idx] = local_lag_field
+            # then receive other chunks of the global field from other involved ranks
+            for rank_i in self.slave_ranks_containing_lag_nodes:
+                idx = np.where(self.rank_address == rank_i)[0]
+                expected_num_lag_nodes = len(idx)
+                recv_buffer = np.empty(
+                    self.grid_dim * expected_num_lag_nodes, dtype=self.real_t
+                )
+                self.mpi_construct.grid.Recv(recv_buffer, source=rank_i)
+                global_lag_field[:, idx] = recv_buffer.reshape(
+                    self.grid_dim, expected_num_lag_nodes
+                )
