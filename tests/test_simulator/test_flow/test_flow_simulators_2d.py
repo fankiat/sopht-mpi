@@ -200,3 +200,58 @@ def test_mpi_flow_sim_2d_compute_stable_timestep(precision):
     diffusion_limit_dt = 0.9 * dx**2 / 4 / nu
     ref_dt = dt_prefac * min(advection_limit_dt, diffusion_limit_dt)
     assert ref_dt == sim_dt
+
+
+@pytest.mark.mpi(group="MPI_flow_simulator_2d", min_size=4)
+@pytest.mark.parametrize("precision", ["single", "double"])
+def test_mpi_flow_sim_2d_get_max_vorticity(precision):
+    # Since we are testing the timestepper here, we can just preset some of the MPI
+    # configuration, given that the kernels are extensively tested for in an MPI sense
+    ghost_size = 2
+    rank_distribution = None  # automatic decomposition
+    aspect_ratio = (1, 1.5)
+    n_values = 8
+    grid_size_y, grid_size_x = (n_values * np.array(aspect_ratio)).astype(int)
+    real_t = get_real_t(precision)
+
+    # Generate the MPI topology minimal object
+    mpi_construct = MPIConstruct2D(
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
+        real_t=real_t,
+        rank_distribution=rank_distribution,
+    )
+
+    # Initialize flow variables
+    x_range = 1.0
+    nu = 1e-2
+    real_t = get_real_t(precision)
+    grid_size = (grid_size_y, grid_size_x)
+    flow_sim = sps.UnboundedFlowSimulator2D(
+        grid_size=grid_size,
+        x_range=x_range,
+        kinematic_viscosity=nu,
+        real_t=real_t,
+        flow_type="navier_stokes_with_forcing",
+        rank_distribution=rank_distribution,
+        ghost_size=ghost_size,
+    )
+
+    # Initialize reference fields
+    vorticity_field = np.random.rand(
+        mpi_construct.local_grid_size[0] + 2 * ghost_size,
+        mpi_construct.local_grid_size[1] + 2 * ghost_size,
+    ).astype(real_t)
+    ref_max_vort = 10.0  # a value more than random field above
+
+    # set an artificial spike in one of the ranks
+    if mpi_construct.rank == 0:
+        vorticity_field[
+            (mpi_construct.local_grid_size[0] + 2 * ghost_size) // 2,
+            (mpi_construct.local_grid_size[1] + 2 * ghost_size) // 2,
+        ] = ref_max_vort
+
+    flow_sim.vorticity_field[...] = vorticity_field.copy()
+    max_vort = flow_sim.get_max_vorticity()
+
+    assert max_vort == ref_max_vort
