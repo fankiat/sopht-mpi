@@ -1,4 +1,3 @@
-__all__ = ["RigidBodyFlowInteractionMPI"]
 from elastica import RigidBodyBase
 import numpy as np
 from sopht_mpi.simulator.immersed_body import (
