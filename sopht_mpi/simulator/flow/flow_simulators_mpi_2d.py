@@ -99,8 +99,12 @@ class UnboundedFlowSimulator2D:
             real_t=self.real_t,
             rank_distribution=self.rank_distribution,
         )
+        # Unbounded (i.e. non periodic) 2D flow solver with mpi4py-fft (only slabs
+        # decomp) does not need full exchange in ghost communicator.
         self.mpi_ghost_exchange_communicator = MPIGhostCommunicator2D(
-            ghost_size=self.ghost_size, mpi_construct=self.mpi_construct
+            ghost_size=self.ghost_size,
+            mpi_construct=self.mpi_construct,
+            full_exchange=False,
         )
 
     def init_domain(self):
