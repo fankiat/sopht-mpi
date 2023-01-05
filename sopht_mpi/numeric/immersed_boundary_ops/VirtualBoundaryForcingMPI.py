@@ -4,18 +4,17 @@ import numpy as np
 from sopht.numeric.eulerian_grid_ops.stencil_ops_2d.elementwise_ops_2d import (
     gen_set_fixed_val_pyst_kernel_2d,
 )
-
-# from sopht.numeric.eulerian_grid_ops.stencil_ops_3d.elementwise_ops_3d import (
-#     gen_set_fixed_val_pyst_kernel_3d,
-# )
+from sopht.numeric.eulerian_grid_ops.stencil_ops_3d.elementwise_ops_3d import (
+    gen_set_fixed_val_pyst_kernel_3d,
+)
 from sopht_mpi.numeric.immersed_boundary_ops.EulerianLagrangianGridCommunicatorMPI2D import (
     EulerianLagrangianGridCommunicatorMPI2D,
 )
-
-# from sopht.numeric.immersed_boundary_ops.EulerianLagrangianGridCommunicator3D import (
-#     EulerianLagrangianGridCommunicator3D,
-# )
+from sopht_mpi.numeric.immersed_boundary_ops.EulerianLagrangianGridCommunicatorMPI3D import (
+    EulerianLagrangianGridCommunicatorMPI3D,
+)
 from sopht_mpi.utils.mpi_utils_2d import MPILagrangianFieldCommunicator2D
+from sopht_mpi.utils.mpi_utils_3d import MPILagrangianFieldCommunicator3D
 from mpi4py import MPI
 
 
@@ -95,13 +94,42 @@ class VirtualBoundaryForcingMPI:
 
         # Initialize MPI related stuff
         self.mpi_construct = mpi_construct
-        self.mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
-            eul_grid_dx=dx,
-            eul_grid_coord_shift=eul_grid_coord_shift,
-            mpi_construct=self.mpi_construct,
-            master_rank=master_rank,
-            real_t=real_t,
-        )
+        if grid_dim == 2:
+            self.mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
+                eul_grid_dx=dx,
+                eul_grid_coord_shift=eul_grid_coord_shift,
+                mpi_construct=self.mpi_construct,
+                master_rank=master_rank,
+                real_t=real_t,
+            )
+            self.eul_lag_grid_communicator = EulerianLagrangianGridCommunicatorMPI2D(
+                dx=dx,
+                eul_grid_coord_shift=eul_grid_coord_shift,
+                interp_kernel_width=self.interp_kernel_width,
+                real_t=real_t,
+                n_components=grid_dim,
+                mpi_construct=mpi_construct,
+                ghost_size=ghost_size,
+            )
+        elif grid_dim == 3:
+            self.mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator3D(
+                eul_grid_dx=dx,
+                eul_grid_coord_shift=eul_grid_coord_shift,
+                mpi_construct=self.mpi_construct,
+                master_rank=master_rank,
+                real_t=real_t,
+            )
+            self.eul_lag_grid_communicator = EulerianLagrangianGridCommunicatorMPI3D(
+                dx=dx,
+                eul_grid_coord_shift=eul_grid_coord_shift,
+                interp_kernel_width=self.interp_kernel_width,
+                real_t=real_t,
+                n_components=grid_dim,
+                mpi_construct=mpi_construct,
+                ghost_size=ghost_size,
+            )
+
+        # initialize node mappings based on global position
         self.mpi_lagrangian_field_communicator.map_lagrangian_nodes_based_on_position(
             global_lag_positions=global_lag_grid_position_field
         )
@@ -116,27 +144,6 @@ class VirtualBoundaryForcingMPI:
         self._init_local_buffers(self.local_num_lag_nodes)
         self._init_global_buffers()
 
-        if grid_dim == 2:
-            self.eul_lag_grid_communicator = EulerianLagrangianGridCommunicatorMPI2D(
-                dx=dx,
-                eul_grid_coord_shift=eul_grid_coord_shift,
-                interp_kernel_width=self.interp_kernel_width,
-                real_t=real_t,
-                n_components=grid_dim,
-                mpi_construct=mpi_construct,
-                ghost_size=ghost_size,
-            )
-        # elif grid_dim == 3:
-        #     self.eul_lag_grid_communicator = EulerianLagrangianGridCommunicatorMPI3D(
-        #         dx=dx,
-        #         eul_grid_coord_shift=eul_grid_coord_shift,
-        #         interp_kernel_width=self.interp_kernel_width,
-        #         real_t=real_t,
-        #         n_components=grid_dim,
-        #         mpi_construct=mpi_construct,
-        #         ghost_size=ghost_size,
-        #     )
-
         if enable_eul_grid_forcing_reset:
             if grid_dim == 2:
                 self.set_eul_grid_vector_field = gen_set_fixed_val_pyst_kernel_2d(
@@ -144,11 +151,11 @@ class VirtualBoundaryForcingMPI:
                     field_type="vector",
                 )
 
-            # elif grid_dim == 3:
-            #     self.set_eul_grid_vector_field = gen_set_fixed_val_pyst_kernel_3d(
-            #         real_t=real_t,
-            #         field_type="vector",
-            #     )
+            elif grid_dim == 3:
+                self.set_eul_grid_vector_field = gen_set_fixed_val_pyst_kernel_3d(
+                    real_t=real_t,
+                    field_type="vector",
+                )
             self.compute_interaction_forcing = (
                 self.compute_interaction_force_on_eul_and_lag_grid_with_eul_grid_forcing_reset
             )
