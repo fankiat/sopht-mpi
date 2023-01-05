@@ -1,4 +1,3 @@
-__all__ = ["ImmersedBodyFlowInteractionMPI"]
 import numpy as np
 from sopht_mpi.numeric.immersed_boundary_ops import VirtualBoundaryForcingMPI
 from sopht_mpi.simulator.immersed_body.immersed_body_forcing_grid import (
