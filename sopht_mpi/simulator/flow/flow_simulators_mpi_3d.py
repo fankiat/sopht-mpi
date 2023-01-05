@@ -455,7 +455,10 @@ class UnboundedFlowSimulator3D:
         )
         # Perform the expression below in an MPI context.
         # vorticity_divg_l2_norm = np.linalg.norm(divergence_field) * self.dx**1.5
-        local_vorticity_divg_l2_norm_sq = np.linalg.norm(divergence_field) ** 2
+        gs = self.ghost_size
+        local_vorticity_divg_l2_norm_sq = (
+            np.linalg.norm(divergence_field[gs:-gs, gs:-gs, gs:-gs]) ** 2
+        )
         vorticity_divg_l2_norm_sq = self.mpi_construct.grid.allreduce(
             local_vorticity_divg_l2_norm_sq, op=MPI.SUM
         )
