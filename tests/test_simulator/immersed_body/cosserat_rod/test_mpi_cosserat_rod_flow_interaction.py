@@ -2,10 +2,34 @@ import pytest
 import numpy as np
 import sopht_mpi.simulator as sps
 from sopht.utils.precision import get_real_t
-from tests.test_simulator.immersed_body.cosserat_rod.test_cosserat_rod_forcing_grids import (
-    mock_straight_rod,
-)
 from sopht_mpi.utils import MPIConstruct2D, MPIGhostCommunicator2D
+import elastica as ea
+from sopht.simulator.immersed_body import CosseratRodElementCentricForcingGrid
+
+
+def mock_straight_rod(n_elems, **kwargs):
+    """Returns a straight rod aligned x = y = z plane for testing."""
+    start = np.array([0.0, 0.0, 0.0])
+    direction = np.array([1.0, 1.0, 1.0])
+    normal = np.array([0.0, -1.0, 1.0])
+    rod_length = 1.0
+    base_radius = kwargs.get("base_radius", 0.05)
+    staight_rod = ea.CosseratRod.straight_rod(
+        n_elems,
+        start,
+        direction,
+        normal,
+        rod_length,
+        base_radius,
+        density=1e3,
+        nu=0.0,  # internal damping constant, deprecated in v0.3.0
+        youngs_modulus=1e6,
+        shear_modulus=1e6 / (0.5 + 1.0),
+    )
+    n_nodes = n_elems + 1
+    staight_rod.velocity_collection[...] = np.linspace(1, n_nodes, n_nodes)
+    staight_rod.omega_collection[...] = np.linspace(1, n_elems, n_elems)
+    return staight_rod
 
 
 @pytest.mark.mpi(group="MPI_cosserat_rod_flow_interaction", min_size=4)
@@ -28,7 +52,7 @@ def test_mpi_cosserat_rod_flow_interaction(precision, master_rank, n_elems):
 
     # Initialize interactor
     cosserat_rod = mock_straight_rod(n_elems)
-    forcing_grid_cls = sps.CosseratRodElementCentricForcingGrid
+    forcing_grid_cls = CosseratRodElementCentricForcingGrid
     rod_flow_interactor = sps.CosseratRodFlowInteraction(
         mpi_construct=mpi_construct,
         mpi_ghost_exchange_communicator=mpi_ghost_exchange_communicator,
@@ -39,7 +63,6 @@ def test_mpi_cosserat_rod_flow_interaction(precision, master_rank, n_elems):
         virtual_boundary_damping_coeff=1.0,
         dx=1.0,
         grid_dim=2,
-        real_t=real_t,
         master_rank=master_rank,
         forcing_grid_cls=forcing_grid_cls,
     )

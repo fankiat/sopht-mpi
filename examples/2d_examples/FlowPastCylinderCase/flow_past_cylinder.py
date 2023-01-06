@@ -6,6 +6,7 @@ import sopht.utils as spu
 import sopht_mpi.simulator as sps
 from sopht_mpi.utils.mpi_utils_2d import MPIPlotter2D
 from sopht_mpi.utils import logger
+from sopht.simulator.immersed_body import CircularCylinderForcingGrid
 
 
 def flow_past_cylinder_boundary_forcing_case(
@@ -69,10 +70,9 @@ def flow_past_cylinder_boundary_forcing_case(
         virtual_boundary_damping_coeff=coupling_damping,
         dx=flow_sim.dx,
         grid_dim=flow_sim.grid_dim,
-        real_t=real_t,
         moving_body=False,  # initialize as non-moving boundary
         master_rank=master_rank,
-        forcing_grid_cls=sps.CircularCylinderForcingGrid,
+        forcing_grid_cls=CircularCylinderForcingGrid,
         num_forcing_points=num_lag_nodes,
     )
     # ==================FLOW-BODY COMMUNICATOR SETUP END======

@@ -4,10 +4,11 @@ import pytest
 from sopht.utils.precision import get_real_t
 import sopht_mpi.simulator as sps
 from sopht_mpi.utils import MPIConstruct2D, MPIGhostCommunicator2D
-from tests.test_simulator.immersed_body.rigid_body.test_rigid_body_forcing_grids import (
+from tests.test_simulator.immersed_body.rigid_body.test_mpi_rigid_body_flow_interaction import (
     mock_2d_cylinder,
 )
 from mpi4py import MPI
+from sopht.simulator.immersed_body import CircularCylinderForcingGrid
 
 
 def mock_2d_cylinder_flow_interactor(
@@ -41,9 +42,8 @@ def mock_2d_cylinder_flow_interactor(
         virtual_boundary_damping_coeff=1.0,
         dx=dx,
         grid_dim=grid_dim,
-        real_t=real_t,
         master_rank=master_rank,
-        forcing_grid_cls=sps.CircularCylinderForcingGrid,
+        forcing_grid_cls=CircularCylinderForcingGrid,
         num_forcing_points=num_forcing_points,
     )
     return (
@@ -141,7 +141,7 @@ def test_mpi_immersed_body_interactor_compute_flow_forces_and_torques(
         _,
         local_eul_grid_velocity_field,
         _,
-    ) = mock_2d_cylinder_flow_interactor(master_rank=master_rank)
+    ) = mock_2d_cylinder_flow_interactor(master_rank=master_rank, precision=precision)
     cylinder_flow_interactor.compute_flow_forces_and_torques()
 
     ref_body_flow_forces = np.zeros_like(cylinder_flow_interactor.body_flow_forces)

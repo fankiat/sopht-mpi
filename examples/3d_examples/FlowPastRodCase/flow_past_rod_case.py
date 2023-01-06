@@ -7,6 +7,7 @@ from sopht_mpi.utils import logger
 from sopht_mpi.utils.mpi_io import MPIIO, CosseratRodMPIIO
 from mpi4py import MPI
 from typing import Optional
+from sopht.simulator.immersed_body import CosseratRodSurfaceForcingGrid, FlowForces
 
 
 def flow_past_rod_case(
@@ -127,13 +128,12 @@ def flow_past_rod_case(
         virtual_boundary_damping_coeff=coupling_damping,
         dx=flow_sim.dx,
         grid_dim=flow_sim.grid_dim,
-        real_t=real_t,
-        forcing_grid_cls=sps.CosseratRodSurfaceForcingGrid,
+        forcing_grid_cls=CosseratRodSurfaceForcingGrid,
         surface_grid_density_for_largest_element=surface_grid_density_for_largest_element,
         master_rank=master_rank,
     )
     flow_past_sim.add_forcing_to(flow_past_rod).using(
-        sps.FlowForces,
+        FlowForces,
         cosserat_rod_flow_interactor,
     )
     # ==================FLOW-ROD COMMUNICATOR SETUP END======

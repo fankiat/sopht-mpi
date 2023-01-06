@@ -8,6 +8,10 @@ from sopht_mpi.utils.mpi_utils_2d import MPIPlotter2D
 from sopht_mpi.utils.mpi_io import MPIIO, CosseratRodMPIIO
 from sopht_mpi.utils import logger
 from mpi4py import MPI
+from sopht.simulator.immersed_body import (
+    CosseratRodElementCentricForcingGrid,
+    FlowForces,
+)
 
 
 def flow_past_rod_case(
@@ -128,12 +132,11 @@ def flow_past_rod_case(
         virtual_boundary_damping_coeff=coupling_damping,
         dx=flow_sim.dx,
         grid_dim=flow_sim.grid_dim,
-        real_t=real_t,
-        forcing_grid_cls=sps.CosseratRodElementCentricForcingGrid,
+        forcing_grid_cls=CosseratRodElementCentricForcingGrid,
         master_rank=master_rank,
     )
     flow_past_sim.add_forcing_to(flow_past_rod).using(
-        sps.FlowForces,
+        FlowForces,
         cosserat_rod_flow_interactor,
     )
     # ==================FLOW-ROD COMMUNICATOR SETUP END======
