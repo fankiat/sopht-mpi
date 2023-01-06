@@ -2,10 +2,24 @@ import pytest
 import numpy as np
 import sopht_mpi.simulator as sps
 from sopht.utils.precision import get_real_t
-from tests.test_simulator.immersed_body.rigid_body.test_rigid_body_forcing_grids import (
-    mock_2d_cylinder,
-)
 from sopht_mpi.utils import MPIConstruct2D, MPIGhostCommunicator2D
+import elastica as ea
+from sopht.simulator.immersed_body import CircularCylinderForcingGrid
+
+
+def mock_2d_cylinder():
+    """Returns a mock 2D cylinder (from elastica) for testing"""
+    cyl_radius = 0.1
+    start = np.array([1.0, 2.0, 0.0])
+    direction = np.array([0.0, 0.0, 1.0])
+    normal = np.array([1.0, 0.0, 0.0])
+    base_length = 1.0
+    cylinder = ea.Cylinder(
+        start, direction, normal, base_length, cyl_radius, density=1e3
+    )
+    cylinder.velocity_collection[...] = 3.0
+    cylinder.omega_collection[...] = 4.0
+    return cylinder
 
 
 @pytest.mark.mpi(group="MPI_rigid_body_flow_interaction", min_size=4)
@@ -27,7 +41,7 @@ def test_mpi_rigid_body_flow_interaction(precision, master_rank):
 
     # Initialize interactor
     cylinder = mock_2d_cylinder()
-    forcing_grid_cls = sps.CircularCylinderForcingGrid
+    forcing_grid_cls = CircularCylinderForcingGrid
     cylinder_flow_interactor = sps.RigidBodyFlowInteractionMPI(
         mpi_construct=mpi_construct,
         mpi_ghost_exchange_communicator=mpi_ghost_exchange_communicator,
@@ -38,7 +52,6 @@ def test_mpi_rigid_body_flow_interaction(precision, master_rank):
         virtual_boundary_damping_coeff=1.0,
         dx=1.0,
         grid_dim=2,
-        real_t=real_t,
         master_rank=master_rank,
         forcing_grid_cls=forcing_grid_cls,
         num_forcing_points=16,

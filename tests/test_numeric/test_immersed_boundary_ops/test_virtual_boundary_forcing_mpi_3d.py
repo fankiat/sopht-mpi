@@ -171,8 +171,11 @@ def test_mpi_virtual_boundary_forcing_init_3d(
     # Initialize MPI virtual boundary forcing with global reference lag positions
     if mpi_construct.rank == master_rank:
         global_ref_lag_grid_position_field = ref_virtual_boundary_forcing.lag_positions
-    else:
-        global_ref_lag_grid_position_field = None
+    else:  # non master rank has empty grid
+        global_ref_lag_grid_position_field = np.empty(
+            (ref_virtual_boundary_forcing.grid_dim, 0),
+            dtype=ref_virtual_boundary_forcing.real_t,
+        )
     mpi_virtual_boundary_forcing = VirtualBoundaryForcingMPI(
         mpi_construct=mpi_construct,
         ghost_size=ghost_size,
@@ -180,7 +183,6 @@ def test_mpi_virtual_boundary_forcing_init_3d(
         virtual_boundary_damping_coeff=ref_virtual_boundary_forcing.virtual_boundary_damping_coeff,
         grid_dim=ref_virtual_boundary_forcing.grid_dim,
         dx=ref_virtual_boundary_forcing.dx,
-        real_t=ref_virtual_boundary_forcing.real_t,
         start_time=ref_virtual_boundary_forcing.time,
         global_lag_grid_position_field=global_ref_lag_grid_position_field,
         moving_boundary=True,
@@ -286,8 +288,11 @@ def test_mpi_compute_lag_grid_velocity_mismatch_field_3d(
     # Initialize MPI virtual boundary forcing with global reference lag positions
     if mpi_construct.rank == master_rank:
         global_ref_lag_grid_position_field = ref_virtual_boundary_forcing.lag_positions
-    else:
-        global_ref_lag_grid_position_field = None
+    else:  # non master rank has empty grid
+        global_ref_lag_grid_position_field = np.empty(
+            (ref_virtual_boundary_forcing.grid_dim, 0),
+            dtype=ref_virtual_boundary_forcing.real_t,
+        )
     mpi_virtual_boundary_forcing = VirtualBoundaryForcingMPI(
         mpi_construct=mpi_construct,
         ghost_size=ghost_size,
@@ -295,7 +300,6 @@ def test_mpi_compute_lag_grid_velocity_mismatch_field_3d(
         virtual_boundary_damping_coeff=ref_virtual_boundary_forcing.virtual_boundary_damping_coeff,
         grid_dim=ref_virtual_boundary_forcing.grid_dim,
         dx=ref_virtual_boundary_forcing.dx,
-        real_t=ref_virtual_boundary_forcing.real_t,
         start_time=ref_virtual_boundary_forcing.time,
         global_lag_grid_position_field=global_ref_lag_grid_position_field,
     )
@@ -407,8 +411,11 @@ def test_mpi_update_lag_grid_position_mismatch_field_via_euler_forward_3d(
     # Initialize MPI virtual boundary forcing
     if mpi_construct.rank == master_rank:
         global_ref_lag_grid_position_field = ref_virtual_boundary_forcing.lag_positions
-    else:
-        global_ref_lag_grid_position_field = None
+    else:  # non master rank has empty grid
+        global_ref_lag_grid_position_field = np.empty(
+            (ref_virtual_boundary_forcing.grid_dim, 0),
+            dtype=ref_virtual_boundary_forcing.real_t,
+        )
     mpi_virtual_boundary_forcing = VirtualBoundaryForcingMPI(
         mpi_construct=mpi_construct,
         ghost_size=ghost_size,
@@ -416,7 +423,6 @@ def test_mpi_update_lag_grid_position_mismatch_field_via_euler_forward_3d(
         virtual_boundary_damping_coeff=ref_virtual_boundary_forcing.virtual_boundary_damping_coeff,
         grid_dim=ref_virtual_boundary_forcing.grid_dim,
         dx=ref_virtual_boundary_forcing.dx,
-        real_t=ref_virtual_boundary_forcing.real_t,
         start_time=ref_virtual_boundary_forcing.time,
         global_lag_grid_position_field=global_ref_lag_grid_position_field,
     )
@@ -529,8 +535,11 @@ def test_mpi_compute_lag_grid_forcing_field_3d(
     # Initialize MPI virtual boundary forcing
     if mpi_construct.rank == master_rank:
         global_ref_lag_grid_position_field = ref_virtual_boundary_forcing.lag_positions
-    else:
-        global_ref_lag_grid_position_field = None
+    else:  # non master rank has empty grid
+        global_ref_lag_grid_position_field = np.empty(
+            (ref_virtual_boundary_forcing.grid_dim, 0),
+            dtype=ref_virtual_boundary_forcing.real_t,
+        )
     mpi_virtual_boundary_forcing = VirtualBoundaryForcingMPI(
         mpi_construct=mpi_construct,
         ghost_size=ghost_size,
@@ -538,7 +547,6 @@ def test_mpi_compute_lag_grid_forcing_field_3d(
         virtual_boundary_damping_coeff=ref_virtual_boundary_forcing.virtual_boundary_damping_coeff,
         grid_dim=ref_virtual_boundary_forcing.grid_dim,
         dx=ref_virtual_boundary_forcing.dx,
-        real_t=ref_virtual_boundary_forcing.real_t,
         start_time=ref_virtual_boundary_forcing.time,
         global_lag_grid_position_field=global_ref_lag_grid_position_field,
     )
@@ -653,9 +661,12 @@ def test_mpi_compute_interaction_force_on_lag_grid_3d(
     mask = np.where(rank_address == mpi_lagrangian_field_communicator.rank)[0]
     # Initialize MPI virtual boundary forcing
     if mpi_construct.rank == master_rank:
-        ref_global_lag_grid_position_field = ref_virtual_boundary_forcing.lag_positions
-    else:
-        ref_global_lag_grid_position_field = None
+        global_ref_lag_grid_position_field = ref_virtual_boundary_forcing.lag_positions
+    else:  # non master rank has empty grid
+        global_ref_lag_grid_position_field = np.empty(
+            (ref_virtual_boundary_forcing.grid_dim, 0),
+            dtype=ref_virtual_boundary_forcing.real_t,
+        )
     mpi_virtual_boundary_forcing = VirtualBoundaryForcingMPI(
         mpi_construct=mpi_construct,
         ghost_size=ghost_size,
@@ -663,9 +674,8 @@ def test_mpi_compute_interaction_force_on_lag_grid_3d(
         virtual_boundary_damping_coeff=ref_virtual_boundary_forcing.virtual_boundary_damping_coeff,
         grid_dim=ref_virtual_boundary_forcing.grid_dim,
         dx=ref_virtual_boundary_forcing.dx,
-        real_t=ref_virtual_boundary_forcing.real_t,
         start_time=ref_virtual_boundary_forcing.time,
-        global_lag_grid_position_field=ref_global_lag_grid_position_field,
+        global_lag_grid_position_field=global_ref_lag_grid_position_field,
     )
 
     # Field and ghost communicator for eul grid velocity field later
@@ -729,7 +739,7 @@ def test_mpi_compute_interaction_force_on_lag_grid_3d(
     if mpi_construct.rank == master_rank:
         global_ref_lag_grid_position_field = ref_lag_grid_position_field
         global_ref_lag_grid_velocity_field = ref_lag_grid_velocity_field
-    else:
+    else:  # non master rank has empty grid
         global_ref_lag_grid_position_field = None
         global_ref_lag_grid_velocity_field = None
     mpi_virtual_boundary_forcing.compute_interaction_force_on_lag_grid(
@@ -836,8 +846,11 @@ def test_mpi_compute_interaction_force_on_eul_and_lag_grid_3d(
     # Initialize MPI virtual boundary forcing
     if mpi_construct.rank == master_rank:
         global_ref_lag_grid_position_field = ref_virtual_boundary_forcing.lag_positions
-    else:
-        global_ref_lag_grid_position_field = None
+    else:  # non master rank has empty grid
+        global_ref_lag_grid_position_field = np.empty(
+            (ref_virtual_boundary_forcing.grid_dim, 0),
+            dtype=ref_virtual_boundary_forcing.real_t,
+        )
     mpi_virtual_boundary_forcing = VirtualBoundaryForcingMPI(
         mpi_construct=mpi_construct,
         ghost_size=ghost_size,
@@ -845,7 +858,6 @@ def test_mpi_compute_interaction_force_on_eul_and_lag_grid_3d(
         virtual_boundary_damping_coeff=ref_virtual_boundary_forcing.virtual_boundary_damping_coeff,
         grid_dim=ref_virtual_boundary_forcing.grid_dim,
         dx=ref_virtual_boundary_forcing.dx,
-        real_t=ref_virtual_boundary_forcing.real_t,
         start_time=ref_virtual_boundary_forcing.time,
         enable_eul_grid_forcing_reset=enable_eul_grid_forcing_reset,
         global_lag_grid_position_field=global_ref_lag_grid_position_field,
@@ -1044,8 +1056,11 @@ def test_mpi_virtual_boundary_forcing_time_step_3d(
     # Initialize MPI virtual boundary forcing
     if mpi_construct.rank == master_rank:
         global_ref_lag_grid_position_field = ref_virtual_boundary_forcing.lag_positions
-    else:
-        global_ref_lag_grid_position_field = None
+    else:  # non master rank has empty grid
+        global_ref_lag_grid_position_field = np.empty(
+            (ref_virtual_boundary_forcing.grid_dim, 0),
+            dtype=ref_virtual_boundary_forcing.real_t,
+        )
     mpi_virtual_boundary_forcing = VirtualBoundaryForcingMPI(
         mpi_construct=mpi_construct,
         ghost_size=ghost_size,
@@ -1053,7 +1068,6 @@ def test_mpi_virtual_boundary_forcing_time_step_3d(
         virtual_boundary_damping_coeff=ref_virtual_boundary_forcing.virtual_boundary_damping_coeff,
         grid_dim=ref_virtual_boundary_forcing.grid_dim,
         dx=ref_virtual_boundary_forcing.dx,
-        real_t=ref_virtual_boundary_forcing.real_t,
         start_time=ref_virtual_boundary_forcing.time,
         global_lag_grid_position_field=global_ref_lag_grid_position_field,
     )
