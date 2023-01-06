@@ -1,10 +1,10 @@
 from elastica.rod.cosserat_rod import CosseratRod
 import numpy as np
 from sopht_mpi.simulator.immersed_body import (
-    ImmersedBodyForcingGrid,
     EmptyForcingGrid,
     ImmersedBodyFlowInteractionMPI,
 )
+from sopht.simulator.immersed_body import ImmersedBodyForcingGrid
 
 
 class CosseratRodFlowInteraction(ImmersedBodyFlowInteractionMPI):
@@ -22,7 +22,6 @@ class CosseratRodFlowInteraction(ImmersedBodyFlowInteractionMPI):
         dx,
         grid_dim,
         forcing_grid_cls: type(ImmersedBodyForcingGrid),
-        real_t=np.float64,
         eul_grid_coord_shift=None,
         interp_kernel_width=None,
         enable_eul_grid_forcing_reset=False,
@@ -43,11 +42,10 @@ class CosseratRodFlowInteraction(ImmersedBodyFlowInteractionMPI):
             self.forcing_grid = forcing_grid_cls(
                 grid_dim=grid_dim,
                 cosserat_rod=cosserat_rod,
-                real_t=real_t,
                 **forcing_grid_kwargs,
             )
         else:
-            self.forcing_grid = EmptyForcingGrid(grid_dim=grid_dim, real_t=real_t)
+            self.forcing_grid = EmptyForcingGrid(grid_dim=grid_dim)
 
         # initialising super class
         super().__init__(
@@ -59,7 +57,6 @@ class CosseratRodFlowInteraction(ImmersedBodyFlowInteractionMPI):
             virtual_boundary_damping_coeff=virtual_boundary_damping_coeff,
             dx=dx,
             grid_dim=grid_dim,
-            real_t=real_t,
             eul_grid_coord_shift=eul_grid_coord_shift,
             interp_kernel_width=interp_kernel_width,
             enable_eul_grid_forcing_reset=enable_eul_grid_forcing_reset,

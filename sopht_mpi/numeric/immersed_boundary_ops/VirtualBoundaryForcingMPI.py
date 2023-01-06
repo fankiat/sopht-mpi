@@ -38,7 +38,6 @@ class VirtualBoundaryForcingMPI:
         virtual_boundary_damping_coeff,
         grid_dim,
         dx,
-        real_t,
         eul_grid_coord_shift=None,
         interp_kernel_width=None,
         enable_eul_grid_forcing_reset=True,
@@ -60,7 +59,6 @@ class VirtualBoundaryForcingMPI:
         0 (usually dx / 2)
         global_num_lag_nodes: total number of Lagrangian grid nodes
         interp_kernel_width: width of interpolation kernel
-        real_t: numerical precision
         enable_eul_grid_forcing_reset : flag for enabling option of feedback step
         with resetting of eul_grid_forcing_field
         start_time: start time of the forcing
@@ -75,12 +73,15 @@ class VirtualBoundaryForcingMPI:
         self.virtual_boundary_stiffness_coeff = virtual_boundary_stiffness_coeff
         self.virtual_boundary_damping_coeff = virtual_boundary_damping_coeff
         self.time = start_time
-        self.real_t = real_t
         self.moving_boundary = moving_boundary
+        # differentiate the real_t here for eulerian and lagrangian grids to ensure
+        # consistent MPI communication datatypes are correspondingly generated
+        self.eul_grid_real_t = mpi_construct.real_t
+        self.lag_grid_real_t = global_lag_grid_position_field.dtype
 
         # these are rather invariant hence pushed to fixed kwargs
         if eul_grid_coord_shift is None:
-            eul_grid_coord_shift = real_t(dx / 2)
+            eul_grid_coord_shift = self.eul_grid_real_t(dx / 2)
         self.interp_kernel_width = interp_kernel_width
         if interp_kernel_width is None:
             self.interp_kernel_width = 2
@@ -100,13 +101,13 @@ class VirtualBoundaryForcingMPI:
                 eul_grid_coord_shift=eul_grid_coord_shift,
                 mpi_construct=self.mpi_construct,
                 master_rank=master_rank,
-                real_t=real_t,
+                real_t=self.lag_grid_real_t,
             )
             self.eul_lag_grid_communicator = EulerianLagrangianGridCommunicatorMPI2D(
                 dx=dx,
                 eul_grid_coord_shift=eul_grid_coord_shift,
                 interp_kernel_width=self.interp_kernel_width,
-                real_t=real_t,
+                real_t=self.eul_grid_real_t,
                 n_components=grid_dim,
                 mpi_construct=mpi_construct,
                 ghost_size=ghost_size,
@@ -117,13 +118,13 @@ class VirtualBoundaryForcingMPI:
                 eul_grid_coord_shift=eul_grid_coord_shift,
                 mpi_construct=self.mpi_construct,
                 master_rank=master_rank,
-                real_t=real_t,
+                real_t=self.lag_grid_real_t,
             )
             self.eul_lag_grid_communicator = EulerianLagrangianGridCommunicatorMPI3D(
                 dx=dx,
                 eul_grid_coord_shift=eul_grid_coord_shift,
                 interp_kernel_width=self.interp_kernel_width,
-                real_t=real_t,
+                real_t=self.eul_grid_real_t,
                 n_components=grid_dim,
                 mpi_construct=mpi_construct,
                 ghost_size=ghost_size,
@@ -147,13 +148,13 @@ class VirtualBoundaryForcingMPI:
         if enable_eul_grid_forcing_reset:
             if grid_dim == 2:
                 self.set_eul_grid_vector_field = gen_set_fixed_val_pyst_kernel_2d(
-                    real_t=real_t,
+                    real_t=self.eul_grid_real_t,
                     field_type="vector",
                 )
 
             elif grid_dim == 3:
                 self.set_eul_grid_vector_field = gen_set_fixed_val_pyst_kernel_3d(
-                    real_t=real_t,
+                    real_t=self.eul_grid_real_t,
                     field_type="vector",
                 )
             self.compute_interaction_forcing = (
@@ -166,7 +167,7 @@ class VirtualBoundaryForcingMPI:
 
     def _init_global_buffers(self):
         self.global_lag_grid_position_mismatch_field = np.zeros(
-            (self.grid_dim, self.global_num_lag_nodes), dtype=self.real_t
+            (self.grid_dim, self.global_num_lag_nodes), dtype=self.lag_grid_real_t
         )
         self.global_lag_grid_velocity_mismatch_field = np.zeros_like(
             self.global_lag_grid_position_mismatch_field
@@ -185,14 +186,16 @@ class VirtualBoundaryForcingMPI:
             + (num_lag_nodes,)
         )
         self.local_local_eul_grid_support_of_lag_grid = np.empty(
-            eul_grid_support_of_lag_grid_shape, dtype=self.real_t
+            eul_grid_support_of_lag_grid_shape, dtype=self.lag_grid_real_t
         )
         interp_weights_shape = (2 * self.interp_kernel_width,) * self.grid_dim + (
             num_lag_nodes,
         )
-        self.local_interp_weights = np.empty(interp_weights_shape, dtype=self.real_t)
+        self.local_interp_weights = np.empty(
+            interp_weights_shape, dtype=self.lag_grid_real_t
+        )
         self.local_lag_grid_flow_velocity_field = np.zeros(
-            (self.grid_dim, num_lag_nodes), dtype=self.real_t
+            (self.grid_dim, num_lag_nodes), dtype=self.lag_grid_real_t
         )
         self.local_lag_grid_position_mismatch_field = np.zeros_like(
             self.local_lag_grid_flow_velocity_field
