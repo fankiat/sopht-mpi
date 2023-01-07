@@ -1,12 +1,11 @@
 #!/bin/bash
 
-#SBATCH -J test_expanse
+#SBATCH -J test_stampede
 #SBATCH -o %x_%j.out                    # Name of stdout output file
 #SBATCH -e %x_%j.err                    # Name of stderr error file
 #SBATCH -p compute                      # Queue (partition) name
 #SBATCH -N 4                            # Number of nodes requested
-#SBATCH --ntasks-per-node=128           # Number of processes/tasks per node
-#SBATCH --mem=249325M                   # Memory per compute node (set to expanse limit)
+#SBATCH --ntasks-per-node=64            # Number of processes/tasks per node
 #SBATCH --export=ALL                    # Propagate all user's environment variables
 #SBATCH -t 00:10:00                     # Run time (hh:mm:ss)
 #SBATCH --mail-user=email@email.edu     # User to receive email notification
@@ -24,13 +23,17 @@ echo Job name: $SLURM_JOB_NAME
 echo Execution dir: $SLURM_SUBMIT_DIR
 echo Number of processes: $SLURM_NTASKS
 
-# Setup relevant module on expanse
+# Setup relevant module on stampede2
 module reset
-module load gcc openmpi hdf5 anaconda3
+module unload python2
+# Other mpi libraries are loaded by default (intel mpi)
 source deactivate # deactivate any existing environment
 source activate sopht-mpi-env
 # Print loaded python (sanity check for correctly loaded environment)
 which python
 
 # Execute the program
-mpiexec -n ${SLURM_NTASKS} python -u ${PROGNAME}
+# Use ibrun instead of mpirun or mpiexec
+# The number of processes will spawn automatically according to the resources requested
+# Number of processes = number of nodes * number of tasks/processes per node
+ibrun python -u ${PROGNAME}
