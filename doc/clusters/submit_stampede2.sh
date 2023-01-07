@@ -26,6 +26,7 @@ echo Number of processes: $SLURM_NTASKS
 # Setup relevant module on stampede2
 module reset
 module unload python2
+module load phdf5
 # Other mpi libraries are loaded by default (intel mpi)
 source deactivate # deactivate any existing environment
 source activate sopht-mpi-env
