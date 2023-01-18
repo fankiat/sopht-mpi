@@ -7,7 +7,6 @@
 #SBATCH -N 4                            # Number of nodes requested
 #SBATCH --ntasks-per-node=128           # Number of processes/tasks per node
 #SBATCH --mem=249325M                   # Memory per compute node (set to expanse limit)
-#SBATCH --export=ALL                    # Propagate all user's environment variables
 #SBATCH -t 00:10:00                     # Run time (hh:mm:ss)
 #SBATCH --mail-user=email@email.edu     # User to receive email notification
 #SBATCH --mail-type=all                 # Send email at begin, end, or fail of job

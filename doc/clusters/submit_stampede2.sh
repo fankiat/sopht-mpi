@@ -6,7 +6,6 @@
 #SBATCH -p compute                      # Queue (partition) name
 #SBATCH -N 4                            # Number of nodes requested
 #SBATCH --ntasks-per-node=64            # Number of processes/tasks per node
-#SBATCH --export=ALL                    # Propagate all user's environment variables
 #SBATCH -t 00:10:00                     # Run time (hh:mm:ss)
 #SBATCH --mail-user=email@email.edu     # User to receive email notification
 #SBATCH --mail-type=all                 # Send email at begin, end, or fail of job
