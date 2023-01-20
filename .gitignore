@@ -241,3 +241,9 @@ outcmaes/*
 
 # h5 files
 *.h5
+
+# log files
+*.log
+
+# profiler files
+*.prof
