@@ -114,8 +114,11 @@ class UnboundedFlowSimulator3D:
             real_t=self.real_t,
             rank_distribution=self.rank_distribution,
         )
+        need_full_exchange = self.flow_type == "navier_stokes_with_forcing"
         self.mpi_ghost_exchange_communicator = MPIGhostCommunicator3D(
-            ghost_size=self.ghost_size, mpi_construct=self.mpi_construct
+            ghost_size=self.ghost_size,
+            mpi_construct=self.mpi_construct,
+            full_exchange=need_full_exchange,
         )
 
     def init_domain(self):

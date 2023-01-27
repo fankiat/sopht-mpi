@@ -185,7 +185,6 @@ def test_mpi_virtual_boundary_forcing_init_3d(
         dx=ref_virtual_boundary_forcing.dx,
         start_time=ref_virtual_boundary_forcing.time,
         global_lag_grid_position_field=global_ref_lag_grid_position_field,
-        moving_boundary=True,
     )
 
     # 3. Test initialized variables and field buffers

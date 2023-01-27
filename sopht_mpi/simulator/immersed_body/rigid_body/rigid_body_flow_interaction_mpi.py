@@ -26,8 +26,9 @@ class RigidBodyFlowInteractionMPI(ImmersedBodyFlowInteractionMPI):
         interp_kernel_width=None,
         enable_eul_grid_forcing_reset=False,
         start_time=0.0,
-        moving_body=True,
         master_rank=0,
+        assume_data_locality=False,
+        auto_ghosting=True,
         **forcing_grid_kwargs,
     ):
         """Class initialiser."""
@@ -58,5 +59,6 @@ class RigidBodyFlowInteractionMPI(ImmersedBodyFlowInteractionMPI):
             interp_kernel_width=interp_kernel_width,
             enable_eul_grid_forcing_reset=enable_eul_grid_forcing_reset,
             start_time=start_time,
-            moving_body=moving_body,
+            assume_data_locality=assume_data_locality,
+            auto_ghosting=auto_ghosting,
         )
