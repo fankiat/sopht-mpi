@@ -733,7 +733,7 @@ class MPIIO:
                 topology = f"""<Topology TopologyType="Polyvertex"
                 NumberOfElements="{lagrangian_grid_size[0]}"/>"""
 
-            grid_entries += f"""        <Grid GridType="Uniform">
+            grid_entries += f"""<Grid GridType="Uniform">
             <Time Value="{time}"/>
             {topology}
             <Geometry GeometryType="{geometry_type}">
@@ -747,25 +747,6 @@ class MPIIO:
         </Grid>\n
         """
 
-        #             xdmffile = f"""<?xml version="1.0" ?>
-        # <!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>
-        # <Xdmf xmlns:xi="http://www.w3.org/2003/XInclude" Version="2.2">
-        #     <Domain>
-        #         <Grid GridType="Uniform">
-        #             <Time Value="{time}"/>
-        #             {topology}
-        #             <Geometry GeometryType="{geometry_type}">
-        #                 <DataItem Dimensions="{lagrangian_grid_size_string}"
-        #                 NumberType="Float" Precision="{self.precision}" Format="HDF">
-        #                     {h5_file_name}:/Lagrangian/{lagrangian_grid_name}/Grid
-        #                 </DataItem>
-        #             </Geometry>
-
-        #             {field_entries}
-        #         </Grid>
-        #     </Domain>
-        # </Xdmf>
-        # """
         xdmffile = f"""<?xml version="1.0" ?>
 <!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>
 <Xdmf xmlns:xi="http://www.w3.org/2003/XInclude" Version="2.2">
