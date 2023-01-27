@@ -165,9 +165,7 @@ def flow_past_sphere_case(
 
             if save_flow_data:
                 io.save(
-                    h5_file_name="sopht_"
-                    + str("%0.4d" % (flow_sim.time * 100))
-                    + ".h5",
+                    h5_file_name="flow_" + str("%0.4d" % (flow_sim.time * 100)) + ".h5",
                     time=flow_sim.time,
                 )
                 sphere_io.save(

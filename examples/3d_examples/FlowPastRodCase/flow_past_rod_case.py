@@ -188,10 +188,10 @@ def flow_past_rod_case(
         # Initialize rod IO
         rod_io = CosseratRodMPIIO(
             mpi_construct=flow_sim.mpi_construct,
-            cosserat_rod=flow_past_rod,
             real_dtype=real_t,
             master_rank=cosserat_rod_flow_interactor.master_rank,
         )
+        rod_io.add_cosserat_rod_for_io(cosserat_rod=flow_past_rod, name="rod")
 
     foto_timer = 0.0
     timescale = base_length / U_free_stream
@@ -224,9 +224,7 @@ def flow_past_rod_case(
             foto_timer = 0.0
             if save_data:
                 io.save(
-                    h5_file_name="sopht_"
-                    + str("%0.4d" % (flow_sim.time * 100))
-                    + ".h5",
+                    h5_file_name="flow_" + str("%0.4d" % (flow_sim.time * 100)) + ".h5",
                     time=flow_sim.time,
                 )
                 rod_io.save(

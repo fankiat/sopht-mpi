@@ -807,7 +807,9 @@ class CosseratRodMPIIO(MPIIO):
                 + rod.position_collection[: self.dim, :-1]
             )
 
-    def add_cosserat_rod_for_io(self, cosserat_rod, name=None):
+    def add_cosserat_rod_for_io(
+        self, cosserat_rod: CosseratRod, name=None, **fields_for_io
+    ):
         self.cosserat_rods.append(cosserat_rod)
         self.rod_element_position.append(np.zeros((self.dim, cosserat_rod.n_elems)))
         if name is None:
@@ -816,6 +818,7 @@ class CosseratRodMPIIO(MPIIO):
             lagrangian_grid=self.rod_element_position[-1],
             lagrangian_grid_master_rank=self.master_rank,
             lagrangian_grid_name=name,
-            scalar_3d=self.cosserat_rods[-1].radius,
+            radius=self.cosserat_rods[-1].radius,
             lagrangian_grid_connect=True,
+            **fields_for_io,
         )
