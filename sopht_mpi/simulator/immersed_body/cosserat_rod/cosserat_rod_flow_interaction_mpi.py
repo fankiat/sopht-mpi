@@ -27,6 +27,8 @@ class CosseratRodFlowInteraction(ImmersedBodyFlowInteractionMPI):
         enable_eul_grid_forcing_reset=False,
         start_time=0.0,
         master_rank=0,
+        assume_data_locality=False,
+        auto_ghosting=True,
         **forcing_grid_kwargs,
     ):
         """Class initialiser."""
@@ -61,4 +63,6 @@ class CosseratRodFlowInteraction(ImmersedBodyFlowInteractionMPI):
             interp_kernel_width=interp_kernel_width,
             enable_eul_grid_forcing_reset=enable_eul_grid_forcing_reset,
             start_time=start_time,
+            assume_data_locality=assume_data_locality,
+            auto_ghosting=auto_ghosting,
         )

@@ -30,7 +30,8 @@ class ImmersedBodyFlowInteractionMPI(VirtualBoundaryForcingMPI):
         interp_kernel_width=None,
         enable_eul_grid_forcing_reset=False,
         start_time=0.0,
-        moving_body=True,
+        assume_data_locality=False,
+        auto_ghosting=True,
     ):
         """Class initialiser."""
         # ghost exchange communicator for ghosting vel field before computing interactor
@@ -97,40 +98,61 @@ class ImmersedBodyFlowInteractionMPI(VirtualBoundaryForcingMPI):
             start_time=start_time,
             master_rank=self.master_rank,
             global_lag_grid_position_field=self.forcing_grid.position_field,
-            moving_boundary=moving_body,
+            assume_data_locality=assume_data_locality,
         )
 
-    def compute_interaction_on_lag_grid(self):
-        """Compute interaction forces on the Lagrangian forcing grid."""
-        # 1. Compute forcing grid position and velocity
-        self.forcing_grid.compute_lag_grid_position_field()
-        self.forcing_grid.compute_lag_grid_velocity_field()
-        # 2. Ghost the velocity field
+        if auto_ghosting:
+            self.compute_full_interaction = self._compute_full_interaction_with_ghosting
+            self.compute_interaction_on_lag_grid = (
+                self._compute_interaction_on_lag_grid_with_ghosting
+            )
+        else:
+            logger.warning(
+                "==========================================================\n"
+                "Auto ghosting of velocity field is disabled for interactor.\n"
+                "Please ensure ghosting is done before calling interactor functions.\n"
+                "=========================================================="
+            )
+            self.compute_full_interaction = (
+                self._compute_full_interaction_without_ghosting
+            )
+            self.compute_interaction_on_lag_grid = (
+                self._compute_interaction_on_lag_grid_without_ghosting
+            )
+
+    def __call__(self):
+        self.compute_full_interaction()
+
+    def _ghost_velocity_field_for_interaction(self):
+        """Ghost eulerian grid velocity field before computing interaction"""
         self.eul_grid_velocity_field.flags.writeable = True
         self.mpi_ghost_exchange_communicator.exchange_vector_field_init(
             self.eul_grid_velocity_field
         )
         self.mpi_ghost_exchange_communicator.exchange_finalise()
         self.eul_grid_velocity_field.flags.writeable = False
-        # 3. Compute interaction forcing
+
+    def _compute_interaction_on_lag_grid_without_ghosting(self):
+        """Compute interaction forces on the Lagrangian forcing grid."""
+        # 1. Compute forcing grid position and velocity
+        self.forcing_grid.compute_lag_grid_position_field()
+        self.forcing_grid.compute_lag_grid_velocity_field()
+        # 2. Compute interaction forcing
         self.compute_interaction_force_on_lag_grid(
             local_eul_grid_velocity_field=self.eul_grid_velocity_field,
             global_lag_grid_position_field=self.forcing_grid.position_field,
             global_lag_grid_velocity_field=self.forcing_grid.velocity_field,
         )
 
-    def __call__(self):
+    def _compute_interaction_on_lag_grid_with_ghosting(self):
+        self._ghost_velocity_field_for_interaction()
+        self._compute_interaction_on_lag_grid_without_ghosting()
+
+    def _compute_full_interaction_without_ghosting(self):
         """Call the full interaction (eul and lag field force computation)"""
         # 1. Compute forcing grid position and velocity
         self.forcing_grid.compute_lag_grid_position_field()
         self.forcing_grid.compute_lag_grid_velocity_field()
-        # 2. Ghost the velocity field
-        self.eul_grid_velocity_field.flags.writeable = True
-        self.mpi_ghost_exchange_communicator.exchange_vector_field_init(
-            self.eul_grid_velocity_field
-        )
-        self.mpi_ghost_exchange_communicator.exchange_finalise()
-        self.eul_grid_velocity_field.flags.writeable = False
         # 3. Compute interaction forcing
         self.compute_interaction_forcing(
             local_eul_grid_forcing_field=self.eul_grid_forcing_field,
@@ -138,6 +160,10 @@ class ImmersedBodyFlowInteractionMPI(VirtualBoundaryForcingMPI):
             global_lag_grid_position_field=self.forcing_grid.position_field,
             global_lag_grid_velocity_field=self.forcing_grid.velocity_field,
         )
+
+    def _compute_full_interaction_with_ghosting(self):
+        self._ghost_velocity_field_for_interaction()
+        self._compute_full_interaction_without_ghosting()
 
     def compute_flow_forces_and_torques(self):
         """Compute flow forces and torques on the body from forces on Lagrangian grid."""
@@ -148,23 +174,29 @@ class ImmersedBodyFlowInteractionMPI(VirtualBoundaryForcingMPI):
             lag_grid_forcing_field=self.global_lag_grid_forcing_field,
         )
 
-    def get_grid_deviation_error_l2_norm(self):
+    def get_grid_deviation_error_l2_norm(self, compute_global=True):
         """
         Computes and returns L2 norm of deviation error between flow
         and body grids.
         """
-        grid_dev_error_l2_norm = (
-            np.linalg.norm(self.local_lag_grid_position_mismatch_field) ** 2
-        )
-        grid_dev_error_l2_norm = self.mpi_construct.grid.reduce(
-            grid_dev_error_l2_norm, op=MPI.SUM, root=self.master_rank
-        )
-        if self.mpi_construct.rank == self.master_rank:
-            grid_dev_error_l2_norm = np.sqrt(grid_dev_error_l2_norm) / np.sqrt(
-                self.forcing_grid.num_lag_nodes
+        if not compute_global:
+            local_grid_dev_error_l2_norm = np.linalg.norm(
+                self.local_lag_grid_position_mismatch_field
+            ) / np.sqrt(self.forcing_grid.num_lag_nodes)
+            return local_grid_dev_error_l2_norm
+        else:
+            local_grid_dev_error_l2_norm = (
+                np.linalg.norm(self.local_lag_grid_position_mismatch_field) ** 2
             )
-        grid_dev_error_l2_norm = self.mpi_construct.grid.bcast(
-            grid_dev_error_l2_norm, root=self.master_rank
-        )
+            grid_dev_error_l2_norm = self.mpi_construct.grid.reduce(
+                local_grid_dev_error_l2_norm, op=MPI.SUM, root=self.master_rank
+            )
+            if self.mpi_construct.rank == self.master_rank:
+                grid_dev_error_l2_norm = np.sqrt(grid_dev_error_l2_norm) / np.sqrt(
+                    self.forcing_grid.num_lag_nodes
+                )
+            grid_dev_error_l2_norm = self.mpi_construct.grid.bcast(
+                grid_dev_error_l2_norm, root=self.master_rank
+            )
 
-        return grid_dev_error_l2_norm
+            return grid_dev_error_l2_norm
