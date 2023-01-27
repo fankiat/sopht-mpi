@@ -653,7 +653,7 @@ class MPIIO:
     </Domain>
 </Xdmf>
 """
-        with open(h5_file_name.replace(".h5", "_eulerian.xmf"), "w") as f:
+        with open(h5_file_name.replace(".h5", ".xmf"), "w") as f:
             f.write(xdmffile)
 
     def generate_xdmf_lagrangian(self, h5_file_name, time):
