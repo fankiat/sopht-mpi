@@ -44,7 +44,7 @@ class VirtualBoundaryForcingMPI:
         start_time=0.0,
         master_rank=0,
         global_lag_grid_position_field=None,
-        moving_boundary=True,
+        assume_data_locality=False,
     ):
         """Class initialiser.
 
@@ -64,8 +64,9 @@ class VirtualBoundaryForcingMPI:
         start_time: start time of the forcing
         master_rank: rank that owns all the lagrangian nodes and serves as main comm hub
         global_lag_grid_position_field: initial lagrangian grid position
-        moving_boundary: flag for moving boundary, used in buffer reinitialization
-
+        assume_data_locality: assumption that the forcing grid points reside in the same
+        rank as the local eulerian flow field, otherwise buffers reinitializations will
+        take place accordingly.
         """
         if grid_dim != 2 and grid_dim != 3:
             raise ValueError("Invalid grid dimensions for virtual boundary forcing!")
@@ -73,7 +74,7 @@ class VirtualBoundaryForcingMPI:
         self.virtual_boundary_stiffness_coeff = virtual_boundary_stiffness_coeff
         self.virtual_boundary_damping_coeff = virtual_boundary_damping_coeff
         self.time = start_time
-        self.moving_boundary = moving_boundary
+        self.assume_data_locality = assume_data_locality
         # differentiate the real_t here for eulerian and lagrangian grids to ensure
         # consistent MPI communication datatypes are correspondingly generated
         self.eul_grid_real_t = mpi_construct.real_t
@@ -96,13 +97,16 @@ class VirtualBoundaryForcingMPI:
         # Initialize MPI related stuff
         self.mpi_construct = mpi_construct
         if grid_dim == 2:
-            self.mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator2D(
-                eul_grid_dx=dx,
-                eul_grid_coord_shift=eul_grid_coord_shift,
-                mpi_construct=self.mpi_construct,
-                master_rank=master_rank,
-                real_t=self.lag_grid_real_t,
-            )
+            if not self.assume_data_locality:
+                self.mpi_lagrangian_field_communicator = (
+                    MPILagrangianFieldCommunicator2D(
+                        eul_grid_dx=dx,
+                        eul_grid_coord_shift=eul_grid_coord_shift,
+                        mpi_construct=self.mpi_construct,
+                        master_rank=master_rank,
+                        real_t=self.lag_grid_real_t,
+                    )
+                )
             self.eul_lag_grid_communicator = EulerianLagrangianGridCommunicatorMPI2D(
                 dx=dx,
                 eul_grid_coord_shift=eul_grid_coord_shift,
@@ -113,13 +117,16 @@ class VirtualBoundaryForcingMPI:
                 ghost_size=ghost_size,
             )
         elif grid_dim == 3:
-            self.mpi_lagrangian_field_communicator = MPILagrangianFieldCommunicator3D(
-                eul_grid_dx=dx,
-                eul_grid_coord_shift=eul_grid_coord_shift,
-                mpi_construct=self.mpi_construct,
-                master_rank=master_rank,
-                real_t=self.lag_grid_real_t,
-            )
+            if not self.assume_data_locality:
+                self.mpi_lagrangian_field_communicator = (
+                    MPILagrangianFieldCommunicator3D(
+                        eul_grid_dx=dx,
+                        eul_grid_coord_shift=eul_grid_coord_shift,
+                        mpi_construct=self.mpi_construct,
+                        master_rank=master_rank,
+                        real_t=self.lag_grid_real_t,
+                    )
+                )
             self.eul_lag_grid_communicator = EulerianLagrangianGridCommunicatorMPI3D(
                 dx=dx,
                 eul_grid_coord_shift=eul_grid_coord_shift,
@@ -131,15 +138,19 @@ class VirtualBoundaryForcingMPI:
             )
 
         # initialize node mappings based on global position
-        self.mpi_lagrangian_field_communicator.map_lagrangian_nodes_based_on_position(
-            global_lag_positions=global_lag_grid_position_field
-        )
-        self.local_num_lag_nodes = (
-            self.mpi_lagrangian_field_communicator.local_num_lag_nodes
-        )
-        self.global_num_lag_nodes = (
-            self.mpi_lagrangian_field_communicator.rank_address.shape[-1]
-        )
+        if not self.assume_data_locality:
+            self.mpi_lagrangian_field_communicator.map_lagrangian_nodes_based_on_position(
+                global_lag_positions=global_lag_grid_position_field
+            )
+            self.local_num_lag_nodes = (
+                self.mpi_lagrangian_field_communicator.local_num_lag_nodes
+            )
+            self.global_num_lag_nodes = (
+                self.mpi_lagrangian_field_communicator.rank_address.shape[-1]
+            )
+        else:
+            self.local_num_lag_nodes = global_lag_grid_position_field.shape[-1]
+            self.global_num_lag_nodes = self.local_num_lag_nodes
 
         # creating buffers...
         self._init_local_buffers(self.local_num_lag_nodes)
@@ -166,15 +177,26 @@ class VirtualBoundaryForcingMPI:
             )
 
     def _init_global_buffers(self):
-        self.global_lag_grid_position_mismatch_field = np.zeros(
-            (self.grid_dim, self.global_num_lag_nodes), dtype=self.lag_grid_real_t
-        )
-        self.global_lag_grid_velocity_mismatch_field = np.zeros_like(
-            self.global_lag_grid_position_mismatch_field
-        )
-        self.global_lag_grid_forcing_field = np.zeros_like(
-            self.global_lag_grid_position_mismatch_field
-        )
+        if not self.assume_data_locality:
+            self.global_lag_grid_position_mismatch_field = np.zeros(
+                (self.grid_dim, self.global_num_lag_nodes), dtype=self.lag_grid_real_t
+            )
+            self.global_lag_grid_velocity_mismatch_field = np.zeros_like(
+                self.global_lag_grid_position_mismatch_field
+            )
+            self.global_lag_grid_forcing_field = np.zeros_like(
+                self.global_lag_grid_position_mismatch_field
+            )
+        else:
+            self.global_lag_grid_position_mismatch_field = (
+                self.local_lag_grid_position_mismatch_field.view()
+            )
+            self.global_lag_grid_velocity_mismatch_field = (
+                self.local_lag_grid_velocity_mismatch_field.view()
+            )
+            self.global_lag_grid_forcing_field = (
+                self.local_lag_grid_forcing_field.view()
+            )
 
     def _init_local_buffers(self, num_lag_nodes):
         self.local_nearest_eul_grid_index_to_lag_grid = np.empty(
@@ -317,19 +339,23 @@ class VirtualBoundaryForcingMPI:
         """Virtual boundary: compute interaction force on Lagrangian grid."""
         # Start by checking and mapping global lag grid fields data
         # Check and make sure buffer is enough to store all local lagrangian quantities
-        if self.moving_boundary:
+        # If data is assumed to be local to rank, no synchronization is needed.
+        if not self.assume_data_locality:
             self.update_buffers(
                 global_lag_grid_position_field=global_lag_grid_position_field
             )
-        # Distribute the global lag grid fields
-        self.mpi_lagrangian_field_communicator.scatter_global_field(
-            local_lag_field=self.local_lag_grid_position_field,
-            global_lag_field=global_lag_grid_position_field,
-        )
-        self.mpi_lagrangian_field_communicator.scatter_global_field(
-            local_lag_field=self.local_lag_grid_velocity_field,
-            global_lag_field=global_lag_grid_velocity_field,
-        )
+            # Distribute the global lag grid fields
+            self.mpi_lagrangian_field_communicator.scatter_global_field(
+                local_lag_field=self.local_lag_grid_position_field,
+                global_lag_field=global_lag_grid_position_field,
+            )
+            self.mpi_lagrangian_field_communicator.scatter_global_field(
+                local_lag_field=self.local_lag_grid_velocity_field,
+                global_lag_field=global_lag_grid_velocity_field,
+            )
+        else:
+            self.local_lag_grid_position_field = global_lag_grid_position_field.view()
+            self.local_lag_grid_velocity_field = global_lag_grid_velocity_field.view()
 
         # Start working on the local chunks of data
         # 1. Find Eulerian grid local support of the Lagrangian grid
@@ -372,10 +398,12 @@ class VirtualBoundaryForcingMPI:
 
         # Done computing forces on lag grid
         # Update global lag grid forcing field based on updated local lag grid forcing
-        self.mpi_lagrangian_field_communicator.gather_local_field(
-            global_lag_field=self.global_lag_grid_forcing_field,
-            local_lag_field=self.local_lag_grid_forcing_field,
-        )
+        # If data is assumed to be local to rank, no synchronization is needed.
+        if not self.assume_data_locality:
+            self.mpi_lagrangian_field_communicator.gather_local_field(
+                global_lag_field=self.global_lag_grid_forcing_field,
+                local_lag_field=self.local_lag_grid_forcing_field,
+            )
 
     def compute_interaction_force_on_eul_and_lag_grid(
         self,
