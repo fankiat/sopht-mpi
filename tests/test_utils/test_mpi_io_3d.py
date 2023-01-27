@@ -596,9 +596,10 @@ def test_mpi_cosserat_rod_io(precision):
     rod_io = CosseratRodMPIIO(
         mpi_construct=mpi_construct,
         master_rank=master_rank,
-        cosserat_rod=rod,
         real_dtype=real_t,
     )
+    rod_name = "rod"
+    rod_io.add_cosserat_rod_for_io(cosserat_rod=rod, name=rod_name)
     # Save rod
     rod_io.save(h5_file_name="test_cosserat_rod_io.h5", time=time)
 
@@ -614,7 +615,7 @@ def test_mpi_cosserat_rod_io(precision):
     base_io.add_as_lagrangian_fields_for_io(
         lagrangian_grid=rod_element_position_loaded,
         lagrangian_grid_master_rank=master_rank,
-        lagrangian_grid_name="rod",
+        lagrangian_grid_name=rod_name,
         scalar_3d=rod_element_radius_loaded,
     )
     time_loaded = base_io.load(h5_file_name="test_cosserat_rod_io.h5")
@@ -641,5 +642,90 @@ def test_mpi_cosserat_rod_io(precision):
 
     assert allclose_rod_position, "Rod position mismatch!"
     assert allclose_rod_radius, "Rod radius mismatch!"
+    np.testing.assert_allclose(time, time_loaded, atol=testing_atol)
+    os.system("rm -f *h5 *xmf")
+
+
+@pytest.mark.mpi(group="MPI_utils_IO_3d", min_size=4)
+@pytest.mark.parametrize("precision", ["single", "double"])
+def test_mpi_multiple_cosserat_rod_io(precision):
+    real_t = spu.get_real_t(precision)
+    testing_atol = spu.get_test_tol(precision)
+
+    n_values = 16
+    dim = 3
+    grid_size_z, grid_size_y, grid_size_x = (n_values,) * dim
+    # Generate the MPI topology minimal object
+    mpi_construct = MPIConstruct3D(
+        grid_size_z=grid_size_z,
+        grid_size_y=grid_size_y,
+        grid_size_x=grid_size_x,
+        real_t=real_t,
+        rank_distribution=None,
+    )
+
+    # Initialize mock rods for each rank
+    n_element = 16
+    rod_incline_angle = np.pi / 4.0
+    start = np.zeros(3) + mpi_construct.rank
+    direction = np.zeros_like(start)
+    direction[spu.VectorField.x_axis_idx()] = np.cos(rod_incline_angle)
+    direction[spu.VectorField.y_axis_idx()] = np.sin(rod_incline_angle)
+    normal = np.array([0.0, 0.0, 1.0])
+    rod_length = 1.0
+    rod_element_radius = np.linspace(0.01, 0.5, n_element)
+    density = 1.0
+    nu = 1.0
+    youngs_modulus = 1.0
+    rod = ea.CosseratRod.straight_rod(
+        n_element,
+        start,
+        direction,
+        normal,
+        rod_length,
+        rod_element_radius,
+        density,
+        nu,
+        youngs_modulus,
+    )
+    time = 0.1
+
+    # Initialize cosserat rod io
+    master_rank = mpi_construct.rank  # each rank owns its own rod
+    rod_io = CosseratRodMPIIO(
+        mpi_construct=mpi_construct,
+        master_rank=master_rank,
+        real_dtype=real_t,
+    )
+    rod_name = f"rod_{mpi_construct.rank}"
+    rod_io.add_cosserat_rod_for_io(cosserat_rod=rod, name=rod_name)
+    # Save rod
+    rod_io.save(h5_file_name="test_cosserat_rod_io.h5", time=time)
+
+    # Load saved HDF5 file for checking
+    del rod_io
+    rod_element_position_saved = 0.5 * (
+        rod.position_collection[:dim, 1:] + rod.position_collection[:dim, :-1]
+    )
+    rod_element_position_loaded = np.zeros((dim, n_element))
+    rod_element_radius_saved = rod_element_radius.copy()
+    rod_element_radius_loaded = np.zeros(n_element)
+    base_io = MPIIO(mpi_construct=mpi_construct, real_dtype=real_t)
+    base_io.add_as_lagrangian_fields_for_io(
+        lagrangian_grid=rod_element_position_loaded,
+        lagrangian_grid_master_rank=master_rank,
+        lagrangian_grid_name=rod_name,
+        scalar_3d=rod_element_radius_loaded,
+    )
+    time_loaded = base_io.load(h5_file_name="test_cosserat_rod_io.h5")
+
+    # Check values
+    # Each rank check for its loaded rod
+    np.testing.assert_allclose(
+        rod_element_position_saved, rod_element_position_loaded, atol=testing_atol
+    )
+    np.testing.assert_allclose(
+        rod_element_radius_saved, rod_element_radius_loaded, atol=testing_atol
+    )
     np.testing.assert_allclose(time, time_loaded, atol=testing_atol)
     os.system("rm -f *h5 *xmf")
