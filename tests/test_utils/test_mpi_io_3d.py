@@ -616,7 +616,7 @@ def test_mpi_cosserat_rod_io(precision):
         lagrangian_grid=rod_element_position_loaded,
         lagrangian_grid_master_rank=master_rank,
         lagrangian_grid_name=rod_name,
-        scalar_3d=rod_element_radius_loaded,
+        radius=rod_element_radius_loaded,
     )
     time_loaded = base_io.load(h5_file_name="test_cosserat_rod_io.h5")
 
@@ -715,7 +715,7 @@ def test_mpi_multiple_cosserat_rod_io(precision):
         lagrangian_grid=rod_element_position_loaded,
         lagrangian_grid_master_rank=master_rank,
         lagrangian_grid_name=rod_name,
-        scalar_3d=rod_element_radius_loaded,
+        radius=rod_element_radius_loaded,
     )
     time_loaded = base_io.load(h5_file_name="test_cosserat_rod_io.h5")
 
