@@ -51,6 +51,7 @@ class MPIIO:
         self.lagrangian_fields = {}
         self.lagrangian_fields_type = {}
         self.lagrangian_grids = {}
+        self.all_lagrangian_grids = {}
         self.lagrangian_fields_with_grid_name = {}
         self.lagrangian_grid_count = 0
         self.lagrangian_grid_connection = {}
@@ -183,52 +184,46 @@ class MPIIO:
         keyword name, similar to numpy savez function.
         https://numpy.org/doc/stable/reference/generated/numpy.savez.html#numpy.savez
         """
-        assert (
-            len(lagrangian_grid.shape) == 2
-        ), "lagrangian grid has to be a 2D (dim, N) array."
-        assert (
-            lagrangian_grid.shape[0] == self.dim
-        ), "Invalid lagrangian grid dimension (only 2D and 3D)"
+        # Update relevant metadata on master rank
+        if self.mpi_construct.rank == lagrangian_grid_master_rank:
+            assert (
+                len(lagrangian_grid.shape) == 2
+            ), "lagrangian grid has to be a 2D (dim, N) array."
+            assert (
+                lagrangian_grid.shape[0] == self.dim
+            ), "Invalid lagrangian grid dimension (only 2D and 3D)"
 
-        if lagrangian_grid_name is None:
-            lagrangian_grid_name = f"Lagrangian_grid_{self.lagrangian_grid_count}"
-            self.lagrangian_grid_count += 1
+            if lagrangian_grid_name is None:
+                lagrangian_grid_name = f"Lagrangian_grid_{self.lagrangian_grid_count}_rank{self.mpi_construct.rank}"
+                self.lagrangian_grid_count += 1
 
-        # Save the num of lagrangian nodes for lagrangian grid. We need this for creating
-        # hdf5 dataset later. Since only the master rank contains actual data, we bcast
-        # the actual num of nodes from master rank
-        num_lagrangian_nodes = self.mpi_construct.grid.bcast(
-            lagrangian_grid.shape[1], root=lagrangian_grid_master_rank
-        )
-        self.lagrangian_grid_num_node[lagrangian_grid_name] = num_lagrangian_nodes
+            num_lagrangian_nodes = lagrangian_grid.shape[1]
+            self.lagrangian_grid_num_node[lagrangian_grid_name] = num_lagrangian_nodes
 
-        # Save `lagrangian_grid_master_rank` for lagrangian grid with grid name `lagrangian_grid_name`
-        self.lagrangian_grid_master_rank[
-            lagrangian_grid_name
-        ] = lagrangian_grid_master_rank
+            # Save `lagrangian_grid_master_rank` for lagrangian grid with grid name `lagrangian_grid_name`
+            self.lagrangian_grid_master_rank[
+                lagrangian_grid_name
+            ] = lagrangian_grid_master_rank
 
-        if lagrangian_grid_connect:
-            self.lagrangian_grid_connection[lagrangian_grid_name] = np.arange(
-                num_lagrangian_nodes
-            )
+            if lagrangian_grid_connect:
+                self.lagrangian_grid_connection[lagrangian_grid_name] = np.arange(
+                    num_lagrangian_nodes
+                )
 
-        # Save `lagrangian_grid` with grid name `lagrangian_grid_name` to `lagrangian_grids`
-        self.lagrangian_grids[lagrangian_grid_name] = lagrangian_grid
+            # Save `lagrangian_grid` with grid name `lagrangian_grid_name` to `lagrangian_grids`
+            self.lagrangian_grids[lagrangian_grid_name] = lagrangian_grid
 
-        # Create a list of to store names of fields that lie on
-        # grid with grid name `lagrangian_grid_name`
-        self.lagrangian_fields_with_grid_name[lagrangian_grid_name] = []
-        for field_name in fields_for_io:
-            # Add each field into local dictionary
-            field = fields_for_io[field_name]
-            self.lagrangian_fields[field_name] = field
-            self.lagrangian_fields_with_grid_name[lagrangian_grid_name].append(
-                field_name
-            )
-
-            # Assign field types
-            # Only master_rank contains actual field
-            if self.mpi_construct.rank == lagrangian_grid_master_rank:
+            # Create a list of to store names of fields that lie on
+            # grid with grid name `lagrangian_grid_name`
+            self.lagrangian_fields_with_grid_name[lagrangian_grid_name] = []
+            for field_name in fields_for_io:
+                # Add each field into local dictionary
+                field = fields_for_io[field_name]
+                self.lagrangian_fields[field_name] = field
+                self.lagrangian_fields_with_grid_name[lagrangian_grid_name].append(
+                    field_name
+                )
+                # Assign field types
                 if field.shape[0] == lagrangian_grid.shape[1]:
                     field_type = "Scalar"
                 elif field.shape == lagrangian_grid.shape:
@@ -238,12 +233,37 @@ class MPIIO:
                         f"Unable to identify lagrangian field type "
                         f"(scalar / vector) based on field dimension {field.shape}"
                     )
-            else:
-                field_type = None
-            field_type = self.mpi_construct.grid.bcast(
-                field_type, root=lagrangian_grid_master_rank
-            )
-            self.lagrangian_fields_type[field_name] = field_type
+                self.lagrangian_fields_type[field_name] = field_type
+
+        # Update metadata on all ranks so each rank knows the data structure during save
+        # Note: we need a separate all_lagrangian_grids dictionary to preserve the original
+        # reference of lagrangian_grids to the actual numpy array. The all_lagrangian_grids
+        # serves to facilitate the construction of metadata structure and collective
+        # writing in MPIIO. Other dictionaries can remain local to the master rank,
+        # since only master rank writes the relevant data in the _save function.
+        self.all_lagrangian_grids = self._allreduce_dictionary(self.lagrangian_grids)
+        self.lagrangian_grid_num_node = self._allreduce_dictionary(
+            self.lagrangian_grid_num_node
+        )
+        self.lagrangian_grid_master_rank = self._allreduce_dictionary(
+            self.lagrangian_grid_master_rank
+        )
+        self.lagrangian_grid_connection = self._allreduce_dictionary(
+            self.lagrangian_grid_connection
+        )
+        self.lagrangian_fields_with_grid_name = self._allreduce_dictionary(
+            self.lagrangian_fields_with_grid_name
+        )
+        self.lagrangian_fields_type = self._allreduce_dictionary(
+            self.lagrangian_fields_type
+        )
+
+    def _allreduce_dictionary(self, dictionary):
+        """Helper function for allreduce operation on dictionaries."""
+        dictionary_as_list = [(k, v) for k, v in dictionary.items()]
+        updated_list = self.mpi_construct.grid.allreduce(dictionary_as_list, op=MPI.SUM)
+        updated_dictionary = {k: v for (k, v) in updated_list}
+        return updated_dictionary
 
     def save(self, h5_file_name, time=0.0):  # noqa: C901
         """
@@ -345,9 +365,8 @@ class MPIIO:
             # during post-processing and visualizing these lagrangian points in Paraview.
             lagrangian_grp = f.create_group("Lagrangian")
             # Go over all lagrangian grids
-            for lagrangian_grid_name in self.lagrangian_grids:
+            for lagrangian_grid_name in self.all_lagrangian_grids:
                 lagrangian_grid_grp = lagrangian_grp.create_group(lagrangian_grid_name)
-                lagrangian_grid = self.lagrangian_grids[lagrangian_grid_name]
                 is_master_rank = (
                     self.mpi_construct.rank
                     == self.lagrangian_grid_master_rank[lagrangian_grid_name]
@@ -363,7 +382,9 @@ class MPIIO:
                 )
                 # write only on master_rank where lagrangian grid resides
                 if is_master_rank:
+                    lagrangian_grid = self.lagrangian_grids[lagrangian_grid_name]
                     dset_grid[...] = np.transpose(lagrangian_grid)
+
                 # Dataset for lagrangian grid connection, if any
                 if lagrangian_grid_name in self.lagrangian_grid_connection:
                     dset_connection = lagrangian_grid_grp.create_dataset(
@@ -375,6 +396,7 @@ class MPIIO:
                         dset_connection[...] = self.lagrangian_grid_connection[
                             lagrangian_grid_name
                         ]
+
                 # Dataset for 'Scalar' and 'Vector' fields
                 lagrangian_scalar_grp = lagrangian_grid_grp.create_group("Scalar")
                 lagrangian_vector_grp = lagrangian_grid_grp.create_group("Vector")
@@ -382,7 +404,6 @@ class MPIIO:
                 for field_name in self.lagrangian_fields_with_grid_name[
                     lagrangian_grid_name
                 ]:
-                    field = self.lagrangian_fields[field_name]
                     field_type = self.lagrangian_fields_type[field_name]
                     if field_type == "Scalar":
                         dset = lagrangian_scalar_grp.create_dataset(
@@ -393,6 +414,7 @@ class MPIIO:
                         )
                         # write only on master_rank
                         if is_master_rank:
+                            field = self.lagrangian_fields[field_name]
                             dset[...] = field
                     elif field_type == "Vector":
                         dset = lagrangian_vector_grp.create_dataset(
@@ -404,6 +426,7 @@ class MPIIO:
                         )
                         # write only on master_rank
                         if is_master_rank:
+                            field = self.lagrangian_fields[field_name]
                             dset[...] = np.moveaxis(field, 0, -1)
                     else:
                         raise ValueError(
@@ -411,7 +434,7 @@ class MPIIO:
                         )
 
                 # only master_rank owning the lagrangian grid generates the xdmf file
-                if is_master_rank:
+                if self.mpi_construct.rank == 0:
                     self.generate_xdmf_lagrangian(h5_file_name=h5_file_name, time=time)
 
     def load(self, h5_file_name):  # noqa: C901
@@ -480,7 +503,7 @@ class MPIIO:
             # Load Lagrangian fields
             if self.lagrangian_fields:
                 # First loop over and load each of the lagrangian grids
-                for lagrangian_grid_name in self.lagrangian_grids:
+                for lagrangian_grid_name in self.all_lagrangian_grids:
                     # Load only on master rank owning the lagrangian grid
                     if (
                         self.mpi_construct.rank
@@ -630,7 +653,7 @@ class MPIIO:
     </Domain>
 </Xdmf>
 """
-        with open(h5_file_name.replace(".h5", "_eulerian.xmf"), "w") as f:
+        with open(h5_file_name.replace(".h5", ".xmf"), "w") as f:
             f.write(xdmffile)
 
     def generate_xdmf_lagrangian(self, h5_file_name, time):
@@ -665,10 +688,11 @@ class MPIIO:
                 """
             return entry
 
-        for lagrangian_grid_name in self.lagrangian_grids:
-            xmf_file_name = h5_file_name.replace(".h5", f"_{lagrangian_grid_name}.xmf")
+        grid_entries = ""
+        for lagrangian_grid_name in self.all_lagrangian_grids:
+            xmf_file_name = f"{h5_file_name.replace('.h5', '.xmf')}"
             field_entries = ""
-            lagrangian_grid = self.lagrangian_grids[lagrangian_grid_name]
+            lagrangian_grid = self.all_lagrangian_grids[lagrangian_grid_name]
             lagrangian_grid_size = np.flip(np.array(lagrangian_grid.shape))
             lagrangian_grid_size_string = np.array2string(
                 lagrangian_grid_size,
@@ -709,11 +733,7 @@ class MPIIO:
                 topology = f"""<Topology TopologyType="Polyvertex"
                 NumberOfElements="{lagrangian_grid_size[0]}"/>"""
 
-            xdmffile = f"""<?xml version="1.0" ?>
-<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>
-<Xdmf xmlns:xi="http://www.w3.org/2003/XInclude" Version="2.2">
-    <Domain>
-        <Grid GridType="Uniform">
+            grid_entries += f"""<Grid GridType="Uniform">
             <Time Value="{time}"/>
             {topology}
             <Geometry GeometryType="{geometry_type}">
@@ -724,13 +744,20 @@ class MPIIO:
             </Geometry>
 
             {field_entries}
-        </Grid>
+        </Grid>\n
+        """
+
+        xdmffile = f"""<?xml version="1.0" ?>
+<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>
+<Xdmf xmlns:xi="http://www.w3.org/2003/XInclude" Version="2.2">
+    <Domain>
+        {grid_entries}
     </Domain>
 </Xdmf>
 """
 
-            with open(xmf_file_name, "w") as f:
-                f.write(xdmffile)
+        with open(xmf_file_name, "w") as f:
+            f.write(xdmffile)
 
 
 class CosseratRodMPIIO(MPIIO):
@@ -741,32 +768,38 @@ class CosseratRodMPIIO(MPIIO):
     def __init__(
         self,
         mpi_construct,
-        cosserat_rod: CosseratRod,
         real_dtype=np.float64,
         master_rank=0,
     ):
         super().__init__(mpi_construct, real_dtype)
-        self.cosserat_rod = cosserat_rod
-
-        # Initialize rod element position
-        self.rod_element_position = np.zeros((self.dim, cosserat_rod.n_elems))
-        self._update_rod_element_position()
-
-        # Add the element position to IO
-        self.add_as_lagrangian_fields_for_io(
-            lagrangian_grid=self.rod_element_position,
-            lagrangian_grid_master_rank=master_rank,
-            lagrangian_grid_name="rod",
-            scalar_3d=self.cosserat_rod.radius,
-            lagrangian_grid_connect=True,
-        )
+        # Initialize list for storing rods and corresponding element positions
+        self.cosserat_rods = []
+        self.rod_element_position = []
+        self.master_rank = master_rank
 
     def save(self, h5_file_name, time=0.0):
         self._update_rod_element_position()
         self._save(h5_file_name=h5_file_name, time=time)
 
     def _update_rod_element_position(self):
-        self.rod_element_position[...] = 0.5 * (
-            self.cosserat_rod.position_collection[: self.dim, 1:]
-            + self.cosserat_rod.position_collection[: self.dim, :-1]
+        for i, rod in enumerate(self.cosserat_rods):
+            self.rod_element_position[i][...] = 0.5 * (
+                rod.position_collection[: self.dim, 1:]
+                + rod.position_collection[: self.dim, :-1]
+            )
+
+    def add_cosserat_rod_for_io(
+        self, cosserat_rod: CosseratRod, name=None, **fields_for_io
+    ):
+        self.cosserat_rods.append(cosserat_rod)
+        self.rod_element_position.append(np.zeros((self.dim, cosserat_rod.n_elems)))
+        if name is None:
+            name = f"rank{self.mpi_construct.rank}_rod{len(self.cosserat_rods)}"
+        self.add_as_lagrangian_fields_for_io(
+            lagrangian_grid=self.rod_element_position[-1],
+            lagrangian_grid_master_rank=self.master_rank,
+            lagrangian_grid_name=name,
+            radius=self.cosserat_rods[-1].radius,
+            lagrangian_grid_connect=True,
+            **fields_for_io,
         )
