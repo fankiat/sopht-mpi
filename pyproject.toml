@@ -18,10 +18,12 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.11"
+python = ">=3.10,<3.11"
 sopht = {git = "https://github.com/SophT-Team/SophT-Simulator.git", rev = "main"}
 mpi4py = "^3.1"
 # add mpi-fft here later if pip works out...
+click = {version = "^8.1", optional = true, extras = ["examples"]}
+magneto_pyelastica = {version = ">=0.0.1", optional = true, extras = ["examples"]}
 
 [tool.poetry.dev-dependencies]
 black = "^22.3.0"
@@ -31,6 +33,9 @@ autoflake8 = "^0.4"
 pytest = "^7.1"
 pytest-mpi = "^0.6"
 pytest-rerunfailures = "^10.3"
+
+[tool.poetry.extras]
+examples = ["click", "magneto_pyelastica"]
 
 [tool.black]
 # https://github.com/psf/black

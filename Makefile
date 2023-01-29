@@ -22,6 +22,10 @@ install:
 	HDF5_MPI="ON" CC=mpicc pip install --no-binary=h5py h5py
 	# install mpi4py-fft
 	pip install mpi4py-fft
+
+.PHONY: install_examples_dependencies
+install_examples_dependencies:
+	poetry install -E examples
 	# sadly pip ffmpeg doesnt work, hence we use conda for ffmpeg
 	conda install -c conda-forge ffmpeg
 
