@@ -412,7 +412,9 @@ class UnboundedFlowSimulator3D:
         self.filter_vector_field(vector_field=self.vorticity_field)
         self.compute_flow_velocity(free_stream_velocity=free_stream_velocity)
 
-    def navier_stokes_with_forcing_timestep(self, dt, free_stream_velocity):
+    def navier_stokes_with_forcing_timestep(
+        self, dt, free_stream_velocity=(0.0, 0.0, 0.0)
+    ):
         self.update_vorticity_from_velocity_forcing(
             vorticity_field=self.vorticity_field,
             velocity_forcing_field=self.eul_grid_forcing_field,
