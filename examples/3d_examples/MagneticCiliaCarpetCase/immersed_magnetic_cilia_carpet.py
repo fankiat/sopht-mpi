@@ -24,53 +24,54 @@ def immersed_magnetic_cilia_carpet_case(
     num_cycles: float,
     rod_base_length: float = 1.5,
     angular_frequency=np.deg2rad(10.0),
-    grid_size_y: int = 128,
+    grid_size_x: int = 128,
     rod_elem_prefactor: float = 1.0,
-    wavelength_x_factor: float = 1.0,
-    wavelength_y_factor: float = 1.0,
     coupling_stiffness: float = -2e4,
     coupling_damping: float = -1e1,
+    rank_distribution: Optional[tuple[int, int, int]] = (1, 0, 0),
     precision: str = "single",
     save_data: bool = True,
 ) -> None:
+    """
+    Example case for arrays of magnetic rods arranged in a grid.
+
+    Note: Since the carpet are basically repeating units of cosserat rods, we can
+    decompose the whole carpet into sub-carpets, which serves as a local carpet unit
+    in each rank, such that the centroid of each local carpet unit is aligned with the
+    centroid of the local eulerian domain. For the purpose of illustration, the rods are
+    spaced out sufficiently such that the motion of the rods actuated by magnetic fields
+    will stay within it's local rank eulerian grid. This allows us to bypass unnecessary
+    communication during flow structure interaction.
+    """
     # ==================Physical setup=========================
-    assert (
-        num_rods_along_x >= 2 and num_rods_along_y >= 2
-    ), "num_rod along x and y must be no less than 2"
-    assert (
-        num_rods_along_x % 2 == 0 and num_rods_along_y % 2 == 0
-    ), "num_rods along x and y must be divisible by 2 for proper flow domain decomposition"
-    carpet_spacing = rod_base_length
-    global_carpet_length_x = (num_rods_along_x - 1) * carpet_spacing
-    global_carpet_length_y = (num_rods_along_y - 1) * carpet_spacing
+    if num_rods_along_x < 2 and num_rods_along_y < 2:
+        raise ValueError("num_rod along x and y must be no less than 2")
+    if num_rods_along_x % 2 != 0 or num_rods_along_y % 2 != 0:
+        raise ValueError(
+            "num_rods along x and y must be divisible by 2 "
+            "for proper flow domain decomposition"
+        )
+    if rank_distribution[0] != 1:
+        raise ValueError(
+            "Domain decomposition along z-axis is currently not supported for this "
+            "example case. Please read docstring for explanation."
+        )
 
-    # Since the carpet are basically repeating units of cosserat rods, we can decompose
-    # the whole carpet into sub-carpets, which serves as a local carpet unit in each
-    # rank, such that the centroid of each local carpet unit is aligned with the
-    # centroid of the local eulerian domain. This allows us to bypass unnecessary
-    # communication during flow structure interaction.
-    # Since the cilia actuate along xz plane, the repeating unit of rank local carpet is
-    # along the y-axis. Hence, we decompose the domain along the y-axis (slabs
-    # decomposition), and construct the global domain range based on the grid size of
-    # the decomposition direction.
-    rank_distribution = (1, 0, 1)  # decompose along y-axis
+    # spacing rods sufficiently to contain within local eulerian grid
+    spacing_between_rods = 2 * rod_base_length
+    # Compute full global carpet length
+    carpet_length_x = (num_rods_along_x - 1) * spacing_between_rods
+    carpet_length_y = (num_rods_along_y - 1) * spacing_between_rods
     # get the flow domain range based on the carpet
-    # y_range should be global_carpet_length_y + rod_base_length so that in each rank
-    # the local carpet is a repeated unit along the decomposition direction
-    global_domain_y_range = global_carpet_length_y + rod_base_length
-    effective_dx = global_domain_y_range / grid_size_y
-
-    # Based on the effective dx, we can compute the ranges of x and z
-    # The x_range is global_carpet_length_x + 2 * rod_base_length to account for the
-    # displacement of the rods. Since we have a defined dx, we extend the x_range by
-    # a bit so that grid_size_x is an integer.
-    global_domain_x_range = global_carpet_length_x + 2 * rod_base_length
-    grid_size_x = np.ceil(global_domain_x_range / effective_dx).astype(int)
-    global_domain_x_range = grid_size_x * effective_dx
-    # Similarly, we extend the z_range a bit so that grid_size_z * dx = z_range
-    global_domain_z_range = 5 * rod_base_length
-    grid_size_z = np.ceil(global_domain_z_range / effective_dx).astype(int)
-    global_domain_z_range = grid_size_z * effective_dx
+    domain_x_range = carpet_length_x + spacing_between_rods
+    domain_y_range = carpet_length_y + spacing_between_rods
+    domain_z_range = 5 * rod_base_length
+    # compute grid size y and z accordingly
+    grid_size_y = round(domain_y_range / domain_x_range * grid_size_x)
+    grid_size_z = round(domain_z_range / domain_x_range * grid_size_x)
+    # align y and z domain range to grid size
+    domain_y_range = grid_size_y / grid_size_x * domain_x_range
+    domain_z_range = grid_size_z / grid_size_x * domain_x_range
 
     # ==================FLOW SETUP START=========================
     grid_dim = 3
@@ -84,7 +85,7 @@ def immersed_magnetic_cilia_carpet_case(
     kinematic_viscosity = angular_frequency * rod_base_length**2 / womersley**2
     flow_sim = sps.UnboundedFlowSimulator3D(
         grid_size=grid_size,
-        x_range=global_domain_x_range,
+        x_range=domain_x_range,
         kinematic_viscosity=kinematic_viscosity,
         flow_type="navier_stokes_with_forcing",
         real_t=real_t,
@@ -103,29 +104,34 @@ def immersed_magnetic_cilia_carpet_case(
     # Get local cilia carpet centroid
     local_num_rods_along_x = num_rods_along_x // flow_sim.mpi_construct.grid_topology[2]
     local_num_rods_along_y = num_rods_along_y // flow_sim.mpi_construct.grid_topology[1]
-    grid_topology_y_axis_idx = 1  # grid topology is in zyx order!
     local_grid_size = flow_sim.mpi_construct.local_grid_size
     substart_idx = flow_sim.mpi_construct.grid.coords * local_grid_size
     subend_idx = substart_idx + local_grid_size
-    # domain is intentionally decomposed only along y-axis
-    substart_y = substart_idx[grid_topology_y_axis_idx] * flow_sim.dx
-    subend_y = subend_idx[grid_topology_y_axis_idx] * flow_sim.dx
+    substart = substart_idx * flow_sim.dx
+    subend = subend_idx * flow_sim.dx
+    grid_topology_y_axis_idx = 1  # grid topology is in zyx order!
+    grid_topology_x_axis_idx = 2  # grid topology is in zyx order!
     local_carpet_base_centroid = np.array(
         [
-            0.5 * global_domain_x_range,
-            0.5 * (substart_y + subend_y),
-            0.1 * global_domain_z_range,
+            0.5
+            * (substart[grid_topology_x_axis_idx] + subend[grid_topology_x_axis_idx]),
+            0.5
+            * (substart[grid_topology_y_axis_idx] + subend[grid_topology_y_axis_idx]),
+            0.1 * domain_z_range,
         ]
     )
     n_elem_per_rod = int(grid_size_x * rod_elem_prefactor / num_rods_along_x)
+    spatial_magnetisation_wavelength_x = spacing_between_rods * (num_rods_along_x - 1)
+    spatial_magnetisation_wavelength_y = spacing_between_rods * (num_rods_along_y - 1)
     local_cilia_carpet_simulator = MagneticCiliaCarpetSimulator(
         magnetic_elastic_ratio=magnetic_elastic_ratio,
         rod_base_length=rod_base_length,
         n_elem_per_rod=n_elem_per_rod,
         num_rods_along_x=local_num_rods_along_x,
         num_rods_along_y=local_num_rods_along_y,
-        wavelength_x_factor=wavelength_x_factor,
-        wavelength_y_factor=wavelength_y_factor,
+        spacing_between_rods=spacing_between_rods,
+        spatial_magnetisation_wavelength_x=spatial_magnetisation_wavelength_x,
+        spatial_magnetisation_wavelength_y=spatial_magnetisation_wavelength_y,
         num_cycles=num_cycles,
         carpet_base_centroid=local_carpet_base_centroid,
         plot_result=False,
@@ -243,7 +249,7 @@ def immersed_magnetic_cilia_carpet_case(
                 )
                 carpet_io.save(
                     h5_file_name=f"carpet_"
-                    # h5_file_name=f"carpet_"
+                    # h5_file_name=f"carpet{flow_sim.mpi_construct.rank}_"
                     + str("%0.4d" % (flow_sim.time * 100)) + ".h5",
                     time=flow_sim.time,
                 )
@@ -316,8 +322,8 @@ if __name__ == "__main__":
     immersed_magnetic_cilia_carpet_case(
         womersley=3.0,
         magnetic_elastic_ratio=3.3,
-        num_rods_along_x=8,
+        num_rods_along_x=4,
         num_rods_along_y=8,
         num_cycles=2,
-        grid_size_y=128,
+        grid_size_x=128,
     )

@@ -13,8 +13,9 @@ class MagneticCiliaCarpetSimulator:
         num_cycles: float = 2.0,
         num_rods_along_x: int = 8,
         num_rods_along_y: int = 4,
-        wavelength_x_factor: float = 1.0,
-        wavelength_y_factor: float = 1.0,
+        spacing_between_rods: float = 1.5,
+        spatial_magnetisation_wavelength_x: float | None = None,
+        spatial_magnetisation_wavelength_y: float | None = None,
         carpet_base_centroid: np.ndarray = np.array([0.0, 0.0, 0.0]),
         angular_frequency: float = np.deg2rad(10.0),
         magnetization_2d: bool = False,
@@ -44,10 +45,14 @@ class MagneticCiliaCarpetSimulator:
         spatial_magnetisation_phase_diff = np.pi  # Antiplectic
 
         # Derived parameters
-        self.spacing_between_rods = self.rod_base_length  # following Gu2020
+        self.spacing_between_rods = spacing_between_rods
         self.period = 2.0 * np.pi / self.angular_frequency
         self.carpet_length_x = self.spacing_between_rods * (num_rods_along_x - 1)
         self.carpet_length_y = self.spacing_between_rods * (num_rods_along_y - 1)
+        if spatial_magnetisation_wavelength_x is None:
+            spatial_magnetisation_wavelength_x = self.carpet_length_x
+        if spatial_magnetisation_wavelength_y is None:
+            spatial_magnetisation_wavelength_y = self.carpet_length_y
 
         # ==================== Setting up the carpet grid ===================
         n_rods = num_rods_along_x * num_rods_along_y
@@ -80,8 +85,6 @@ class MagneticCiliaCarpetSimulator:
         moment_of_inertia = np.pi / 4 * base_radius**4
 
         # Add magnetization to rods
-        spatial_magnetisation_wavelength_x = self.carpet_length_x * wavelength_x_factor
-        spatial_magnetisation_wavelength_y = self.carpet_length_y * wavelength_y_factor
         magnetization_density = (
             magnetic_elastic_ratio
             * youngs_modulus
@@ -182,7 +185,7 @@ class MagneticCiliaCarpetSimulator:
 
         # add damping
         dl = self.rod_base_length / n_elem
-        self.dt = 0.1 * dl
+        self.dt = 0.05 * dl
         damping_constant = 0.5
         for i in range(n_rods):
             self.magnetic_beam_sim.dampen(self.magnetic_rod_list[i]).using(
