@@ -57,6 +57,7 @@ class MPIIO:
         self.lagrangian_grid_connection = {}
         self.lagrangian_grid_master_rank = {}
         self.lagrangian_grid_num_node = {}
+        self.is_lagrangian_grid_finalized = False
 
     def define_eulerian_grid(self, origin, dx, grid_size, ghost_size):
         """
@@ -235,12 +236,19 @@ class MPIIO:
                     )
                 self.lagrangian_fields_type[field_name] = field_type
 
-        # Update metadata on all ranks so each rank knows the data structure during save
-        # Note: we need a separate all_lagrangian_grids dictionary to preserve the original
-        # reference of lagrangian_grids to the actual numpy array. The all_lagrangian_grids
-        # serves to facilitate the construction of metadata structure and collective
-        # writing in MPIIO. Other dictionaries can remain local to the master rank,
-        # since only master rank writes the relevant data in the _save function.
+        self.is_lagrangian_grid_finalized = False
+
+    def _finalize_added_lagrangian_grids(self):
+        """
+        Finalize all added (Lagrangian) grids by updating metadata on all ranks so each
+        rank knows the data structure during save.
+
+        Note: we need a separate all_lagrangian_grids dictionary to preserve the original
+        reference of lagrangian_grids to the actual numpy array. The all_lagrangian_grids
+        serves to facilitate the construction of metadata structure and collective
+        writing in MPIIO. Other dictionaries can remain local to the master rank,
+        since only master rank writes the relevant data in the _save function.
+        """
         self.all_lagrangian_grids = self._allreduce_dictionary(self.lagrangian_grids)
         self.lagrangian_grid_num_node = self._allreduce_dictionary(
             self.lagrangian_grid_num_node
@@ -257,6 +265,8 @@ class MPIIO:
         self.lagrangian_fields_type = self._allreduce_dictionary(
             self.lagrangian_fields_type
         )
+
+        self.is_lagrangian_grid_finalized = True
 
     def _allreduce_dictionary(self, dictionary):
         """Helper function for allreduce operation on dictionaries."""
@@ -357,6 +367,9 @@ class MPIIO:
                     self.generate_xdmf_eulerian(h5_file_name=h5_file_name, time=time)
 
             # Lagrangian save
+            # finalize added lagrangian grids if not yet finalized
+            if not self.is_lagrangian_grid_finalized:
+                self._finalize_added_lagrangian_grids()
             # Note: We need to reverse the order from (dim, ...) -> (..., dim) for Paraview.
             # For eulerian fields, we mitigate this by splitting each vector
             # component into scalar fields. For lagrangian fields, since N is small
@@ -690,15 +703,12 @@ class MPIIO:
 
         grid_entries = ""
         for lagrangian_grid_name in self.all_lagrangian_grids:
-            xmf_file_name = f"{h5_file_name.replace('.h5', '.xmf')}"
             field_entries = ""
             lagrangian_grid = self.all_lagrangian_grids[lagrangian_grid_name]
-            lagrangian_grid_size = np.flip(np.array(lagrangian_grid.shape))
-            lagrangian_grid_size_string = np.array2string(
-                lagrangian_grid_size,
-                precision=self.precision,
-                separator="    ",
-            )[1:-1]
+            lagrangian_grid_size = lagrangian_grid.shape[::-1]  # for (n, dim)
+            lagrangian_grid_size_string = (
+                f"{'    '.join(map(str, lagrangian_grid_size))}"
+            )
 
             for field_name in self.lagrangian_fields_with_grid_name[
                 lagrangian_grid_name
@@ -708,11 +718,7 @@ class MPIIO:
                 if field_type == "Scalar":
                     field_grid_size_string = lagrangian_grid_size[0]
                 elif field_type == "Vector":
-                    field_grid_size_string = np.array2string(
-                        lagrangian_grid_size,
-                        precision=self.precision,
-                        separator="    ",
-                    )[1:-1]
+                    field_grid_size_string = lagrangian_grid_size_string
 
                 field_entries += generate_lagrangian_field_entry(
                     h5_file_name,
@@ -756,6 +762,7 @@ class MPIIO:
 </Xdmf>
 """
 
+        xmf_file_name = f"{h5_file_name.replace('.h5', '.xmf')}"
         with open(xmf_file_name, "w") as f:
             f.write(xdmffile)
 
