@@ -3,7 +3,7 @@
 #SBATCH -J test_stampede
 #SBATCH -o %x_%j.out                    # Name of stdout output file
 #SBATCH -e %x_%j.err                    # Name of stderr error file
-#SBATCH -p compute                      # Queue (partition) name
+#SBATCH -p normal                       # Queue (partition) name
 #SBATCH -N 4                            # Number of nodes requested
 #SBATCH --ntasks-per-node=64            # Number of processes/tasks per node
 #SBATCH -t 00:10:00                     # Run time (hh:mm:ss)

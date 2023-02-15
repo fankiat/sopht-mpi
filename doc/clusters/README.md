@@ -13,8 +13,9 @@ pre-installation steps below.*
 1. Load the relevant modules and set environment variables as below.
 ```bash
 module reset
-module load gcc openmpi anaconda3 hdf5
+module load gcc openmpi fftw anaconda3 hdf5
 export HDF5_DIR=$HDF5HOME
+export FFTW_DIR=$FFTWHOME
 ```
 2. Create python virtual environment and proceed with usual installation steps as
 detailed in the [main repository](https://github.com/fankiat/sopht-mpi) (skipping step
@@ -28,8 +29,9 @@ which includes `Intel-MPI`.
 ```bash
 module reset
 module unload python2 # remove unnecessary python2
-module load phdf5
+module load phdf5 fftw3
 export HDF5_DIR=$TACC_HDF5_DIR
+export FFTW_DIR=$TACC_FFTW3_DIR
 ```
 
 2. Since `anaconda` is not an available module on `Stampede2`, we need to install
