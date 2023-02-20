@@ -1,4 +1,8 @@
-# sopht-mpi
+<div align='center'>
+<h1> SophT-MPI </h1>
+
+[![CI][badge-CI]][link-CI] [![DOI][badge-doi]][link-doi]
+ </div>
 
 Scalable One-stop Platform for Hydroelastic Things (SOPHT) MPI solver.
 
@@ -44,3 +48,29 @@ make poetry-download
 make install
 make pre-commit-install
 ```
+
+
+## Citation
+
+We ask that any publications which use SophT-MPI cite as following:
+
+```
+@software{fan_kiat_chan_2023_7659153,
+  author       = {Fan Kiat Chan and
+                  Yashraj Bhosale},
+  title        = {{Scalable One-stop Platform for Hydroelastic Things
+                   (SOPHT) MPI solver}},
+  month        = feb,
+  year         = 2023,
+  publisher    = {Zenodo},
+  version      = {0.0.1},
+  doi          = {10.5281/zenodo.7659153},
+  url          = {https://doi.org/10.5281/zenodo.7659153}
+}
+```
+
+[badge-doi]: https://zenodo.org/badge/DOI/10.5281/zenodo.7659153.svg
+[badge-CI]: https://github.com/fankiat/sopht-mpi/workflows/CI/badge.svg
+
+[link-doi]: https://doi.org/10.5281/zenodo.7659153
+[link-CI]: https://github.com/fankiat/sopht-mpi/actions
