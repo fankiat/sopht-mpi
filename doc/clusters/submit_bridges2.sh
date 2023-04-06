@@ -24,8 +24,7 @@ echo Number of processes: $SLURM_NTASKS
 
 # Setup relevant module on expanse
 module load anaconda3 gcc/10.2.0 openmpi/4.0.5-gcc10.2.0 phdf5/1.10.7-openmpi4.0.5-gcc10.2.0 fftw
-source deactivate # deactivate any existing environment
-source activate sopht-mpi-env
+conda activate sopht-mpi-env
 # Print loaded python (sanity check for correctly loaded environment)
 which python
 
