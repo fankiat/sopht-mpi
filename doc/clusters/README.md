@@ -21,6 +21,16 @@ export FFTW_DIR=$FFTWHOME
 detailed in the [main repository](https://github.com/fankiat/sopht-mpi) (skipping step
 3).
 
+## Bridges-2
+1. Load the relevant modules and set environment variables as below.
+```bash
+module reset
+module load anaconda3 gcc/10.2.0 openmpi/4.0.5-gcc10.2.0 phdf5/1.10.7-openmpi4.0.5-gcc10.2.0 fftw
+```
+2. Create python virtual environment and proceed with usual installation steps as
+detailed in the [main repository](https://github.com/fankiat/sopht-mpi) (skipping step
+3).
+
 ## Stampede2
 1. Load the relevant modules and set environment variables as below. Here we unload the
 old Python 2.7 version to remove older, unnecessary reference of `PYTHONPATH` to ensure
@@ -45,13 +55,14 @@ detailed in the [main repository](https://github.com/fankiat/sopht-mpi) (skippin
 
 ### **Note for jobs with large number of processes**
 *Once the facility-specific installation steps are done, please update the cache
-directory for `pystencils`. First, find out your `$SCRATCH` directory by doing
-`echo $SCRATCH`. Then, edit the config file for `pystencils` located in
-`~/.config/pystencils/config.json` and set the `"object_cache"` directory with
-`"your_scratch_directory/.cache/objectcache/{pid}"`, where `your_scratch_directory` is
-replaced with the output of the command above. This will allow the cache objects to be
-generated in the `$SCRATCH` instead of `$HOME`. More documentation on setting the config
-file can be found [here](https://github.com/mabau/pystencils/blob/master/pystencils/cpu/cpujit.py).*
+directory for `pystencils`.
+1. Find out your `$SCRATCH` directory by doing `echo $SCRATCH`. (For `Bridges-2`, we use
+the `$LOCAL`).
+2. Edit the config file for `pystencils` located in `~/.config/pystencils/config.json`
+and set the `"object_cache"` directory with `"your_scratch_directory/.cache/pystencils/objectcache/{pid}"`, where `your_scratch_directory` is replaced with the output of the
+command above. This will allow the cache objects to be generated in the `$SCRATCH`
+instead of `$HOME`. More documentation on setting the config file can be found
+[here](https://github.com/mabau/pystencils/blob/master/pystencils/cpu/cpujit.py).*
 
 
 # Submitting jobs on cluster
