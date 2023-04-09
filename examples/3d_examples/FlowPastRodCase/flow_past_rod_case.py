@@ -189,7 +189,6 @@ def flow_past_rod_case(
         rod_io = CosseratRodMPIIO(
             mpi_construct=flow_sim.mpi_construct,
             cosserat_rod=flow_past_rod,
-            real_dtype=real_t,
             master_rank=cosserat_rod_flow_interactor.master_rank,
         )
 

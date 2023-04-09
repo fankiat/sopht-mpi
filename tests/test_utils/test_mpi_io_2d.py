@@ -16,8 +16,6 @@ def test_mpi_eulerian_grid_scalar_field_io(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
     real_t = spu.get_real_t(precision)
-    testing_atol = spu.get_test_tol(precision)
-
     n_values = 16
     grid_size = (n_values * np.array(aspect_ratio)).astype(int)
     grid_size_y, grid_size_x = grid_size
@@ -65,12 +63,11 @@ def test_mpi_eulerian_grid_scalar_field_io(
 
     # Check values
     inner_idx = (slice(ghost_size, -ghost_size),) * mpi_construct.grid_dim
-    np.testing.assert_allclose(
+    np.testing.assert_array_equal(
         local_scalar_field_saved[inner_idx],
         local_scalar_field_loaded[inner_idx],
-        atol=testing_atol,
     )
-    np.testing.assert_allclose(time, time_loaded, atol=testing_atol)
+    np.testing.assert_equal(time, time_loaded)
     # Cleanup saved output files
     os.system("rm -f *h5 *xmf")
 
@@ -84,8 +81,6 @@ def test_mpi_eulerian_grid_vector_field_io(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
     real_t = spu.get_real_t(precision)
-    testing_atol = spu.get_test_tol(precision)
-
     n_values = 16
     grid_size = (n_values * np.array(aspect_ratio)).astype(int)
     grid_size_y, grid_size_x = grid_size
@@ -136,12 +131,11 @@ def test_mpi_eulerian_grid_vector_field_io(
     inner_idx = (slice(None),) + (
         slice(ghost_size, -ghost_size),
     ) * mpi_construct.grid_dim
-    np.testing.assert_allclose(
+    np.testing.assert_array_equal(
         local_vector_field_saved[inner_idx],
         local_vector_field_loaded[inner_idx],
-        atol=testing_atol,
     )
-    np.testing.assert_allclose(time, time_loaded, atol=testing_atol)
+    np.testing.assert_equal(time, time_loaded)
     # Cleanup saved output files
     os.system("rm -f *h5 *xmf")
 
@@ -155,8 +149,6 @@ def test_mpi_eulerian_grid_multiple_field_io(
     ghost_size, precision, rank_distribution, aspect_ratio
 ):
     real_t = spu.get_real_t(precision)
-    testing_atol = spu.get_test_tol(precision)
-
     n_values = 16
     grid_size = (n_values * np.array(aspect_ratio)).astype(int)
     grid_size_y, grid_size_x = grid_size
@@ -216,17 +208,15 @@ def test_mpi_eulerian_grid_multiple_field_io(
     vector_inner_idx = (slice(None),) + (
         slice(ghost_size, -ghost_size),
     ) * mpi_construct.grid_dim
-    np.testing.assert_allclose(
+    np.testing.assert_array_equal(
         local_scalar_field_saved[scalar_inner_idx],
         local_scalar_field_loaded[scalar_inner_idx],
-        atol=testing_atol,
     )
-    np.testing.assert_allclose(
+    np.testing.assert_array_equal(
         local_vector_field_saved[vector_inner_idx],
         local_vector_field_loaded[vector_inner_idx],
-        atol=testing_atol,
     )
-    np.testing.assert_allclose(time, time_loaded, atol=testing_atol)
+    np.testing.assert_equal(time, time_loaded)
     # Cleanup saved output files
     os.system("rm -f *h5 *xmf")
 
@@ -235,8 +225,6 @@ def test_mpi_eulerian_grid_multiple_field_io(
 @pytest.mark.parametrize("precision", ["single", "double"])
 def test_mpi_lagrangian_grid_scalar_field_io(precision):
     real_t = spu.get_real_t(precision)
-    testing_atol = spu.get_test_tol(precision)
-
     n_values = 16
     dim = 2
     grid_size_y, grid_size_x = (n_values,) * dim
@@ -259,12 +247,14 @@ def test_mpi_lagrangian_grid_scalar_field_io(precision):
     num_revolutions = 4
     theta = np.linspace(0, num_revolutions * 2 * np.pi, num_lagrangian_nodes)
     radius = np.linspace(0, num_revolutions, num_lagrangian_nodes) * drdt
-    lagrangian_grid_position = np.zeros((mpi_construct.grid_dim, num_lagrangian_nodes))
+    lagrangian_grid_position = np.zeros(
+        (mpi_construct.grid_dim, num_lagrangian_nodes)
+    ).astype(real_t)
     lagrangian_grid_position[spu.VectorField.x_axis_idx(), :] = radius * np.cos(theta)
     lagrangian_grid_position[spu.VectorField.y_axis_idx(), :] = radius * np.sin(theta)
 
     # Initialize scalar field
-    scalar_field = np.linspace(0, 1, num_lagrangian_nodes)
+    scalar_field = np.linspace(0, 1, num_lagrangian_nodes).astype(real_t)
     time = 0.1
 
     # Initialize IO
@@ -296,27 +286,21 @@ def test_mpi_lagrangian_grid_scalar_field_io(precision):
 
     # Check values
     if mpi_construct.rank == master_rank:
-        allclose_grid = np.allclose(
-            lagrangian_grid_position_saved,
-            lagrangian_grid_position_loaded,
-            atol=testing_atol,
+        all_equal_grid = np.array_equal(
+            lagrangian_grid_position_saved, lagrangian_grid_position_loaded
         )
-        allclose_scalar_field = np.allclose(
-            scalar_field_saved,
-            scalar_field_loaded,
-            atol=testing_atol,
-        )
+        all_equal_scalar_field = np.array_equal(scalar_field_saved, scalar_field_loaded)
     else:
-        allclose_grid = None
-        allclose_scalar_field = None
+        all_equal_grid = None
+        all_equal_scalar_field = None
 
-    allclose_grid = mpi_construct.grid.bcast(allclose_grid, root=master_rank)
-    allclose_scalar_field = mpi_construct.grid.bcast(
-        allclose_scalar_field, root=master_rank
+    all_equal_grid = mpi_construct.grid.bcast(all_equal_grid, root=master_rank)
+    all_equal_scalar_field = mpi_construct.grid.bcast(
+        all_equal_scalar_field, root=master_rank
     )
-    assert allclose_grid, "Lagrangian grid mismatch!"
-    assert allclose_scalar_field, "Lagrangian scalar field mismatch!"
-    np.testing.assert_allclose(time, time_loaded, atol=testing_atol)
+    assert all_equal_grid, "Lagrangian grid mismatch!"
+    assert all_equal_scalar_field, "Lagrangian scalar field mismatch!"
+    np.testing.assert_equal(time, time_loaded)
     os.system("rm -f *h5 *xmf")
 
 
@@ -324,8 +308,6 @@ def test_mpi_lagrangian_grid_scalar_field_io(precision):
 @pytest.mark.parametrize("precision", ["single", "double"])
 def test_mpi_lagrangian_grid_vector_field_io(precision):
     real_t = spu.get_real_t(precision)
-    testing_atol = spu.get_test_tol(precision)
-
     n_values = 16
     dim = 2
     grid_size_y, grid_size_x = (n_values,) * dim
@@ -348,7 +330,9 @@ def test_mpi_lagrangian_grid_vector_field_io(precision):
     num_revolutions = 4
     theta = np.linspace(0, num_revolutions * 2 * np.pi, num_lagrangian_nodes)
     radius = np.linspace(0, num_revolutions, num_lagrangian_nodes) * drdt
-    lagrangian_grid_position = np.zeros((mpi_construct.grid_dim, num_lagrangian_nodes))
+    lagrangian_grid_position = np.zeros(
+        (mpi_construct.grid_dim, num_lagrangian_nodes)
+    ).astype(real_t)
     lagrangian_grid_position[spu.VectorField.x_axis_idx(), :] = radius * np.cos(theta)
     lagrangian_grid_position[spu.VectorField.y_axis_idx(), :] = radius * np.sin(theta)
 
@@ -387,27 +371,21 @@ def test_mpi_lagrangian_grid_vector_field_io(precision):
 
     # Check values
     if mpi_construct.rank == master_rank:
-        allclose_grid = np.allclose(
-            lagrangian_grid_position_saved,
-            lagrangian_grid_position_loaded,
-            atol=testing_atol,
+        all_equal_grid = np.array_equal(
+            lagrangian_grid_position_saved, lagrangian_grid_position_loaded
         )
-        allclose_vector_field = np.allclose(
-            vector_field_saved,
-            vector_field_loaded,
-            atol=testing_atol,
-        )
+        all_equal_vector_field = np.array_equal(vector_field_saved, vector_field_loaded)
     else:
-        allclose_grid = None
-        allclose_vector_field = None
+        all_equal_grid = None
+        all_equal_vector_field = None
 
-    allclose_grid = mpi_construct.grid.bcast(allclose_grid, root=master_rank)
-    allclose_vector_field = mpi_construct.grid.bcast(
-        allclose_vector_field, root=master_rank
+    all_equal_grid = mpi_construct.grid.bcast(all_equal_grid, root=master_rank)
+    all_equal_vector_field = mpi_construct.grid.bcast(
+        all_equal_vector_field, root=master_rank
     )
-    assert allclose_grid, "Lagrangian grid mismatch!"
-    assert allclose_vector_field, "Lagrangian vector field mismatch!"
-    np.testing.assert_allclose(time, time_loaded, atol=testing_atol)
+    assert all_equal_grid, "Lagrangian grid mismatch!"
+    assert all_equal_vector_field, "Lagrangian vector field mismatch!"
+    np.testing.assert_allclose(time, time_loaded)
     os.system("rm -f *h5 *xmf")
 
 
@@ -415,8 +393,6 @@ def test_mpi_lagrangian_grid_vector_field_io(precision):
 @pytest.mark.parametrize("precision", ["single", "double"])
 def test_mpi_lagrangian_grid_multiple_field_io(precision):
     real_t = spu.get_real_t(precision)
-    testing_atol = spu.get_test_tol(precision)
-
     n_values = 16
     dim = 2
     grid_size_y, grid_size_x = (n_values,) * dim
@@ -439,12 +415,14 @@ def test_mpi_lagrangian_grid_multiple_field_io(precision):
     num_revolutions = 4
     theta = np.linspace(0, num_revolutions * 2 * np.pi, num_lagrangian_nodes)
     radius = np.linspace(0, num_revolutions, num_lagrangian_nodes) * drdt
-    lagrangian_grid_position = np.zeros((mpi_construct.grid_dim, num_lagrangian_nodes))
+    lagrangian_grid_position = np.zeros(
+        (mpi_construct.grid_dim, num_lagrangian_nodes)
+    ).astype(real_t)
     lagrangian_grid_position[spu.VectorField.x_axis_idx(), :] = radius * np.cos(theta)
     lagrangian_grid_position[spu.VectorField.y_axis_idx(), :] = radius * np.sin(theta)
 
     # Initialize scalar and vector field
-    scalar_field = np.linspace(0, 1, num_lagrangian_nodes)
+    scalar_field = np.linspace(0, 1, num_lagrangian_nodes).astype(real_t)
     vector_field = np.zeros_like(lagrangian_grid_position)
     vector_field[spu.VectorField.x_axis_idx(), :] = -radius * np.sin(theta)
     vector_field[spu.VectorField.y_axis_idx(), :] = radius * np.cos(theta)
@@ -483,37 +461,27 @@ def test_mpi_lagrangian_grid_multiple_field_io(precision):
 
     # Check values
     if mpi_construct.rank == master_rank:
-        allclose_grid = np.allclose(
-            lagrangian_grid_position_saved,
-            lagrangian_grid_position_loaded,
-            atol=testing_atol,
+        all_equal_grid = np.array_equal(
+            lagrangian_grid_position_saved, lagrangian_grid_position_loaded
         )
-        allclose_scalar_field = np.allclose(
-            scalar_field_saved,
-            scalar_field_loaded,
-            atol=testing_atol,
-        )
-        allclose_vector_field = np.allclose(
-            vector_field_saved,
-            vector_field_loaded,
-            atol=testing_atol,
-        )
+        all_equal_scalar_field = np.array_equal(scalar_field_saved, scalar_field_loaded)
+        all_equal_vector_field = np.array_equal(vector_field_saved, vector_field_loaded)
     else:
-        allclose_grid = None
-        allclose_scalar_field = None
-        allclose_vector_field = None
+        all_equal_grid = None
+        all_equal_scalar_field = None
+        all_equal_vector_field = None
 
-    allclose_grid = mpi_construct.grid.bcast(allclose_grid, root=master_rank)
-    allclose_scalar_field = mpi_construct.grid.bcast(
-        allclose_scalar_field, root=master_rank
+    all_equal_grid = mpi_construct.grid.bcast(all_equal_grid, root=master_rank)
+    all_equal_scalar_field = mpi_construct.grid.bcast(
+        all_equal_scalar_field, root=master_rank
     )
-    allclose_vector_field = mpi_construct.grid.bcast(
-        allclose_vector_field, root=master_rank
+    all_equal_vector_field = mpi_construct.grid.bcast(
+        all_equal_vector_field, root=master_rank
     )
-    assert allclose_grid, "Lagrangian grid mismatch!"
-    assert allclose_scalar_field, "Lagrangian scalar field mismatch!"
-    assert allclose_vector_field, "Lagrangian vector field mismatch!"
-    np.testing.assert_allclose(time, time_loaded, atol=testing_atol)
+    assert all_equal_grid, "Lagrangian grid mismatch!"
+    assert all_equal_scalar_field, "Lagrangian scalar field mismatch!"
+    assert all_equal_vector_field, "Lagrangian vector field mismatch!"
+    np.testing.assert_equal(time, time_loaded)
     os.system("rm -f *h5 *xmf")
 
 
@@ -521,8 +489,6 @@ def test_mpi_lagrangian_grid_multiple_field_io(precision):
 @pytest.mark.parametrize("precision", ["single", "double"])
 def test_mpi_cosserat_rod_io(precision):
     real_t = spu.get_real_t(precision)
-    testing_atol = spu.get_test_tol(precision)
-
     n_values = 16
     dim = 2
     grid_size_y, grid_size_x = (n_values,) * dim
@@ -563,10 +529,7 @@ def test_mpi_cosserat_rod_io(precision):
     # Initialize cosserat rod io
     master_rank = 0  # we only care about the rod instance on master_rank
     rod_io = CosseratRodMPIIO(
-        mpi_construct=mpi_construct,
-        master_rank=master_rank,
-        cosserat_rod=rod,
-        real_dtype=real_t,
+        mpi_construct=mpi_construct, master_rank=master_rank, cosserat_rod=rod
     )
     # Save rod
     rod_io.save(h5_file_name="test_cosserat_rod_io.h5", time=time)
@@ -577,9 +540,10 @@ def test_mpi_cosserat_rod_io(precision):
         rod.position_collection[:dim, 1:] + rod.position_collection[:dim, :-1]
     )
     rod_element_position_loaded = np.zeros((dim, n_element))
-    rod_element_radius_saved = rod_element_radius.copy()
+    rod_element_radius_saved = rod.radius.copy()
     rod_element_radius_loaded = np.zeros(n_element)
-    base_io = MPIIO(mpi_construct=mpi_construct, real_dtype=real_t)
+    rod_real_t = rod.position_collection.dtype  # pyelastica is always double
+    base_io = MPIIO(mpi_construct=mpi_construct, real_dtype=rod_real_t)
     base_io.add_as_lagrangian_fields_for_io(
         lagrangian_grid=rod_element_position_loaded,
         lagrangian_grid_master_rank=master_rank,
@@ -591,24 +555,24 @@ def test_mpi_cosserat_rod_io(precision):
     # Check values
     # We only care about the values on master rank
     if mpi_construct.rank == master_rank:
-        allclose_rod_position = np.allclose(
-            rod_element_position_saved, rod_element_position_loaded, atol=testing_atol
+        all_equal_rod_position = np.array_equal(
+            rod_element_position_saved, rod_element_position_loaded
         )
-        allclose_rod_radius = np.allclose(
-            rod_element_radius_saved, rod_element_radius_loaded, atol=testing_atol
+        all_equal_rod_radius = np.array_equal(
+            rod_element_radius_saved, rod_element_radius_loaded
         )
     else:
-        allclose_rod_position = None
-        allclose_rod_radius = None
+        all_equal_rod_position = None
+        all_equal_rod_radius = None
 
-    allclose_rod_position = mpi_construct.grid.bcast(
-        allclose_rod_position, root=master_rank
+    all_equal_rod_position = mpi_construct.grid.bcast(
+        all_equal_rod_position, root=master_rank
     )
-    allclose_rod_radius = mpi_construct.grid.bcast(
-        allclose_rod_radius, root=master_rank
+    all_equal_rod_radius = mpi_construct.grid.bcast(
+        all_equal_rod_radius, root=master_rank
     )
 
-    assert allclose_rod_position, "Rod position mismatch!"
-    assert allclose_rod_radius, "Rod radius mismatch!"
-    np.testing.assert_allclose(time, time_loaded, atol=testing_atol)
+    assert all_equal_rod_position, "Rod position mismatch!"
+    assert all_equal_rod_radius, "Rod radius mismatch!"
+    np.testing.assert_equal(time, time_loaded)
     os.system("rm -f *h5 *xmf")
