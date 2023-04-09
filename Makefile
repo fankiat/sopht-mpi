@@ -19,7 +19,10 @@ install:
 	# uninstall serial h5py coming from sopht-backend
 	pip uninstall -y h5py
 	# install parallel h5py
-	HDF5_MPI="ON" CC=mpicc pip install --no-binary=h5py h5py
+	# HDF5_MPI="ON" CC=mpicc pip install --no-binary=h5py h5py
+	# Temporary parallel h5py workaround until h5py release version >3.8.0
+	pip install wheel cython
+	HDF5_MPI="ON" CC=mpicc pip install --no-build-isolation --no-binary=h5py h5py
 	# install mpi4py-fft
 	pip install mpi4py-fft
 	# sadly pip ffmpeg doesnt work, hence we use conda for ffmpeg
