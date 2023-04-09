@@ -126,7 +126,10 @@ def flow_past_sphere_case(
             vorticity=flow_sim.vorticity_field, velocity=flow_sim.velocity_field
         )
         # Initialize sphere IO
-        sphere_io = MPIIO(mpi_construct=flow_sim.mpi_construct, real_dtype=real_t)
+        sphere_io = MPIIO(
+            mpi_construct=flow_sim.mpi_construct,
+            real_dtype=sphere.position_collection.dtype,
+        )
         # Add vector field on lagrangian grid
         sphere_io.add_as_lagrangian_fields_for_io(
             lagrangian_grid=sphere_flow_interactor.forcing_grid.position_field,
