@@ -137,6 +137,9 @@ class MPIIO:
         for field_name in fields_for_io:
             # Add each field into local dictionary
             field = fields_for_io[field_name]
+            assert np.issubdtype(
+                field.dtype, self.real_dtype
+            ), f"{field_name} dtype ({field.dtype}) incompatible with IO dtype ({self.real_dtype})"
             self.eulerian_fields[field_name] = field
 
             # Assign field types
@@ -209,10 +212,13 @@ class MPIIO:
 
         if lagrangian_grid_connect:
             self.lagrangian_grid_connection[lagrangian_grid_name] = np.arange(
-                num_lagrangian_nodes
+                num_lagrangian_nodes, dtype=np.int64
             )
 
         # Save `lagrangian_grid` with grid name `lagrangian_grid_name` to `lagrangian_grids`
+        assert np.issubdtype(
+            lagrangian_grid.dtype, self.real_dtype
+        ), f"{lagrangian_grid_name} dtype ({lagrangian_grid.dtype}) incompatible with IO dtype ({self.real_dtype})"
         self.lagrangian_grids[lagrangian_grid_name] = lagrangian_grid
 
         # Create a list of to store names of fields that lie on
@@ -221,6 +227,9 @@ class MPIIO:
         for field_name in fields_for_io:
             # Add each field into local dictionary
             field = fields_for_io[field_name]
+            assert np.issubdtype(
+                field.dtype, self.real_dtype
+            ), f"{field_name} dtype ({field.dtype}) incompatible with IO dtype ({self.real_dtype})"
             self.lagrangian_fields[field_name] = field
             self.lagrangian_fields_with_grid_name[lagrangian_grid_name].append(
                 field_name
@@ -304,7 +313,9 @@ class MPIIO:
                     if field_type == "Scalar":
                         # Set up dataset with global shape
                         dset = eulerian_scalar_grp.create_dataset(
-                            field_name, shape=(1, *self.eulerian_grid_size)
+                            field_name,
+                            shape=(1, *self.eulerian_grid_size),
+                            dtype=self.real_dtype,
                         )
                         # Write the local chunk of data
                         dset[self.local_eulerian_index] = field[
@@ -317,6 +328,7 @@ class MPIIO:
                             dset = eulerian_vector_grp.create_dataset(
                                 f"{field_name}_{idx_dim}",
                                 shape=(1, *self.eulerian_grid_size),
+                                dtype=self.real_dtype,
                             )
                             # Write the local chunk of data
                             dset[self.local_eulerian_index] = field[idx_dim][
@@ -360,6 +372,7 @@ class MPIIO:
                         self.lagrangian_grid_num_node[lagrangian_grid_name],
                         self.dim,
                     ),
+                    dtype=self.real_dtype,
                 )
                 # write only on master_rank where lagrangian grid resides
                 if is_master_rank:
@@ -369,6 +382,7 @@ class MPIIO:
                     dset_connection = lagrangian_grid_grp.create_dataset(
                         "Connection",
                         shape=(self.lagrangian_grid_num_node[lagrangian_grid_name],),
+                        dtype=np.int64,
                     )
                     # write only on master_rank
                     if is_master_rank:
@@ -390,6 +404,7 @@ class MPIIO:
                             shape=(
                                 self.lagrangian_grid_num_node[lagrangian_grid_name],
                             ),
+                            dtype=self.real_dtype,
                         )
                         # write only on master_rank
                         if is_master_rank:
@@ -401,6 +416,7 @@ class MPIIO:
                                 self.lagrangian_grid_num_node[lagrangian_grid_name],
                                 self.dim,
                             ),
+                            dtype=self.real_dtype,
                         )
                         # write only on master_rank
                         if is_master_rank:
@@ -742,14 +758,18 @@ class CosseratRodMPIIO(MPIIO):
         self,
         mpi_construct,
         cosserat_rod: CosseratRod,
-        real_dtype=np.float64,
         master_rank=0,
     ):
-        super().__init__(mpi_construct, real_dtype)
         self.cosserat_rod = cosserat_rod
+        real_dtype = (
+            cosserat_rod.position_collection.dtype
+        )  # use the rod precision directly
+        super().__init__(mpi_construct, real_dtype)
 
         # Initialize rod element position
-        self.rod_element_position = np.zeros((self.dim, cosserat_rod.n_elems))
+        self.rod_element_position = np.zeros((self.dim, cosserat_rod.n_elems)).astype(
+            real_dtype
+        )
         self._update_rod_element_position()
 
         # Add the element position to IO
