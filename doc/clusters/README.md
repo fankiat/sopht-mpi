@@ -66,5 +66,7 @@ instead of `$HOME`. More documentation on setting the config file can be found
 
 
 # Submitting jobs on cluster
-Once you have setup the solver on your desired cluster, you can submit jobs using the
-`submit_*.sh` batch submission scripts provided as reference.
+Once you have setup the solver on your desired cluster, you can submit jobs through the
+batch submission scripts `submit_*.sh`. Alternatively, you may use the `submit.py`
+provided here to generate these batch submission scripts, which may come in handy when
+scripting to generate large number of simulation cases for phase space exploration.
