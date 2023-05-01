@@ -206,7 +206,7 @@ def flow_past_rod_case(
             lagrangian_grid_master_rank=cosserat_rod_flow_interactor.master_rank,
             lagrangian_grid_name="mismatch_field",
             position_mismatch=cosserat_rod_flow_interactor.global_lag_grid_position_mismatch_field,
-            velocity_mismatch=cosserat_rod_flow_interactor.global_lag_grid_position_mismatch_field,
+            velocity_mismatch=cosserat_rod_flow_interactor.global_lag_grid_velocity_mismatch_field,
         )
 
         if restart_simulation:
